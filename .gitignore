@@ -38,3 +38,6 @@ packages/
 *.log
 Thumbs.db
 .DS_Store
+
+# Scratch del flujo SDD (no versionar)
+.superpowers/
