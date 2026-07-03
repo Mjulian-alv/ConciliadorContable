@@ -1,0 +1,25 @@
+﻿
+<Project Sdk="Microsoft.NET.Sdk">
+
+
+    <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.7" />
+    <PackageReference Include="UI.for.WinForms.AllControls.Net90" Version="2024.4.1113" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ArcaCliente\ArcaCliente.csproj" />
+    <ProjectReference Include="..\AgrupadorConceptos\AgrupadorConceptos.csproj" />
+  </ItemGroup>
+
+  <ProjectExtensions><VisualStudio><UserProperties ShouldAddDPIScalingManifest="" /></VisualStudio></ProjectExtensions>
+     
+
+</Project>
