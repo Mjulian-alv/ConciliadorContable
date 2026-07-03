@@ -247,6 +247,24 @@ namespace LiquidacionesAuditar.Data
             return list;
         }
 
+        public static List<RelacionCol> GetRelacionesConSigno(int idLiqCol)
+        {
+            var list = new List<RelacionCol>();
+            using var cn = DatabaseHelper.GetConnection(); cn.Open();
+            using var cmd = cn.CreateCommand();
+            cmd.CommandText = "SELECT IdColumnasCSV, COALESCE(Signo,'+') FROM Auditar_RelacionCols WHERE IdLiqCols=@id";
+            cmd.Parameters.AddWithValue("@id", idLiqCol.ToString());
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+                list.Add(new RelacionCol
+                {
+                    IdLiqCols     = idLiqCol.ToString(),
+                    IdColumnasCSV = r.GetString(0),
+                    Signo         = r.IsDBNull(1) ? "+" : r.GetString(1)
+                });
+            return list;
+        }
+
         public static void SetRelaciones(int idLiqCol, List<string> columnasCSV)
         {
             using var cn = DatabaseHelper.GetConnection(); cn.Open();

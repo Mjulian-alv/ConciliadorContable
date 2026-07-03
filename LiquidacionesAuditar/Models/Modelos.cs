@@ -72,6 +72,7 @@ namespace LiquidacionesAuditar.Models
     {
         public string IdLiqCols { get; set; } = "";
         public string IdColumnasCSV { get; set; } = "";
+        public string Signo { get; set; } = "+";   // "+" (suma) o "-" (resta)
     }
 
     public class LineaCON

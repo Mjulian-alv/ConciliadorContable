@@ -90,6 +90,9 @@ namespace LiquidacionesAuditar.Data
             try { cn.ExecuteNonQuery("ALTER TABLE Auditar_LiqCols ADD COLUMN tieneSigno INTEGER NOT NULL DEFAULT 0"); } catch { }
             try { cn.ExecuteNonQuery("ALTER TABLE Auditar_LiqCols ADD COLUMN esFiltro INTEGER NOT NULL DEFAULT 0"); } catch { }
 
+            // Signo por relacion origen<->destino (migracion segura)
+            try { cn.ExecuteNonQuery("ALTER TABLE Auditar_RelacionCols ADD COLUMN Signo TEXT NOT NULL DEFAULT '+'"); } catch { }
+
             //Columna nueva en Auditar_LineasCON (migracion segura)
             try { cn.ExecuteNonQuery("ALTER TABLE Auditar_LineasCON ADD COLUMN CondicionSigno TEXT"); } catch { }
 
