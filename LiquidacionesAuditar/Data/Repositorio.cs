@@ -265,7 +265,7 @@ namespace LiquidacionesAuditar.Data
             return list;
         }
 
-        public static void SetRelaciones(int idLiqCol, List<string> columnasCSV)
+        public static void SetRelaciones(int idLiqCol, List<RelacionCol> relaciones)
         {
             using var cn = DatabaseHelper.GetConnection(); cn.Open();
             using var tx = cn.BeginTransaction();
@@ -274,13 +274,14 @@ namespace LiquidacionesAuditar.Data
             del.CommandText = "DELETE FROM Auditar_RelacionCols WHERE IdLiqCols=@id";
             del.Parameters.AddWithValue("@id", idLiqCol.ToString());
             del.ExecuteNonQuery();
-            foreach (var col in columnasCSV)
+            foreach (var rel in relaciones)
             {
                 using var ins = cn.CreateCommand();
                 ins.Transaction = tx;
-                ins.CommandText = "INSERT OR IGNORE INTO Auditar_RelacionCols(IdLiqCols,IdColumnasCSV) VALUES(@l,@c)";
+                ins.CommandText = "INSERT OR IGNORE INTO Auditar_RelacionCols(IdLiqCols,IdColumnasCSV,Signo) VALUES(@l,@c,@s)";
                 ins.Parameters.AddWithValue("@l", idLiqCol.ToString());
-                ins.Parameters.AddWithValue("@c", col);
+                ins.Parameters.AddWithValue("@c", rel.IdColumnasCSV);
+                ins.Parameters.AddWithValue("@s", string.IsNullOrEmpty(rel.Signo) ? "+" : rel.Signo);
                 ins.ExecuteNonQuery();
             }
             tx.Commit();

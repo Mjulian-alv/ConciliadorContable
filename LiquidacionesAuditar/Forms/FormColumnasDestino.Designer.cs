@@ -42,7 +42,7 @@ namespace LiquidacionesAuditar
             lblCondicion = new System.Windows.Forms.Label();
             txtCondicion = new Telerik.WinControls.UI.RadTextBox();
             lblRelaciones = new System.Windows.Forms.Label();
-            clbRelaciones = new System.Windows.Forms.CheckedListBox();
+            gridRelaciones = new Telerik.WinControls.UI.RadGridView();
             panelBotones = new System.Windows.Forms.Panel();
             btnNuevo = new Telerik.WinControls.UI.RadButton();
             btnGuardar = new Telerik.WinControls.UI.RadButton();
@@ -57,6 +57,8 @@ namespace LiquidacionesAuditar
             splitMain.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)gridDest).BeginInit();
             ((System.ComponentModel.ISupportInitialize)gridDest.MasterTemplate).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)gridRelaciones).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)gridRelaciones.MasterTemplate).BeginInit();
             grpDetalle.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)txtCondicionSigno).BeginInit();
             ((System.ComponentModel.ISupportInitialize)txtIdColumna).BeginInit();
@@ -162,7 +164,7 @@ namespace LiquidacionesAuditar
             grpDetalle.Controls.Add(lblCondicion);
             grpDetalle.Controls.Add(txtCondicion);
             grpDetalle.Controls.Add(lblRelaciones);
-            grpDetalle.Controls.Add(clbRelaciones);
+            grpDetalle.Controls.Add(gridRelaciones);
             grpDetalle.Dock = System.Windows.Forms.DockStyle.Fill;
             grpDetalle.Location = new System.Drawing.Point(0, 0);
             grpDetalle.Name = "grpDetalle";
@@ -312,12 +314,12 @@ namespace LiquidacionesAuditar
             lblRelaciones.TabIndex = 12;
             lblRelaciones.Text = "Columnas CSV relacionadas (marcar las que aplican):";
             // 
-            // clbRelaciones
-            // 
-            clbRelaciones.Location = new System.Drawing.Point(10, 384);
-            clbRelaciones.Name = "clbRelaciones";
-            clbRelaciones.Size = new System.Drawing.Size(500, 166);
-            clbRelaciones.TabIndex = 13;
+            // gridRelaciones
+            //
+            gridRelaciones.Location = new System.Drawing.Point(10, 384);
+            gridRelaciones.Name = "gridRelaciones";
+            gridRelaciones.Size = new System.Drawing.Size(500, 166);
+            gridRelaciones.TabIndex = 13;
             // 
             // panelBotones
             // 
@@ -386,6 +388,8 @@ namespace LiquidacionesAuditar
             splitMain.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)gridDest.MasterTemplate).EndInit();
             ((System.ComponentModel.ISupportInitialize)gridDest).EndInit();
+            ((System.ComponentModel.ISupportInitialize)gridRelaciones.MasterTemplate).EndInit();
+            ((System.ComponentModel.ISupportInitialize)gridRelaciones).EndInit();
             grpDetalle.ResumeLayout(false);
             grpDetalle.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)txtCondicionSigno).EndInit();
@@ -423,7 +427,7 @@ namespace LiquidacionesAuditar
         private System.Windows.Forms.Label lblCondicion;
         private Telerik.WinControls.UI.RadTextBox txtCondicion;
         private System.Windows.Forms.Label lblRelaciones;
-        private System.Windows.Forms.CheckedListBox clbRelaciones;
+        private Telerik.WinControls.UI.RadGridView gridRelaciones;
         private System.Windows.Forms.Panel panelBotones;
         private Telerik.WinControls.UI.RadButton btnNuevo;
         private Telerik.WinControls.UI.RadButton btnGuardar;

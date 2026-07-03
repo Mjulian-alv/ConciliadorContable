@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Windows.Forms;
 using Telerik.WinControls.UI;
@@ -11,12 +12,44 @@ namespace LiquidacionesAuditar
     public partial class FormColumnasDestino : RadForm
     {
         private LiqCol _colActual;
+        private BindingList<RelacionVM> _relacionesVM = new BindingList<RelacionVM>();
+
+        private class RelacionVM
+        {
+            public bool Sel { get; set; }
+            public string Columna { get; set; } = "";
+            public string Signo { get; set; } = "+";   // "+" o "-"
+            public string SignoTexto
+            {
+                get => Signo == "-" ? "Resta" : "Suma";
+                set => Signo = value == "Resta" ? "-" : "+";
+            }
+        }
 
         public FormColumnasDestino()
         {
             InitializeComponent();
             CargarMarcasCombo();
             CargarGrid();
+            ConfigurarGridRelaciones();
+        }
+
+        private void ConfigurarGridRelaciones()
+        {
+            gridRelaciones.AutoGenerateColumns = false;
+            gridRelaciones.MasterTemplate.Columns.Clear();
+            gridRelaciones.AllowAddNewRow = false;
+            gridRelaciones.ReadOnly = false;
+
+            var colSel = new GridViewCheckBoxColumn("Sel")
+                { HeaderText = "¿Interviene?", FieldName = "Sel", Width = 90 };
+            var colNom = new GridViewTextBoxColumn("Columna")
+                { HeaderText = "Columna", FieldName = "Columna", ReadOnly = true, Width = 260 };
+            var colSig = new GridViewComboBoxColumn("Signo")
+                { HeaderText = "Signo", FieldName = "SignoTexto", Width = 110 };
+            colSig.DataSource = new[] { "Suma", "Resta" };
+
+            gridRelaciones.MasterTemplate.Columns.AddRange(colSel, colNom, colSig);
         }
 
         private void CargarMarcasCombo()
@@ -74,20 +107,43 @@ namespace LiquidacionesAuditar
             txtValorFijo.Text = "";
             txtCondicion.Text = "";
             txtCondicionSigno.Text = "";
-            clbRelaciones.Items.Clear();
+            _relacionesVM = new BindingList<RelacionVM>();
+            gridRelaciones.DataSource = _relacionesVM;
         }
 
         private void CargarRelaciones()
         {
-            clbRelaciones.Items.Clear();
-            if (_colActual == null || string.IsNullOrEmpty(MarcaActual)) return;
+            _relacionesVM = new BindingList<RelacionVM>();
+            if (_colActual == null || string.IsNullOrEmpty(MarcaActual))
+            {
+                gridRelaciones.DataSource = _relacionesVM;
+                return;
+            }
 
             var colsCSV = Repositorio.GetColumnasCSV(MarcaActual);
-            var relacionadas = Repositorio.GetRelaciones(_colActual.Id)
-                               .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var relacionadas = Repositorio.GetRelacionesConSigno(_colActual.Id)
+                               .ToDictionary(x => x.IdColumnasCSV, x => x.Signo, StringComparer.OrdinalIgnoreCase);
 
             foreach (var col in colsCSV)
-                clbRelaciones.Items.Add(col.IdColumnaArchivo, relacionadas.Contains(col.IdColumnaArchivo));
+            {
+                bool sel = relacionadas.TryGetValue(col.IdColumnaArchivo, out var s);
+                _relacionesVM.Add(new RelacionVM
+                {
+                    Sel = sel,
+                    Columna = col.IdColumnaArchivo,
+                    Signo = sel ? (string.IsNullOrEmpty(s) ? "+" : s) : "+"
+                });
+            }
+            gridRelaciones.DataSource = _relacionesVM;
+            AplicarHabilitacionSigno();
+        }
+
+        private void AplicarHabilitacionSigno()
+        {
+            var td = (_colActual?.TipoDato ?? "").ToLower();
+            bool cabNumerico = _colActual?.TipoRegistro == "CAB" && (td == "decimal" || td == "int");
+            var colSigno = gridRelaciones.Columns["Signo"];
+            if (colSigno != null) colSigno.ReadOnly = !cabNumerico;
         }
 
         private void btnNuevo_Click(object sender, EventArgs e)
@@ -129,8 +185,12 @@ namespace LiquidacionesAuditar
                 Repositorio.UpdateLiqCol(col);
             }
 
-            Repositorio.SetRelaciones(col.Id, clbRelaciones.Items.Cast<string>()
-                .Where((item, index) => clbRelaciones.GetItemChecked(index)).ToList());
+            gridRelaciones.EndEdit();
+            var relaciones = _relacionesVM
+                .Where(v => v.Sel)
+                .Select(v => new RelacionCol { IdColumnasCSV = v.Columna, Signo = v.Signo })
+                .ToList();
+            Repositorio.SetRelaciones(col.Id, relaciones);
 
             CargarGrid();
             MessageBox.Show("Columna guardada correctamente.", "Guardar", MessageBoxButtons.OK, MessageBoxIcon.Information);
