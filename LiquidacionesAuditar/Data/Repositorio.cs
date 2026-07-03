@@ -247,7 +247,25 @@ namespace LiquidacionesAuditar.Data
             return list;
         }
 
-        public static void SetRelaciones(int idLiqCol, List<string> columnasCSV)
+        public static List<RelacionCol> GetRelacionesConSigno(int idLiqCol)
+        {
+            var list = new List<RelacionCol>();
+            using var cn = DatabaseHelper.GetConnection(); cn.Open();
+            using var cmd = cn.CreateCommand();
+            cmd.CommandText = "SELECT IdColumnasCSV, COALESCE(Signo,'+') FROM Auditar_RelacionCols WHERE IdLiqCols=@id";
+            cmd.Parameters.AddWithValue("@id", idLiqCol.ToString());
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+                list.Add(new RelacionCol
+                {
+                    IdLiqCols     = idLiqCol.ToString(),
+                    IdColumnasCSV = r.GetString(0),
+                    Signo         = r.IsDBNull(1) ? "+" : r.GetString(1)
+                });
+            return list;
+        }
+
+        public static void SetRelaciones(int idLiqCol, List<RelacionCol> relaciones)
         {
             using var cn = DatabaseHelper.GetConnection(); cn.Open();
             using var tx = cn.BeginTransaction();
@@ -256,13 +274,14 @@ namespace LiquidacionesAuditar.Data
             del.CommandText = "DELETE FROM Auditar_RelacionCols WHERE IdLiqCols=@id";
             del.Parameters.AddWithValue("@id", idLiqCol.ToString());
             del.ExecuteNonQuery();
-            foreach (var col in columnasCSV)
+            foreach (var rel in relaciones)
             {
                 using var ins = cn.CreateCommand();
                 ins.Transaction = tx;
-                ins.CommandText = "INSERT OR IGNORE INTO Auditar_RelacionCols(IdLiqCols,IdColumnasCSV) VALUES(@l,@c)";
+                ins.CommandText = "INSERT OR IGNORE INTO Auditar_RelacionCols(IdLiqCols,IdColumnasCSV,Signo) VALUES(@l,@c,@s)";
                 ins.Parameters.AddWithValue("@l", idLiqCol.ToString());
-                ins.Parameters.AddWithValue("@c", col);
+                ins.Parameters.AddWithValue("@c", rel.IdColumnasCSV);
+                ins.Parameters.AddWithValue("@s", string.IsNullOrEmpty(rel.Signo) ? "+" : rel.Signo);
                 ins.ExecuteNonQuery();
             }
             tx.Commit();

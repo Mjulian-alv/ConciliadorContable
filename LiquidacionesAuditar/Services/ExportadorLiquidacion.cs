@@ -95,29 +95,35 @@ namespace LiquidacionesAuditar.Services
                         && string.IsNullOrWhiteSpace(col.ValorFijo)
                         && !col.IdColumna.Equals("Nro. de Liquidación", StringComparison.OrdinalIgnoreCase))
                     {
-                        var relaciones = Repositorio.GetRelaciones(col.Id);
+                        var relaciones = Repositorio.GetRelacionesConSigno(col.Id);
                         if (col.TipoDato.ToLower() == "decimal")
                         {
                             decimal suma = 0m;
                             foreach (var fila in grupo)
-                                foreach (var r in relaciones)
-                                    if (fila.TryGetValue(r, out var v))
+                            {
+                                var signoIf = EvaluarCondicion(col.CondicionSigno, fila);
+                                foreach (var rel in relaciones)
+                                    if (fila.TryGetValue(rel.IdColumnasCSV, out var v))
                                     {
-                                        var signo = EvaluarCondicion(col.CondicionSigno, fila);
-                                        suma += ParseDecimal(v, sepDec, sepMil, signo);
+                                        var signoFinal = CombinarSignos(signoIf, rel.Signo);
+                                        suma += ParseDecimal(v, sepDec, sepMil, signoFinal);
                                     }
+                            }
                             linCAB.Add(FormatDecimal(suma));
                         }
                         else
                         {
                             long suma = 0;
                             foreach (var fila in grupo)
-                                foreach (var r in relaciones)
-                                    if (fila.TryGetValue(r, out var v))
+                            {
+                                var signoIf = EvaluarCondicion(col.CondicionSigno, fila);
+                                foreach (var rel in relaciones)
+                                    if (fila.TryGetValue(rel.IdColumnasCSV, out var v))
                                     {
-                                        var signo = EvaluarCondicion(col.CondicionSigno, fila);
-                                        suma += ParseLong(v, signo);
+                                        var signoFinal = CombinarSignos(signoIf, rel.Signo);
+                                        suma += ParseLong(v, signoFinal);
                                     }
+                            }
                             linCAB.Add(suma.ToString());
                         }
                     }
@@ -334,6 +340,17 @@ namespace LiquidacionesAuditar.Services
             if (!string.IsNullOrWhiteSpace(signo) && signo.Equals("-", StringComparison.OrdinalIgnoreCase))
                 val = "-" + val;
             return long.TryParse(val, out var l) ? l : 0;
+        }
+
+        /// <summary>
+        /// Combina el signo del IF por fila con el signo fijo de la relación (XOR de negativos).
+        /// Negativo solo si exactamente uno de los dos es "-". Cualquier otro valor cuenta como "+".
+        /// </summary>
+        private static string CombinarSignos(string signoIf, string signoRel)
+        {
+            bool negIf  = signoIf  != null && signoIf.Trim()  == "-";
+            bool negRel = signoRel != null && signoRel.Trim() == "-";
+            return (negIf ^ negRel) ? "-" : "+";
         }
     }
 }
