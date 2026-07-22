@@ -15,4 +15,7 @@
       <Version>2024.4.1113</Version>
     </PackageReference>
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Conciliador.Comun\Conciliador.Comun.csproj" />
+  </ItemGroup>
 </Project>
