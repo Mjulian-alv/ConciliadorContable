@@ -19,6 +19,7 @@ namespace AgrupadorConceptos
     {
         public ProcesadorForm()
         {
+            Data.DatabaseHelper.InitializeDatabase();
             InitializeComponent();
             this.Icon = AppIcon.GetIcon();
             this.Load += ProcesadorForm_Load;

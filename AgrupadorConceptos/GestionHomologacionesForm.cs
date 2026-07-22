@@ -11,6 +11,7 @@ namespace AgrupadorConceptos
     {
         public GestionHomologacionesForm()
         {
+            Data.DatabaseHelper.InitializeDatabase();
             InitializeComponent();
             this.Icon = AppIcon.GetIcon();
             this.Load += (s, e) => CargarDatos();

@@ -23,6 +23,7 @@ namespace AgrupadorConceptos
 
         public ConciliacionExternForm()
         {
+            Data.DatabaseHelper.InitializeDatabase();
             InitializeComponent();
             Icon = AppIcon.GetIcon();
             Load += OnLoad;
