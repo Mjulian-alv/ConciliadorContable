@@ -1,4 +1,5 @@
 using System;
+using System.Data;
 using System.IO;
 using Microsoft.Data.Sqlite;
 
@@ -9,8 +10,21 @@ namespace LiquidacionesAuditar.Data
         public static string DbPath { get; } =
             Path.Combine(AppContext.BaseDirectory, "liquidaciones_auditar.db");
 
-        public static SqliteConnection GetConnection() =>
-            new SqliteConnection($"Data Source={DbPath}");
+        /// <summary>
+        /// WAL + synchronous=NORMAL. Sin esto SQLite hace un fsync por cada commit.
+        /// synchronous es por conexión, así que se aplica en cada apertura.
+        /// </summary>
+        public static SqliteConnection GetConnection()
+        {
+            var cn = new SqliteConnection($"Data Source={DbPath}");
+            cn.StateChange += (s, e) =>
+            {
+                if (e.CurrentState != ConnectionState.Open) return;
+                ((SqliteConnection)s).ExecuteNonQuery(
+                    "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;");
+            };
+            return cn;
+        }
 
         public static void InitializeDatabase()
         {

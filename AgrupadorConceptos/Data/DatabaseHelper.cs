@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using Dapper;
+using System.Data;
 using System.IO;
 
 namespace AgrupadorConceptos.Data
@@ -16,7 +17,7 @@ namespace AgrupadorConceptos.Data
                 File.Create(DbPath).Close();
             }
 
-            using var connection = new SqliteConnection(ConnectionString);
+            using var connection = GetConnection();
             connection.Open();
 
             // Crear tabla PerfilesBanco
@@ -128,11 +129,33 @@ namespace AgrupadorConceptos.Data
                     FOREIGN KEY (IdItemExterno) REFERENCES ConciliacionItemsExternos(Id) ON DELETE CASCADE
                 );
             ");
+
+            // Índices sobre las FK que se usan como filtro. Sin ellos cada lectura por
+            // IdArchivo / IdSesion / IdPerfilBanco recorre la tabla entera.
+            connection.Execute(@"
+                CREATE INDEX IF NOT EXISTS IX_MovimientosArchivo_IdArchivo   ON MovimientosArchivo(IdArchivo);
+                CREATE INDEX IF NOT EXISTS IX_HomologacionConceptos_IdPerfil ON HomologacionConceptos(IdPerfilBanco);
+                CREATE INDEX IF NOT EXISTS IX_ArchivosImportados_IdPerfil    ON ArchivosImportados(IdPerfilBanco);
+                CREATE INDEX IF NOT EXISTS IX_ConciliacionItemsExt_IdSesion  ON ConciliacionItemsExternos(IdSesion);
+                CREATE INDEX IF NOT EXISTS IX_ConciliacionPares_IdSesion     ON ConciliacionPares(IdSesion);
+            ");
         }
 
+        /// <summary>
+        /// WAL + synchronous=NORMAL. Sin esto SQLite hace un fsync por cada commit,
+        /// lo que vuelve inviable cualquier escritura fila por fila.
+        /// synchronous es por conexión, así que se aplica en cada apertura.
+        /// </summary>
         public static SqliteConnection GetConnection()
         {
-            return new SqliteConnection(ConnectionString);
+            var cn = new SqliteConnection(ConnectionString);
+            cn.StateChange += (s, e) =>
+            {
+                if (e.CurrentState != ConnectionState.Open) return;
+                ((SqliteConnection)s).Execute(
+                    "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;");
+            };
+            return cn;
         }
     }
 }

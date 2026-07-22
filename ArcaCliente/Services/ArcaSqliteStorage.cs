@@ -629,6 +629,9 @@ namespace ArcaCliente.Services
         {
             var cn = new SqliteConnection(ArcaStorageConfig.ConnectionString);
             cn.Open();
+            // WAL + synchronous=NORMAL: sin esto SQLite hace un fsync por cada commit.
+            // synchronous es por conexión, así que se aplica en cada apertura.
+            Execute(cn, "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;");
             return cn;
         }
 

@@ -106,7 +106,7 @@ namespace AgrupadorConceptos
 
         private void btnCargarExcel_Click(object sender, EventArgs e)
         {
-            using (OpenFileDialog ofd = new OpenFileDialog() { Filter = "Archivos Excel|*.xls;*.xlsx" })
+            using (OpenFileDialog ofd = new OpenFileDialog() { Filter = "Archivos Excel/CSV|*.xls;*.xlsx;*.csv" })
             {
                 if (ofd.ShowDialog() == DialogResult.OK)
                 {
@@ -123,7 +123,12 @@ namespace AgrupadorConceptos
             {
                 using (var stream = File.Open(filePath, FileMode.Open, FileAccess.Read))
                 {
-                    using (var reader = ExcelReaderFactory.CreateReader(stream))
+                    string ext = Path.GetExtension(filePath).ToLowerInvariant();
+
+                    using var reader = ext == ".csv"
+                    ? ExcelReaderFactory.CreateCsvReader(stream)
+                    : ExcelReaderFactory.CreateReader(stream);
+                    using (reader)
                     {
                         // Avanzamos hasta la fila indicada
                         for (int i = 1; i < filaEncabezado; i++)
