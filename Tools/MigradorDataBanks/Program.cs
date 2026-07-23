@@ -10,9 +10,17 @@ if (args.Length != 2)
 }
 
 using var src = new SqliteConnection($"Data Source={args[0]};Mode=ReadOnly");
-src.Open();
 using var dst = new SqlConnection(args[1]);
-dst.Open();
+try
+{
+    src.Open();
+    dst.Open();
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"ERROR: no se pudo abrir la conexion de origen/destino: {ex.Message}");
+    return 3;
+}
 
 // 0) Abortamos si el destino ya tiene datos (evita duplicar en re-ejecuciones)
 using (var check = dst.CreateCommand())
@@ -35,7 +43,7 @@ var filtros = new Dictionary<string, string>
     ["HomologacionConceptos"]     = "WHERE IdPerfilBanco IN (SELECT Id FROM PerfilesBanco) AND IdConceptoEstandar IN (SELECT Id FROM ConceptosEstandar)",
     ["ConciliacionSesiones"]      = "WHERE IdArchivoImportado IN (SELECT Id FROM ArchivosImportados WHERE IdPerfilBanco IN (SELECT Id FROM PerfilesBanco))",
     ["ConciliacionItemsExternos"] = "WHERE IdSesion IN (SELECT Id FROM ConciliacionSesiones WHERE IdArchivoImportado IN (SELECT Id FROM ArchivosImportados WHERE IdPerfilBanco IN (SELECT Id FROM PerfilesBanco)))",
-    ["ConciliacionPares"]         = "WHERE IdSesion IN (SELECT Id FROM ConciliacionSesiones) AND IdItemExterno IN (SELECT Id FROM ConciliacionItemsExternos)",
+    ["ConciliacionPares"]         = "WHERE IdSesion IN (SELECT Id FROM ConciliacionSesiones WHERE IdArchivoImportado IN (SELECT Id FROM ArchivosImportados WHERE IdPerfilBanco IN (SELECT Id FROM PerfilesBanco))) AND IdItemExterno IN (SELECT Id FROM ConciliacionItemsExternos WHERE IdSesion IN (SELECT Id FROM ConciliacionSesiones WHERE IdArchivoImportado IN (SELECT Id FROM ArchivosImportados WHERE IdPerfilBanco IN (SELECT Id FROM PerfilesBanco))))",
 };
 
 // 2) Copia en orden de dependencias, preservando IDs
@@ -55,14 +63,22 @@ foreach (var tabla in tablas)
     var dt = new DataTable();
     dt.Load(reader);
 
-    using var bulk = new SqlBulkCopy(dst, SqlBulkCopyOptions.KeepIdentity, null)
+    using var bulk = new SqlBulkCopy(dst, SqlBulkCopyOptions.KeepIdentity | SqlBulkCopyOptions.CheckConstraints, null)
     {
         DestinationTableName = $"bancos.{tabla}",
         BatchSize = 5000,
     };
     foreach (DataColumn c in dt.Columns)
         bulk.ColumnMappings.Add(c.ColumnName, c.ColumnName);
-    bulk.WriteToServer(dt);
+    try
+    {
+        bulk.WriteToServer(dt);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"ERROR: fallo al copiar bancos.{tabla}: {ex.Message}");
+        return 4;
+    }
     Console.WriteLine($"bancos.{tabla}: {dt.Rows.Count} filas");
 }
 
