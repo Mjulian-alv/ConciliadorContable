@@ -19,7 +19,6 @@ namespace AgrupadorConceptos
     {
         public ProcesadorForm()
         {
-            Data.DatabaseHelper.InitializeDatabase();
             InitializeComponent();
             this.Icon = AppIcon.GetIcon();
             this.Load += ProcesadorForm_Load;
@@ -222,7 +221,15 @@ namespace AgrupadorConceptos
                 {
                     using (var connection = DatabaseHelper.GetConnection())
                     {
-                        connection.Execute("DELETE FROM bancos.ArchivosImportados WHERE Id = @Id", new { Id = archivo.Id });
+                        try
+                        {
+                            connection.Execute("DELETE FROM bancos.ArchivosImportados WHERE Id = @Id", new { Id = archivo.Id });
+                        }
+                        catch (Microsoft.Data.SqlClient.SqlException)
+                        {
+                            MessageBox.Show("No se puede borrar: el archivo tiene sesiones de conciliación asociadas.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            return;
+                        }
                         CargarArchivosDelPerfil();
                         dgvDatos.DataSource = null;
                     }
