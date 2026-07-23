@@ -82,5 +82,16 @@ foreach (var tabla in tablas)
     Console.WriteLine($"bancos.{tabla}: {dt.Rows.Count} filas");
 }
 
+// 3) Reseed de identity: SqlBulkCopy con KeepIdentity copia los valores de Id
+//    pero NO reajusta el contador interno de IDENTITY de la tabla destino.
+//    Sin este paso, el primer INSERT normal de la app (Id automático) choca
+//    contra los Id ya migrados. Todas las tablas de bancos usan Id IDENTITY.
+foreach (var tabla in tablas)
+{
+    using var reseed = dst.CreateCommand();
+    reseed.CommandText = $"DBCC CHECKIDENT ('bancos.{tabla}', RESEED, (SELECT ISNULL(MAX(Id), 0) FROM bancos.{tabla}))";
+    reseed.ExecuteNonQuery();
+}
+
 Console.WriteLine("Migracion OK.");
 return 0;
