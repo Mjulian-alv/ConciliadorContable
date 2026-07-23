@@ -88,9 +88,23 @@ foreach (var tabla in tablas)
 //    contra los Id ya migrados. Todas las tablas de bancos usan Id IDENTITY.
 foreach (var tabla in tablas)
 {
-    using var reseed = dst.CreateCommand();
-    reseed.CommandText = $"DBCC CHECKIDENT ('bancos.{tabla}', RESEED, (SELECT ISNULL(MAX(Id), 0) FROM bancos.{tabla}))";
-    reseed.ExecuteNonQuery();
+    try
+    {
+        int maxId;
+        using (var max = dst.CreateCommand())
+        {
+            max.CommandText = $"SELECT ISNULL(MAX(Id), 0) FROM bancos.{tabla}";
+            maxId = (int)max.ExecuteScalar()!;
+        }
+        using var reseed = dst.CreateCommand();
+        reseed.CommandText = $"DBCC CHECKIDENT ('bancos.{tabla}', RESEED, {maxId})";
+        reseed.ExecuteNonQuery();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"ERROR: fallo al reseed de bancos.{tabla}: {ex.Message}");
+        return 5;
+    }
 }
 
 Console.WriteLine("Migracion OK.");
