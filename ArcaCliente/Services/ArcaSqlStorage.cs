@@ -336,8 +336,8 @@ namespace ArcaCliente.Services
         {
             using var cn = Open();
             using var cmd = cn.CreateCommand();
-            cmd.CommandText = "SELECT 1 FROM PreseaComprobantesExportados WHERE Clave = $clave LIMIT 1";
-            cmd.Parameters.AddWithValue("$clave", clave ?? "");
+            cmd.CommandText = "SELECT 1 FROM arca.PreseaComprobantesExportados WHERE Clave = @clave";
+            cmd.Parameters.AddWithValue("@clave", clave ?? "");
             return cmd.ExecuteScalar() != null;
         }
 
@@ -346,7 +346,7 @@ namespace ArcaCliente.Services
             var set = new HashSet<string>();
             using var cn = Open();
             using var cmd = cn.CreateCommand();
-            cmd.CommandText = "SELECT Clave FROM PreseaComprobantesExportados";
+            cmd.CommandText = "SELECT Clave FROM arca.PreseaComprobantesExportados";
             using var r = cmd.ExecuteReader();
             while (r.Read())
                 set.Add(r.GetString(0));
@@ -372,26 +372,27 @@ namespace ArcaCliente.Services
         {
             using var cmd = cn.CreateCommand();
             cmd.Transaction = tx;
-            // INSERT OR IGNORE: registrar dos veces la misma clave no es un error.
+            // Ignorar duplicados: registrar dos veces la misma clave no es un error.
             cmd.CommandText = @"
-                INSERT OR IGNORE INTO PreseaComprobantesExportados
-                    (Clave, CuitEmisor, TipoCmp, PtoVta, Nro, CodAut, Importe,
-                     FechaComprobante, FechaExportacion, ArchivoGenerado, PerfilOfflineId)
-                VALUES
-                    ($Clave, $CuitEmisor, $TipoCmp, $PtoVta, $Nro, $CodAut, $Importe,
-                     $FechaComprobante, $FechaExportacion, $ArchivoGenerado, $PerfilOfflineId)";
+                IF NOT EXISTS (SELECT 1 FROM arca.PreseaComprobantesExportados WHERE Clave = @Clave)
+                    INSERT INTO arca.PreseaComprobantesExportados
+                        (Clave, CuitEmisor, TipoCmp, PtoVta, Nro, CodAut, Importe,
+                         FechaComprobante, FechaExportacion, ArchivoGenerado, PerfilOfflineId)
+                    VALUES
+                        (@Clave, @CuitEmisor, @TipoCmp, @PtoVta, @Nro, @CodAut, @Importe,
+                         @FechaComprobante, @FechaExportacion, @ArchivoGenerado, @PerfilOfflineId)";
 
-            cmd.Parameters.AddWithValue("$Clave",            e.Clave ?? "");
-            cmd.Parameters.AddWithValue("$CuitEmisor",       e.CuitEmisor ?? "");
-            cmd.Parameters.AddWithValue("$TipoCmp",          e.TipoCmp ?? "");
-            cmd.Parameters.AddWithValue("$PtoVta",           e.PtoVta ?? "");
-            cmd.Parameters.AddWithValue("$Nro",              e.Nro ?? "");
-            cmd.Parameters.AddWithValue("$CodAut",           e.CodAut ?? "");
-            cmd.Parameters.AddWithValue("$Importe",          e.Importe.ToString(CultureInfo.InvariantCulture));
-            cmd.Parameters.AddWithValue("$FechaComprobante", e.FechaComprobante ?? "");
-            cmd.Parameters.AddWithValue("$FechaExportacion", e.FechaExportacion.ToString("o", CultureInfo.InvariantCulture));
-            cmd.Parameters.AddWithValue("$ArchivoGenerado",  e.ArchivoGenerado ?? "");
-            cmd.Parameters.AddWithValue("$PerfilOfflineId",  e.PerfilOfflineId ?? "");
+            cmd.Parameters.AddWithValue("@Clave",            e.Clave ?? "");
+            cmd.Parameters.AddWithValue("@CuitEmisor",       e.CuitEmisor ?? "");
+            cmd.Parameters.AddWithValue("@TipoCmp",          e.TipoCmp ?? "");
+            cmd.Parameters.AddWithValue("@PtoVta",           e.PtoVta ?? "");
+            cmd.Parameters.AddWithValue("@Nro",              e.Nro ?? "");
+            cmd.Parameters.AddWithValue("@CodAut",           e.CodAut ?? "");
+            cmd.Parameters.AddWithValue("@Importe",          e.Importe);
+            cmd.Parameters.AddWithValue("@FechaComprobante", e.FechaComprobante ?? "");
+            cmd.Parameters.AddWithValue("@FechaExportacion", e.FechaExportacion);
+            cmd.Parameters.AddWithValue("@ArchivoGenerado",  e.ArchivoGenerado ?? "");
+            cmd.Parameters.AddWithValue("@PerfilOfflineId",  e.PerfilOfflineId ?? "");
             cmd.ExecuteNonQuery();
         }
 
@@ -400,7 +401,7 @@ namespace ArcaCliente.Services
             var list = new List<PreseaComprobanteExportado>();
             using var cn = Open();
             using var cmd = cn.CreateCommand();
-            cmd.CommandText = "SELECT * FROM PreseaComprobantesExportados ORDER BY FechaExportacion DESC";
+            cmd.CommandText = "SELECT * FROM arca.PreseaComprobantesExportados ORDER BY FechaExportacion DESC";
             using var r = cmd.ExecuteReader();
             while (r.Read())
             {
@@ -412,9 +413,9 @@ namespace ArcaCliente.Services
                     PtoVta           = r.GetString(r.GetOrdinal("PtoVta")),
                     Nro              = r.GetString(r.GetOrdinal("Nro")),
                     CodAut           = r.GetString(r.GetOrdinal("CodAut")),
-                    Importe          = ParseDec(Str(r, "Importe")),
+                    Importe          = r.GetDecimal(r.GetOrdinal("Importe")),
                     FechaComprobante = r.GetString(r.GetOrdinal("FechaComprobante")),
-                    FechaExportacion = ParseFecha(Str(r, "FechaExportacion")),
+                    FechaExportacion = r.GetDateTime(r.GetOrdinal("FechaExportacion")),
                     ArchivoGenerado  = r.GetString(r.GetOrdinal("ArchivoGenerado")),
                     PerfilOfflineId  = r.GetString(r.GetOrdinal("PerfilOfflineId")),
                 });
@@ -428,8 +429,8 @@ namespace ArcaCliente.Services
         {
             using var cn = Open();
             using var cmd = cn.CreateCommand();
-            cmd.CommandText = "SELECT ConfigJson FROM PreseaMapeoColumnas WHERE Entidad = $e";
-            cmd.Parameters.AddWithValue("$e", entidad ?? "");
+            cmd.CommandText = "SELECT ConfigJson FROM arca.PreseaMapeoColumnas WHERE Entidad = @e";
+            cmd.Parameters.AddWithValue("@e", entidad ?? "");
             var json = cmd.ExecuteScalar() as string;
             return Deserialize<MapeoColumnasArchivo>(json);
         }
@@ -439,11 +440,12 @@ namespace ArcaCliente.Services
             using var cn = Open();
             using var cmd = cn.CreateCommand();
             cmd.CommandText = @"
-                INSERT INTO PreseaMapeoColumnas (Entidad, ConfigJson)
-                VALUES ($e, $j)
-                ON CONFLICT(Entidad) DO UPDATE SET ConfigJson = excluded.ConfigJson";
-            cmd.Parameters.AddWithValue("$e", mapeo.Entidad ?? "");
-            cmd.Parameters.AddWithValue("$j", JsonSerializer.Serialize(mapeo, JsonOpts));
+                MERGE arca.PreseaMapeoColumnas AS t
+                USING (SELECT @e AS Entidad) AS s ON t.Entidad = s.Entidad
+                WHEN MATCHED THEN UPDATE SET ConfigJson = @j
+                WHEN NOT MATCHED THEN INSERT (Entidad, ConfigJson) VALUES (@e, @j);";
+            cmd.Parameters.AddWithValue("@e", mapeo.Entidad ?? "");
+            cmd.Parameters.AddWithValue("@j", JsonSerializer.Serialize(mapeo, JsonOpts));
             cmd.ExecuteNonQuery();
         }
 
@@ -472,12 +474,6 @@ namespace ArcaCliente.Services
 
         private static string SoloDigitos(string? s) =>
             string.IsNullOrEmpty(s) ? string.Empty : new string(System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Where(s, char.IsDigit)));
-
-        private static decimal ParseDec(string? s) =>
-            decimal.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var d) ? d : 0m;
-
-        private static DateTime ParseFecha(string? s) =>
-            DateTime.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dt) ? dt : DateTime.MinValue;
 
         private static T? Deserialize<T>(string? json) where T : class
         {
