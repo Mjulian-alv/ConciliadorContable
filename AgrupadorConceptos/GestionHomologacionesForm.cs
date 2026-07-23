@@ -46,7 +46,7 @@ namespace AgrupadorConceptos
             }
             else
             {
-                MessageBox.Show("Seleccione una homologaci�n para eliminar.");
+                MessageBox.Show("Seleccione una homologación para eliminar.");
             }
         }
     }

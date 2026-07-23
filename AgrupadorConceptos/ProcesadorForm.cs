@@ -139,7 +139,7 @@ namespace AgrupadorConceptos
             }
             else
             {
-                MessageBox.Show("Por favor, seleccione un perfil para editar.", "Atenci�n", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Por favor, seleccione un perfil para editar.", "Atención", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 
@@ -177,7 +177,7 @@ namespace AgrupadorConceptos
         {
             if (cmbArchivos.SelectedItem is ArchivoImportado archivo && cboPerfiles.SelectedItem is PerfilBanco perfil)
             {
-                // Aplicar mapeos nuevamente por si algo cambi� en la configuraci�n de homologaciones (opcional)
+                // Aplicar mapeos nuevamente por si algo cambió en la configuración de homologaciones (opcional)
                 using (var connection = DatabaseHelper.GetConnection())
                 {
                     connection.Open();
@@ -191,7 +191,7 @@ namespace AgrupadorConceptos
                         WHERE h.IdPerfilBanco = @IdPerfil", new { IdPerfil = perfil.Id })
                         .ToDictionary(x => (string)x.ValorOriginal, x => (string)x.ConceptoEstandar, StringComparer.OrdinalIgnoreCase);
 
-                    // Una sola transacci�n para todos los UPDATE, por el mismo motivo que en la importaci�n.
+                    // Una sola transacción para todos los UPDATE, por el mismo motivo que en la importación.
                     using (var tx = connection.BeginTransaction())
                     {
                         foreach (var mov in movs)
@@ -218,7 +218,7 @@ namespace AgrupadorConceptos
         {
             if (cmbArchivos.SelectedItem is ArchivoImportado archivo)
             {
-                if (MessageBox.Show($"�Desea borrar el archivo {archivo.NombreArchivo} y todos sus movimientos?", "Confirmar", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                if (MessageBox.Show($"¿Desea borrar el archivo {archivo.NombreArchivo} y todos sus movimientos?", "Confirmar", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                 {
                     using (var connection = DatabaseHelper.GetConnection())
                     {
@@ -241,7 +241,7 @@ namespace AgrupadorConceptos
             var movimientos = dgvDatos.DataSource as List<MovimientoProcesado>;
             if (movimientos == null || movimientos.Count == 0)
             {
-                MessageBox.Show("No hay datos cargados en la sesi�n.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("No hay datos cargados en la sesión.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -252,7 +252,7 @@ namespace AgrupadorConceptos
 
                 if (frm.HuboCambios)
                 {
-                    btnCargarSesion_Click(null, null); // Recargar la sesi�n para aplicar mapeos masivos
+                    btnCargarSesion_Click(null, null); // Recargar la sesión para aplicar mapeos masivos
                 }
             }
         }
@@ -288,7 +288,7 @@ namespace AgrupadorConceptos
             int total = movs.Count;
             int homologados = movs.Count(m => m.ConceptoEstandar != "Pendiente Homologar");
             int pendientes = total - homologados;
-            lblTotalRegistros.Text = $"Registros le�dos: {total}   |   Homologados: {homologados}   |   Pendientes: {pendientes}";
+            lblTotalRegistros.Text = $"Registros leídos: {total}   |   Homologados: {homologados}   |   Pendientes: {pendientes}";
         }
 
         private void btnExportarConsolidado_Click(object sender, EventArgs e)
@@ -303,7 +303,7 @@ namespace AgrupadorConceptos
             var pendientes = movimientos.Count(m => string.IsNullOrWhiteSpace(m.ConceptoFinal) || m.ConceptoFinal == "Pendiente Homologar");
             if (pendientes > 0)
             {
-                var r = MessageBox.Show($"Hay {pendientes} movimientos sin homologar. �Desea continuar con la exportaci�n ignorando estos registros?", "Advertencia", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                var r = MessageBox.Show($"Hay {pendientes} movimientos sin homologar. ¿Desea continuar con la exportación ignorando estos registros?", "Advertencia", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
                 if (r != DialogResult.Yes) return;
             }
 
@@ -328,7 +328,7 @@ namespace AgrupadorConceptos
                         using var wb = new XLWorkbook();
                         var ws = wb.Worksheets.Add("Consolidado");
 
-                        // T�tulo y fecha (opcional, como en arcacliente)
+                        // Título y fecha (opcional, como en arcacliente)
                         ws.Cell(1, 1).Value = $"Consolidado Bancario - {DateTime.Now:dd/MM/yyyy HH:mm} - {cmbArchivos.SelectedText}";
                         ws.Cell(1, 1).Style.Font.Bold = true;
                         ws.Cell(1, 1).Style.Font.FontSize = 12;
@@ -337,8 +337,8 @@ namespace AgrupadorConceptos
                         // Encabezados
                         const int headerRow = 2;
                         ws.Cell(headerRow, 1).Value = "Concepto Final";
-                        ws.Cell(headerRow, 2).Value = "D�bitos";
-                        ws.Cell(headerRow, 3).Value = "Cr�ditos";
+                        ws.Cell(headerRow, 2).Value = "Débitos";
+                        ws.Cell(headerRow, 3).Value = "Créditos";
                         ws.Cell(headerRow, 4).Value = "Saldo";
 
                         var hr = ws.Range(headerRow, 1, headerRow, 4);
@@ -374,7 +374,7 @@ namespace AgrupadorConceptos
                         dataRange.Style.Border.OutsideBorderColor = XLColor.Gray;
 
                         wb.SaveAs(sfd.FileName);
-                        MessageBox.Show("Consolidado exportado a Excel exitosamente.", "�xito", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show("Consolidado exportado a Excel exitosamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                     catch (Exception ex)
                     {
@@ -388,7 +388,7 @@ namespace AgrupadorConceptos
         {
             if (cboPerfiles.SelectedItem == null)
             {
-                MessageBox.Show("Por favor, seleccione un perfil bancario.", "Atenci�n", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Por favor, seleccione un perfil bancario.", "Atención", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -422,7 +422,7 @@ namespace AgrupadorConceptos
             btnCargarArchivo.Enabled = !visible;
             if (visible)
             {
-                // Configurar steps al inicio de cada importaci�n
+                // Configurar steps al inicio de cada importación
                 SPB_Importar.Steps.Clear();
                 SPB_Importar.Steps.Add(new StepProgressItem { FirstHeader = "Leyendo archivo",   Progress = 0 });
                 SPB_Importar.Steps.Add(new StepProgressItem { FirstHeader = "Homologando",       Progress = 0 });
@@ -435,14 +435,14 @@ namespace AgrupadorConceptos
         {
             if (dgvDatos.CurrentRow == null)
             {
-                MessageBox.Show("Por favor seleccione un movimiento de la grilla que desee homologar.", "Atenci�n", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("Por favor seleccione un movimiento de la grilla que desee homologar.", "Atención", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
             var movInfo = (MovimientoProcesado)dgvDatos.CurrentRow.DataBoundItem;
             if (movInfo.ConceptoEstandar != "Pendiente Homologar")
             {
-                var diag = MessageBox.Show($"El movimiento ya se encuentra homologado como '{movInfo.ConceptoEstandar}'. �Desea crear una nueva homologaci�n para la descripci�n/concepto '{movInfo.ConceptoOriginal}'?", "Aviso", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                var diag = MessageBox.Show($"El movimiento ya se encuentra homologado como '{movInfo.ConceptoEstandar}'. ¿Desea crear una nueva homologación para la descripción/concepto '{movInfo.ConceptoOriginal}'?", "Aviso", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                 if (diag != DialogResult.Yes) return;
             }
 
@@ -454,7 +454,7 @@ namespace AgrupadorConceptos
 
             if (frmHomologar.HomologacionExitosa)
             {
-                btnCargarSesion_Click(null, null); // Recargar la sesi�n desde DB
+                btnCargarSesion_Click(null, null); // Recargar la sesión desde DB
             }
         }
 
@@ -545,7 +545,7 @@ namespace AgrupadorConceptos
 
                     if (idxConcepto == -1)
                     {
-                        this.Invoke(() => MessageBox.Show("No se encontr� la columna del concepto en la fila especificada (verifique el perfil y el archivo)."));
+                        this.Invoke(() => MessageBox.Show("No se encontró la columna del concepto en la fila especificada (verifique el perfil y el archivo)."));
                         return;
                     }
 
@@ -611,7 +611,7 @@ namespace AgrupadorConceptos
                 });
 
                 int guardados = 0;
-                // Una sola transacci�n para todo el lote: sin esto cada INSERT commitea
+                // Una sola transacción para todo el lote: sin esto cada INSERT commitea
                 // por separado y espera un fsync de disco por fila.
                 using (var tx = connection.BeginTransaction())
                 {
@@ -623,7 +623,7 @@ namespace AgrupadorConceptos
                             VALUES (@IdArchivo, @Fecha, @ConceptoOriginal, @DescripcionOriginal, @Debitos, @Creditos, @ConceptoEstandar, @ConceptoFinal);", mov, tx);
 
                         guardados++;
-                        // Actualizar cada 500 registros (o el �ltimo) para no saturar la UI
+                        // Actualizar cada 500 registros (o el último) para no saturar la UI
                         if (guardados % 500 == 0 || guardados == total)
                         {
                             int pbValue = 65 + (int)(20.0 * guardados / total); // de 65 a 85
@@ -651,16 +651,16 @@ namespace AgrupadorConceptos
                     ConfigurarGrilla();
                     ActualizarResumen(movimientos);
                     PB_Importar.Value1 = 100;
-                    // Completar �ltimo step
+                    // Completar último step
                     SPB_Importar.Steps[SPB_Importar.Steps.Count - 1].Progress = 100;
                 });
 
                 if (mostrarMensajeExito)
-                    this.Invoke(() => MessageBox.Show("Archivo le�do exitosamente.", "Proceso Finalizado", MessageBoxButtons.OK, MessageBoxIcon.Information));
+                    this.Invoke(() => MessageBox.Show("Archivo leído exitosamente.", "Proceso Finalizado", MessageBoxButtons.OK, MessageBoxIcon.Information));
             }
             catch (Exception ex)
             {
-                this.Invoke(() => MessageBox.Show($"Ocurri� un error al procesar el archivo Excel: {ex.Message}", "Error de Lectura", MessageBoxButtons.OK, MessageBoxIcon.Error));
+                this.Invoke(() => MessageBox.Show($"Ocurrió un error al procesar el archivo Excel: {ex.Message}", "Error de Lectura", MessageBoxButtons.OK, MessageBoxIcon.Error));
             }
         }
     }

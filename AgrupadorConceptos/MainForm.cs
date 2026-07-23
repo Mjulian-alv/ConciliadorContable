@@ -152,11 +152,11 @@ namespace AgrupadorConceptos
                             LlenarComboBox(cmbColumnaHaber, headers);
                             LlenarComboBox(cmbColumnaFecha, headers);
 
-                            MessageBox.Show("Encabezados cargados correctamente.", "�xito", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            MessageBox.Show("Encabezados cargados correctamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         }
                         else
                         {
-                            MessageBox.Show("El archivo Excel est� vac�o.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            MessageBox.Show("El archivo Excel está vacío.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         }
                     }
                 }
@@ -178,7 +178,7 @@ namespace AgrupadorConceptos
         {
             if (string.IsNullOrWhiteSpace(txtBanco.Text))
             {
-                MessageBox.Show("Debe ingresar un nombre de banco.", "Validaci�n", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Debe ingresar un nombre de banco.", "Validación", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -227,8 +227,8 @@ namespace AgrupadorConceptos
                     }
                 }
 
-                MessageBox.Show("Perfil guardado correctamente.", "�xito", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                this.Close(); // Cerramos al guardar para volver al men� principal
+                MessageBox.Show("Perfil guardado correctamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                this.Close(); // Cerramos al guardar para volver al menú principal
             }
             catch (Exception ex)
             {
@@ -239,7 +239,7 @@ namespace AgrupadorConceptos
         private void LimpiarFomulario()
         {
             txtBanco.Clear();
-            lblArchivoExcel.Text = "Ning�n archivo seleccionado";
+            lblArchivoExcel.Text = "Ningún archivo seleccionado";
             cmbColumnaConcepto.Items.Clear();
             cmbColumnaDescripcion.Items.Clear();
             cmbImporteUnico.Items.Clear();

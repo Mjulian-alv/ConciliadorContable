@@ -44,7 +44,7 @@ namespace AgrupadorConceptos
 
             if (string.IsNullOrEmpty(conceptoEstandarTexto))
             {
-                MessageBox.Show("Debe ingresar o seleccionar un Concepto Est�ndar.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Debe ingresar o seleccionar un Concepto Estándar.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -72,7 +72,7 @@ namespace AgrupadorConceptos
                     }
 
                     // Guardar homolagacion
-                    // Insertamos el mapeo (Si es texto largo, el usuario tal vez modific� txtOriginal para dejar solo la palabra clave)
+                    // Insertamos el mapeo (Si es texto largo, el usuario tal vez modificó txtOriginal para dejar solo la palabra clave)
                     string valorClave = txtOriginal.Text.Trim();
                     
                     // Borrar el anterior para esta clave si existe
@@ -80,7 +80,7 @@ namespace AgrupadorConceptos
                         "DELETE FROM bancos.HomologacionConceptos WHERE IdPerfilBanco = @IdPerfilBanco AND ValorOriginal = @ValorOriginal",
                         new { IdPerfilBanco = _idPerfilBanco, ValorOriginal = valorClave });
 
-                    // Insertar la nueva homologaci�n
+                    // Insertar la nueva homologación
                     connection.Execute(@"
                         INSERT INTO bancos.HomologacionConceptos (IdPerfilBanco, ValorOriginal, IdConceptoEstandar)
                         VALUES (@IdPerfilBanco, @ValorOriginal, @IdConceptoEstandar)",
@@ -92,7 +92,7 @@ namespace AgrupadorConceptos
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error al guardar homologaci�n: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Error al guardar homologación: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }
