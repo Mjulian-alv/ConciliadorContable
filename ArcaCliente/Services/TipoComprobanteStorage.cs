@@ -13,14 +13,14 @@ namespace ArcaCliente.Services
     {
         public static void InitializeDatabase()
         {
-            // Las tablas se crean en ArcaSqliteStorage.InitializeDatabase()
+            // Las tablas se crean en ArcaSqlStorage.InitializeDatabase()
         }
 
         public static List<EquivalenciaTipoComprobante> LoadAll() =>
-            ArcaSqliteStorage.LoadEquivalencias();
+            ArcaSqlStorage.LoadEquivalencias();
 
         public static void SaveAll(IEnumerable<EquivalenciaTipoComprobante> items) =>
-            ArcaSqliteStorage.SaveEquivalencias(items);
+            ArcaSqlStorage.SaveEquivalencias(items);
 
         public static void SeedIfEmpty(Dictionary<string, (string Tipo, string Letra)> defaultMap)
         {

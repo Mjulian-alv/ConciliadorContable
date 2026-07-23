@@ -17,6 +17,7 @@ namespace ArcaCliente
 
         public FormPerfilesOffline()
         {
+            ArcaStorageConfig.Initialize();
             InitializeComponent();
             Icon = AppIcons.Arca;
             CargarPerfiles();
@@ -72,7 +73,7 @@ namespace ArcaCliente
         {
             if (gridPerfiles.CurrentRow?.DataBoundItem is not PerfilOffline perfil)
             {
-                MessageBox.Show("Seleccioná un perfil para editar.", "Información",
+                MessageBox.Show("Seleccionï¿½ un perfil para editar.", "Informaciï¿½n",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
@@ -93,12 +94,12 @@ namespace ArcaCliente
         {
             if (gridPerfiles.CurrentRow?.DataBoundItem is not PerfilOffline perfil)
             {
-                MessageBox.Show("Seleccioná un perfil para eliminar.", "Información",
+                MessageBox.Show("Seleccionï¿½ un perfil para eliminar.", "Informaciï¿½n",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
-            if (MessageBox.Show($"¿Eliminar el perfil \"{perfil.Nombre}\"?", "Confirmar",
+            if (MessageBox.Show($"ï¿½Eliminar el perfil \"{perfil.Nombre}\"?", "Confirmar",
                     MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
             {
                 _perfiles.Remove(perfil);
@@ -110,7 +111,7 @@ namespace ArcaCliente
         {
             if (gridPerfiles.CurrentRow?.DataBoundItem is not PerfilOffline perfil)
             {
-                MessageBox.Show("Seleccioná un perfil para configurar sus directivas.", "Información",
+                MessageBox.Show("Seleccionï¿½ un perfil para configurar sus directivas.", "Informaciï¿½n",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
@@ -126,13 +127,13 @@ namespace ArcaCliente
             }
         }
 
-        // ?? Selección ?????????????????????????????????????????????????????????????
+        // ?? Selecciï¿½n ?????????????????????????????????????????????????????????????
 
         private void BtnSeleccionar_Click(object sender, EventArgs e)
         {
             if (gridPerfiles.CurrentRow?.DataBoundItem is not PerfilOffline perfil)
             {
-                MessageBox.Show("Seleccioná un perfil para usar.", "Información",
+                MessageBox.Show("Seleccionï¿½ un perfil para usar.", "Informaciï¿½n",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }

@@ -21,6 +21,7 @@ namespace ArcaCliente
 
         public FormEquivalencias()
         {
+            ArcaStorageConfig.Initialize();
             InitializeComponent();
             Icon = AppIcons.Arca;
 
@@ -49,9 +50,9 @@ namespace ArcaCliente
             gridDatos.DataSource = null;
             gridDatos.DataSource = descripciones;
             
-            gridDatos.Columns["CodigoAfip"].HeaderText = "Código AFIP";
+            gridDatos.Columns["CodigoAfip"].HeaderText = "Cï¿½digo AFIP";
             gridDatos.Columns["CodigoAfip"].ReadOnly = true;
-            gridDatos.Columns["Descripcion"].HeaderText = "Descripción";
+            gridDatos.Columns["Descripcion"].HeaderText = "Descripciï¿½n";
             gridDatos.Columns["Descripcion"].ReadOnly = true;
             gridDatos.Columns["TipoSistema"].HeaderText = "Tipo Sistema";
             gridDatos.Columns["Letra"].HeaderText = "Letra";
@@ -73,7 +74,7 @@ namespace ArcaCliente
 
                 TipoComprobanteStorage.SaveAll(_lista.ToList());
                 TipoComprobanteMapper.Reload();
-                MessageBox.Show("Equivalencias guardadas correctamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("Equivalencias guardadas correctamente.", "ï¿½xito", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 Close();
             }
             catch (Exception ex)

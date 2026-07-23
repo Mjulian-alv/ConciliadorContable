@@ -3,15 +3,16 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text.Json;
 using ArcaCliente.Models;
-using Microsoft.Data.Sqlite;
+using Conciliador.Comun;
+using Microsoft.Data.SqlClient;
 
 namespace ArcaCliente.Services
 {
     /// <summary>
-    /// Acceso SQLite unificado para la configuración de ArcaCliente.
-    /// Todas las tablas viven en la base indicada por <see cref="ArcaStorageConfig.DbPath"/>.
+    /// Acceso SQL unificado para la configuración de ArcaCliente.
+    /// Todas las tablas viven en el schema arca de la base común (Conciliador.Comun.SqlDb).
     /// </summary>
-    internal static class ArcaSqliteStorage
+    internal static class ArcaSqlStorage
     {
         private static readonly JsonSerializerOptions JsonOpts = new() { WriteIndented = false };
 
@@ -20,91 +21,7 @@ namespace ArcaCliente.Services
         public static void InitializeDatabase()
         {
             using var cn = Open();
-
-            Execute(cn, @"
-                CREATE TABLE IF NOT EXISTS ArcaPerfilesOffline (
-                    Id                  TEXT PRIMARY KEY,
-                    Nombre              TEXT NOT NULL DEFAULT '',
-                    TipoArchivo         INTEGER NOT NULL DEFAULT 0,
-                    Separador           TEXT NOT NULL DEFAULT ';',
-                    Encoding            TEXT NOT NULL DEFAULT 'UTF-8',
-                    HojaExcel           TEXT,
-                    TieneCabecera       INTEGER NOT NULL DEFAULT 1,
-                    ColFecha            TEXT, ColPuntoVenta     TEXT, ColNumero           TEXT,
-                    ColTipoComprobante  TEXT, ColCuit           TEXT, ColNombreProveedor  TEXT,
-                    ColTotal            TEXT,
-                    PosFecha            INTEGER NOT NULL DEFAULT 1, PosPuntoVenta  INTEGER NOT NULL DEFAULT 2,
-                    PosNumero           INTEGER NOT NULL DEFAULT 3, PosTipoComprobante INTEGER NOT NULL DEFAULT 4,
-                    PosCuit             INTEGER NOT NULL DEFAULT 5, PosNombreProveedor INTEGER NOT NULL DEFAULT 6,
-                    PosTotal            INTEGER NOT NULL DEFAULT 7,
-                    FormatoFecha        TEXT NOT NULL DEFAULT 'dd/MM/yyyy',
-                    SeparadorDecimal    TEXT NOT NULL DEFAULT '.',
-                    CarpetaCsvArca      TEXT,
-                    SistemaExportacion  INTEGER NOT NULL DEFAULT 0,
-                    ConfigPreseaJson    TEXT,
-                    DirectivasJson      TEXT NOT NULL DEFAULT '[]'
-                )");
-
-            Execute(cn, @"
-                CREATE TABLE IF NOT EXISTS ArcaPerfilesFiscales (
-                    Id                          TEXT PRIMARY KEY,
-                    Nombre                      TEXT NOT NULL DEFAULT '',
-                    Username                    TEXT NOT NULL DEFAULT '',
-                    Password                    TEXT NOT NULL DEFAULT '',
-                    Cuit                        TEXT NOT NULL DEFAULT '',
-                    IntegracionHabilitada       INTEGER NOT NULL DEFAULT 0,
-                    Sistema                     INTEGER NOT NULL DEFAULT 0,
-                    ConciliacionConnectionString TEXT,
-                    ConciliacionQuery           TEXT,
-                    OctosisConnectionString     TEXT,
-                    ArcaApiUrl                  TEXT,
-                    DirectivasJson              TEXT NOT NULL DEFAULT '[]'
-                )");
-
-            Execute(cn, @"
-                CREATE TABLE IF NOT EXISTS ArcaEquivalencias (
-                    CodigoAfip  TEXT PRIMARY KEY,
-                    TipoSistema TEXT NOT NULL DEFAULT '',
-                    Letra       TEXT NOT NULL DEFAULT ''
-                )");
-
-            // Mapa de proveedores PRESEA por CUIT (datos fijos por proveedor).
-            Execute(cn, @"
-                CREATE TABLE IF NOT EXISTS PreseaProveedores (
-                    Cuit                    TEXT PRIMARY KEY,
-                    Nombre                  TEXT NOT NULL DEFAULT '',
-                    CodigoProveedor         TEXT NOT NULL DEFAULT '',
-                    CuentaContableProveedor TEXT NOT NULL DEFAULT '',
-                    CuentaDebe              TEXT NOT NULL DEFAULT '',
-                    Centro                  TEXT NOT NULL DEFAULT '',
-                    Provincia               TEXT NOT NULL DEFAULT '',
-                    Condicion               TEXT NOT NULL DEFAULT '',
-                    Descuento               TEXT NOT NULL DEFAULT '0',
-                    Fiscal                  TEXT NOT NULL DEFAULT ''
-                )");
-
-            // Memoria anti-duplicado: comprobantes ya exportados a PRESEA.
-            Execute(cn, @"
-                CREATE TABLE IF NOT EXISTS PreseaComprobantesExportados (
-                    Clave            TEXT PRIMARY KEY,
-                    CuitEmisor       TEXT NOT NULL DEFAULT '',
-                    TipoCmp          TEXT NOT NULL DEFAULT '',
-                    PtoVta           TEXT NOT NULL DEFAULT '',
-                    Nro              TEXT NOT NULL DEFAULT '',
-                    CodAut           TEXT NOT NULL DEFAULT '',
-                    Importe          TEXT NOT NULL DEFAULT '0',
-                    FechaComprobante TEXT NOT NULL DEFAULT '',
-                    FechaExportacion TEXT NOT NULL DEFAULT '',
-                    ArchivoGenerado  TEXT NOT NULL DEFAULT '',
-                    PerfilOfflineId  TEXT NOT NULL DEFAULT ''
-                )");
-
-            // Mapeo de columnas para importar maestros PRESEA desde CSV/Excel (por entidad).
-            Execute(cn, @"
-                CREATE TABLE IF NOT EXISTS PreseaMapeoColumnas (
-                    Entidad    TEXT PRIMARY KEY,
-                    ConfigJson TEXT NOT NULL DEFAULT '{}'
-                )");
+            Execute(cn, ArcaSqlSchema.Ddl);
         }
 
         // ── Perfiles Offline ──────────────────────────────────────────────────────
@@ -370,7 +287,7 @@ namespace ArcaCliente.Services
             tx.Commit();
         }
 
-        private static void UpsertPreseaProveedor(SqliteConnection cn, SqliteTransaction tx, ConfigPreseaProveedor p)
+        private static void UpsertPreseaProveedor(SqlConnection cn, SqlTransaction tx, ConfigPreseaProveedor p)
         {
             using var cmd = cn.CreateCommand();
             cmd.Transaction = tx;
@@ -405,7 +322,7 @@ namespace ArcaCliente.Services
             cmd.ExecuteNonQuery();
         }
 
-        private static ConfigPreseaProveedor ReadPreseaProveedor(SqliteDataReader r) => new()
+        private static ConfigPreseaProveedor ReadPreseaProveedor(SqlDataReader r) => new()
         {
             Cuit                    = r.GetString(r.GetOrdinal("Cuit")),
             Nombre                  = r.GetString(r.GetOrdinal("Nombre")),
@@ -457,7 +374,7 @@ namespace ArcaCliente.Services
             tx.Commit();
         }
 
-        private static void RegistrarComprobanteExportado(SqliteConnection cn, SqliteTransaction tx, PreseaComprobanteExportado e)
+        private static void RegistrarComprobanteExportado(SqlConnection cn, SqlTransaction tx, PreseaComprobanteExportado e)
         {
             using var cmd = cn.CreateCommand();
             cmd.Transaction = tx;
@@ -536,106 +453,16 @@ namespace ArcaCliente.Services
             cmd.ExecuteNonQuery();
         }
 
-        // ── Migración desde JSON ──────────────────────────────────────────────────
-
-        /// <summary>
-        /// Si existen los archivos JSON/DB legacy, importa los datos y los elimina.
-        /// Llamar una sola vez después de <see cref="InitializeDatabase"/>.
-        /// </summary>
-        public static void MigrarDesdeLegacyIfNeeded()
-        {
-            MigrarPerfilesOffline();
-            MigrarPerfilesFiscales();
-            MigrarEquivalencias();
-        }
-
-        private static void MigrarPerfilesOffline()
-        {
-            string jsonPath = System.IO.Path.Combine(AppContext.BaseDirectory, "perfiles_offline.json");
-            if (!System.IO.File.Exists(jsonPath)) return;
-
-            try
-            {
-                var existentes = LoadPerfilesOffline();
-                if (existentes.Count > 0) { SafeDelete(jsonPath); return; }
-
-                var texto = System.IO.File.ReadAllText(jsonPath);
-                var lista = System.Text.Json.JsonSerializer.Deserialize<List<PerfilOffline>>(texto);
-                if (lista != null && lista.Count > 0)
-                {
-                    foreach (var p in lista)
-                        if (p.DirectivasConciliacion.Count == 0)
-                            p.DirectivasConciliacion.Add(DirectivaConciliacion.CrearPrimaria());
-                    SavePerfilesOffline(lista);
-                }
-                SafeDelete(jsonPath);
-            }
-            catch { /* no bloquear el arranque */ }
-        }
-
-        private static void MigrarPerfilesFiscales()
-        {
-            string jsonPath = System.IO.Path.Combine(AppContext.BaseDirectory, "perfiles.json");
-            if (!System.IO.File.Exists(jsonPath)) return;
-
-            try
-            {
-                var existentes = LoadPerfilesFiscales();
-                if (existentes.Count > 0) { SafeDelete(jsonPath); return; }
-
-                var texto = System.IO.File.ReadAllText(jsonPath);
-                var lista = System.Text.Json.JsonSerializer.Deserialize<List<PerfilFiscal>>(texto);
-                if (lista != null && lista.Count > 0)
-                    SavePerfilesFiscales(lista);
-                SafeDelete(jsonPath);
-            }
-            catch { }
-        }
-
-        private static void MigrarEquivalencias()
-        {
-            string legacyDb = System.IO.Path.Combine(AppContext.BaseDirectory, "equivalencias.db");
-            if (!System.IO.File.Exists(legacyDb)) return;
-
-            try
-            {
-                var existentes = LoadEquivalencias();
-                if (existentes.Count > 0) { SafeDelete(legacyDb); return; }
-
-                using var legacyCn = new SqliteConnection($"Data Source={legacyDb}");
-                legacyCn.Open();
-                using var cmd = legacyCn.CreateCommand();
-                cmd.CommandText = "SELECT CodigoAfip, TipoSistema, Letra FROM Equivalencias";
-                var lista = new List<EquivalenciaTipoComprobante>();
-                using var r = cmd.ExecuteReader();
-                while (r.Read())
-                    lista.Add(new EquivalenciaTipoComprobante
-                    {
-                        CodigoAfip  = r.GetString(0),
-                        TipoSistema = r.GetString(1),
-                        Letra       = r.GetString(2)
-                    });
-
-                if (lista.Count > 0)
-                    SaveEquivalencias(lista);
-            }
-            catch { }
-            // No eliminamos equivalencias.db si está en uso; se limpiará en próximo arranque
-        }
-
         // ── Helpers ───────────────────────────────────────────────────────────────
 
-        private static SqliteConnection Open()
+        private static SqlConnection Open()
         {
-            var cn = new SqliteConnection(ArcaStorageConfig.ConnectionString);
+            var cn = SqlDb.GetConnection();
             cn.Open();
-            // WAL + synchronous=NORMAL: sin esto SQLite hace un fsync por cada commit.
-            // synchronous es por conexión, así que se aplica en cada apertura.
-            Execute(cn, "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;");
             return cn;
         }
 
-        private static void Execute(SqliteConnection cn, string sql, SqliteTransaction? tx = null)
+        private static void Execute(SqlConnection cn, string sql, SqlTransaction? tx = null)
         {
             using var cmd = cn.CreateCommand();
             cmd.Transaction = tx;
@@ -643,7 +470,7 @@ namespace ArcaCliente.Services
             cmd.ExecuteNonQuery();
         }
 
-        private static string? Str(SqliteDataReader r, string col)
+        private static string? Str(SqlDataReader r, string col)
         {
             int ord = r.GetOrdinal(col);
             return r.IsDBNull(ord) ? null : r.GetString(ord);
@@ -667,10 +494,5 @@ namespace ArcaCliente.Services
 
         private static T? DeserializeOrNull<T>(string? json) where T : class
             => Deserialize<T>(json);
-
-        private static void SafeDelete(string path)
-        {
-            try { System.IO.File.Delete(path); } catch { }
-        }
     }
 }

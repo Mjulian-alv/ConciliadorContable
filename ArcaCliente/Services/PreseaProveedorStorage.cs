@@ -9,18 +9,18 @@ namespace ArcaCliente.Services
     internal static class PreseaProveedorStorage
     {
         public static List<ConfigPreseaProveedor> Load() =>
-            ArcaSqliteStorage.LoadPreseaProveedores();
+            ArcaSqlStorage.LoadPreseaProveedores();
 
         /// <summary>Devuelve el proveedor por CUIT o null si no esta cargado.</summary>
         public static ConfigPreseaProveedor Get(string cuit) =>
-            ArcaSqliteStorage.GetPreseaProveedor(cuit);
+            ArcaSqlStorage.GetPreseaProveedor(cuit);
 
         /// <summary>Inserta o actualiza un proveedor (upsert por CUIT).</summary>
         public static void Upsert(ConfigPreseaProveedor proveedor) =>
-            ArcaSqliteStorage.UpsertPreseaProveedor(proveedor);
+            ArcaSqlStorage.UpsertPreseaProveedor(proveedor);
 
         /// <summary>Inserta o actualiza un lote de proveedores en una sola transaccion.</summary>
         public static void UpsertRange(IEnumerable<ConfigPreseaProveedor> proveedores) =>
-            ArcaSqliteStorage.UpsertPreseaProveedores(proveedores);
+            ArcaSqlStorage.UpsertPreseaProveedores(proveedores);
     }
 }

@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using System.Windows.Forms;
-using ArcaCliente.Services;
 using ConciliadorContable.Auth;
 using ConciliadorContable.Data;
 
@@ -13,10 +12,6 @@ namespace ConciliadorContable.Forms
         {
             InitializeComponent();
             lblUsuario.Text = $"👤  {AuthService.UsuarioActual?.Nombre ?? AuthService.UsuarioActual?.Username}";
-
-            // Apuntar ArcaCliente a la misma DB central
-            ArcaStorageConfig.DbPath = DatabaseHelper.DbPath;
-            ArcaStorageConfig.Initialize();
 
             AplicarPermisos();
         }

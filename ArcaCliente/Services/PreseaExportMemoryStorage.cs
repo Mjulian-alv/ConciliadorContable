@@ -10,21 +10,21 @@ namespace ArcaCliente.Services
     {
         /// <summary>True si el comprobante (por su clave) ya fue exportado.</summary>
         public static bool YaExportado(string clave) =>
-            ArcaSqliteStorage.ExisteComprobanteExportado(clave);
+            ArcaSqlStorage.ExisteComprobanteExportado(clave);
 
         /// <summary>Conjunto de todas las claves ya exportadas (para marcar la grilla en bloque).</summary>
         public static HashSet<string> ClavesExportadas() =>
-            ArcaSqliteStorage.LoadClavesExportadas();
+            ArcaSqlStorage.LoadClavesExportadas();
 
         /// <summary>Registra un comprobante como exportado (idempotente).</summary>
         public static void Registrar(PreseaComprobanteExportado exportado) =>
-            ArcaSqliteStorage.RegistrarComprobanteExportado(exportado);
+            ArcaSqlStorage.RegistrarComprobanteExportado(exportado);
 
         /// <summary>Registra un lote de comprobantes como exportados en una sola transaccion.</summary>
         public static void RegistrarRange(IEnumerable<PreseaComprobanteExportado> exportados) =>
-            ArcaSqliteStorage.RegistrarComprobantesExportados(exportados);
+            ArcaSqlStorage.RegistrarComprobantesExportados(exportados);
 
         public static List<PreseaComprobanteExportado> Load() =>
-            ArcaSqliteStorage.LoadComprobantesExportados();
+            ArcaSqlStorage.LoadComprobantesExportados();
     }
 }

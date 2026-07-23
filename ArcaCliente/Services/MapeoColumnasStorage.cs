@@ -10,9 +10,9 @@ namespace ArcaCliente.Services
     {
         /// <summary>Devuelve el mapeo guardado para la entidad, o null si no existe.</summary>
         public static MapeoColumnasArchivo Load(string entidad) =>
-            ArcaSqliteStorage.LoadMapeoColumnas(entidad);
+            ArcaSqlStorage.LoadMapeoColumnas(entidad);
 
         public static void Save(MapeoColumnasArchivo mapeo) =>
-            ArcaSqliteStorage.SaveMapeoColumnas(mapeo);
+            ArcaSqlStorage.SaveMapeoColumnas(mapeo);
     }
 }

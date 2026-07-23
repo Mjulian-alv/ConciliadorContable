@@ -25,6 +25,7 @@ namespace ArcaCliente
 
         public FormComprobantesOffline(PerfilOffline perfil)
         {
+            ArcaStorageConfig.Initialize();
             InitializeComponent();
             Icon = AppIcons.Arca;
 
