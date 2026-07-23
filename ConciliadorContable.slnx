@@ -4,5 +4,6 @@
   <Project Path="Conciliador.Comun/Conciliador.Comun.csproj" />
   <Project Path="ConciliadorContable/ConciliadorContable.csproj" />
   <Project Path="LiquidacionesAuditar/LiquidacionesAuditar.csproj" Id="9112ca7f-5526-43bf-abe2-365e18c5cf79" />
+  <Project Path="Tools/MigradorArcaCliente/MigradorArcaCliente.csproj" />
   <Project Path="Tools/MigradorDataBanks/MigradorDataBanks.csproj" />
 </Solution>
