@@ -72,7 +72,7 @@ namespace AgrupadorConceptos
                 using (var connection = DatabaseHelper.GetConnection())
                 {
                     connection.Open();
-                    var perfiles = connection.Query<PerfilBanco>("SELECT * FROM PerfilesBanco").ToList();
+                    var perfiles = connection.Query<PerfilBanco>("SELECT * FROM bancos.PerfilesBanco").ToList();
                     
                     var selectedId = cboPerfiles.SelectedValue;
                     cboPerfiles.SelectedIndexChanged -= CboPerfiles_SelectedIndexChanged;
@@ -107,7 +107,7 @@ namespace AgrupadorConceptos
             {
                 using (var connection = DatabaseHelper.GetConnection())
                 {
-                    var archivos = connection.Query<ArchivoImportado>("SELECT * FROM ArchivosImportados WHERE IdPerfilBanco = @IdPerfilBanco ORDER BY Fecha DESC", new { IdPerfilBanco = perfil.Id }).ToList();
+                    var archivos = connection.Query<ArchivoImportado>("SELECT * FROM bancos.ArchivosImportados WHERE IdPerfilBanco = @IdPerfilBanco ORDER BY Fecha DESC", new { IdPerfilBanco = perfil.Id }).ToList();
                     
                     var selectedId = cmbArchivos.SelectedValue;
                     cmbArchivos.DataSource = archivos;
@@ -182,12 +182,12 @@ namespace AgrupadorConceptos
                 {
                     connection.Open();
 
-                    List<MovimientoProcesado> movs = connection.Query<MovimientoProcesado>("SELECT * FROM MovimientosArchivo WHERE IdArchivo = @IdArchivo", new { IdArchivo = archivo.Id }).ToList();
+                    List<MovimientoProcesado> movs = connection.Query<MovimientoProcesado>("SELECT * FROM bancos.MovimientosArchivo WHERE IdArchivo = @IdArchivo", new { IdArchivo = archivo.Id }).ToList();
 
                     var dicHomologacion = connection.Query(@"
                         SELECT h.ValorOriginal, c.Nombre as ConceptoEstandar
-                        FROM HomologacionConceptos h
-                        INNER JOIN ConceptosEstandar c ON h.IdConceptoEstandar = c.Id
+                        FROM bancos.HomologacionConceptos h
+                        INNER JOIN bancos.ConceptosEstandar c ON h.IdConceptoEstandar = c.Id
                         WHERE h.IdPerfilBanco = @IdPerfil", new { IdPerfil = perfil.Id })
                         .ToDictionary(x => (string)x.ValorOriginal, x => (string)x.ConceptoEstandar, StringComparer.OrdinalIgnoreCase);
 
@@ -199,7 +199,7 @@ namespace AgrupadorConceptos
                             if (mov.ConceptoEstandar == "Pendiente Homologar")
                             {
                                 AplicarHomologacionALineas(mov, perfil, dicHomologacion);
-                                connection.Execute("UPDATE MovimientosArchivo SET ConceptoEstandar = @ConceptoEstandar, ConceptoFinal = @ConceptoFinal WHERE Id = @Id", mov, tx);
+                                connection.Execute("UPDATE bancos.MovimientosArchivo SET ConceptoEstandar = @ConceptoEstandar, ConceptoFinal = @ConceptoFinal WHERE Id = @Id", mov, tx);
                             }
                         }
                         tx.Commit();
@@ -222,7 +222,7 @@ namespace AgrupadorConceptos
                 {
                     using (var connection = DatabaseHelper.GetConnection())
                     {
-                        connection.Execute("DELETE FROM ArchivosImportados WHERE Id = @Id", new { Id = archivo.Id });
+                        connection.Execute("DELETE FROM bancos.ArchivosImportados WHERE Id = @Id", new { Id = archivo.Id });
                         CargarArchivosDelPerfil();
                         dgvDatos.DataSource = null;
                     }
@@ -268,7 +268,7 @@ namespace AgrupadorConceptos
             {
                 using (var connection = DatabaseHelper.GetConnection())
                 {
-                    connection.Execute("UPDATE MovimientosArchivo SET ConceptoFinal = @ConceptoFinal WHERE Id = @Id", new { ConceptoFinal = mov.ConceptoFinal, Id = mov.Id });
+                    connection.Execute("UPDATE bancos.MovimientosArchivo SET ConceptoFinal = @ConceptoFinal WHERE Id = @Id", new { ConceptoFinal = mov.ConceptoFinal, Id = mov.Id });
                 }
             }
         }
@@ -506,7 +506,7 @@ namespace AgrupadorConceptos
                 // Insertar registro del archivo
                 string nombreArchivo = Path.GetFileName(filePath);
                 int idArchivo = connection.QuerySingle<int>(
-                    "INSERT INTO ArchivosImportados (IdPerfilBanco, NombreArchivo, Fecha) VALUES (@IdPerfil, @Nombre, @Fecha) RETURNING Id;",
+                    "INSERT INTO bancos.ArchivosImportados (IdPerfilBanco, NombreArchivo, Fecha) OUTPUT INSERTED.Id VALUES (@IdPerfil, @Nombre, @Fecha);",
                     new { IdPerfil = perfil.Id, Nombre = nombreArchivo, Fecha = DateTime.Now });
 
                 // Step 1: Homologando
@@ -514,9 +514,9 @@ namespace AgrupadorConceptos
                 this.Invoke(() => PB_Importar.Value1 = 30);
 
                 var dicHomologacion = connection.Query(@"
-                    SELECT h.ValorOriginal, c.Nombre as ConceptoEstandar 
-                    FROM HomologacionConceptos h 
-                    INNER JOIN ConceptosEstandar c ON h.IdConceptoEstandar = c.Id 
+                    SELECT h.ValorOriginal, c.Nombre as ConceptoEstandar
+                    FROM bancos.HomologacionConceptos h
+                    INNER JOIN bancos.ConceptosEstandar c ON h.IdConceptoEstandar = c.Id
                     WHERE h.IdPerfilBanco = @IdPerfil", new { IdPerfil = perfil.Id })
                     .ToDictionary(x => (string)x.ValorOriginal, x => (string)x.ConceptoEstandar, StringComparer.OrdinalIgnoreCase);
 
@@ -618,8 +618,9 @@ namespace AgrupadorConceptos
                     foreach (var mov in movimientos)
                     {
                         mov.Id = connection.QuerySingle<int>(@"
-                            INSERT INTO MovimientosArchivo (IdArchivo, Fecha, ConceptoOriginal, DescripcionOriginal, Debitos, Creditos, ConceptoEstandar, ConceptoFinal)
-                            VALUES (@IdArchivo, @Fecha, @ConceptoOriginal, @DescripcionOriginal, @Debitos, @Creditos, @ConceptoEstandar, @ConceptoFinal) RETURNING Id;", mov, tx);
+                            INSERT INTO bancos.MovimientosArchivo (IdArchivo, Fecha, ConceptoOriginal, DescripcionOriginal, Debitos, Creditos, ConceptoEstandar, ConceptoFinal)
+                            OUTPUT INSERTED.Id
+                            VALUES (@IdArchivo, @Fecha, @ConceptoOriginal, @DescripcionOriginal, @Debitos, @Creditos, @ConceptoEstandar, @ConceptoFinal);", mov, tx);
 
                         guardados++;
                         // Actualizar cada 500 registros (o el �ltimo) para no saturar la UI

@@ -90,8 +90,8 @@ namespace AgrupadorConceptos
             {
                 var dicHomologacion = connection.Query(@"
                     SELECT h.ValorOriginal, c.Nombre as ConceptoEstandar 
-                    FROM HomologacionConceptos h 
-                    INNER JOIN ConceptosEstandar c ON h.IdConceptoEstandar = c.Id 
+                    FROM bancos.HomologacionConceptos h
+                    INNER JOIN bancos.ConceptosEstandar c ON h.IdConceptoEstandar = c.Id
                     WHERE h.IdPerfilBanco = @IdPerfil", new { IdPerfil = _idPerfil })
                     .ToDictionary(x => (string)x.ValorOriginal, x => (string)x.ConceptoEstandar, StringComparer.OrdinalIgnoreCase);
 

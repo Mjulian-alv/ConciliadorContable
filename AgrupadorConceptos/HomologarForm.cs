@@ -30,7 +30,7 @@ namespace AgrupadorConceptos
             using (var connection = DatabaseHelper.GetConnection())
             {
                 connection.Open();
-                var conceptos = connection.Query<ConceptoEstandar>("SELECT * FROM ConceptosEstandar ORDER BY Nombre").ToList();
+                var conceptos = connection.Query<ConceptoEstandar>("SELECT * FROM bancos.ConceptosEstandar ORDER BY Nombre").ToList();
                 
                 cmbEstandar.DataSource = conceptos;
                 cmbEstandar.DisplayMember = "Nombre";
@@ -44,7 +44,7 @@ namespace AgrupadorConceptos
 
             if (string.IsNullOrEmpty(conceptoEstandarTexto))
             {
-                MessageBox.Show("Debe ingresar o seleccionar un Concepto Estándar.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Debe ingresar o seleccionar un Concepto Estï¿½ndar.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -56,7 +56,7 @@ namespace AgrupadorConceptos
 
                     // Buscar o crear el concepto estandar
                     var conceptoExistente = connection.QueryFirstOrDefault<ConceptoEstandar>(
-                        "SELECT * FROM ConceptosEstandar WHERE LOWER(Nombre) = LOWER(@Nombre)", new { Nombre = conceptoEstandarTexto });
+                        "SELECT * FROM bancos.ConceptosEstandar WHERE LOWER(Nombre) = LOWER(@Nombre)", new { Nombre = conceptoEstandarTexto });
 
                     int idConceptoEstandar;
                     if (conceptoExistente != null)
@@ -66,22 +66,23 @@ namespace AgrupadorConceptos
                     else
                     {
                         // Insertar nuevo concepto estandar
-                        connection.Execute("INSERT INTO ConceptosEstandar (Nombre) VALUES (@Nombre)", new { Nombre = conceptoEstandarTexto });
-                        idConceptoEstandar = connection.QueryFirst<int>("SELECT last_insert_rowid()");
+                        idConceptoEstandar = connection.QuerySingle<int>(
+                            "INSERT INTO bancos.ConceptosEstandar (Nombre) VALUES (@Nombre); SELECT CAST(SCOPE_IDENTITY() AS INT);",
+                            new { Nombre = conceptoEstandarTexto });
                     }
 
                     // Guardar homolagacion
-                    // Insertamos el mapeo (Si es texto largo, el usuario tal vez modificó txtOriginal para dejar solo la palabra clave)
+                    // Insertamos el mapeo (Si es texto largo, el usuario tal vez modificï¿½ txtOriginal para dejar solo la palabra clave)
                     string valorClave = txtOriginal.Text.Trim();
                     
                     // Borrar el anterior para esta clave si existe
                     connection.Execute(
-                        "DELETE FROM HomologacionConceptos WHERE IdPerfilBanco = @IdPerfilBanco AND ValorOriginal = @ValorOriginal",
+                        "DELETE FROM bancos.HomologacionConceptos WHERE IdPerfilBanco = @IdPerfilBanco AND ValorOriginal = @ValorOriginal",
                         new { IdPerfilBanco = _idPerfilBanco, ValorOriginal = valorClave });
 
-                    // Insertar la nueva homologación
+                    // Insertar la nueva homologaciï¿½n
                     connection.Execute(@"
-                        INSERT INTO HomologacionConceptos (IdPerfilBanco, ValorOriginal, IdConceptoEstandar) 
+                        INSERT INTO bancos.HomologacionConceptos (IdPerfilBanco, ValorOriginal, IdConceptoEstandar)
                         VALUES (@IdPerfilBanco, @ValorOriginal, @IdConceptoEstandar)",
                         new { IdPerfilBanco = _idPerfilBanco, ValorOriginal = valorClave, IdConceptoEstandar = idConceptoEstandar });
 
@@ -91,7 +92,7 @@ namespace AgrupadorConceptos
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error al guardar homologación: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Error al guardar homologaciï¿½n: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }

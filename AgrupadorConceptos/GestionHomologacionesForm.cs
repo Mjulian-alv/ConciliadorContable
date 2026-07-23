@@ -23,9 +23,9 @@ namespace AgrupadorConceptos
             {
                 var data = cn.Query(@"
                     SELECT h.Id, p.NombreBanco as Banco, h.ValorOriginal, c.Nombre as ConceptoEstandar
-                    FROM HomologacionConceptos h
-                    JOIN PerfilesBanco p ON h.IdPerfilBanco = p.Id
-                    JOIN ConceptosEstandar c ON h.IdConceptoEstandar = c.Id
+                    FROM bancos.HomologacionConceptos h
+                    JOIN bancos.PerfilesBanco p ON h.IdPerfilBanco = p.Id
+                    JOIN bancos.ConceptosEstandar c ON h.IdConceptoEstandar = c.Id
                 ").ToList();
                 dgvHomologaciones.DataSource = null;
                 dgvHomologaciones.DataSource = data;
@@ -40,13 +40,13 @@ namespace AgrupadorConceptos
                 int id = (int)rowData.Id;
                 using (var cn = DatabaseHelper.GetConnection())
                 {
-                    cn.Execute("DELETE FROM HomologacionConceptos WHERE Id = @Id", new { Id = id });
+                    cn.Execute("DELETE FROM bancos.HomologacionConceptos WHERE Id = @Id", new { Id = id });
                 }
                 CargarDatos();
             }
             else
             {
-                MessageBox.Show("Seleccione una homologación para eliminar.");
+                MessageBox.Show("Seleccione una homologaciï¿½n para eliminar.");
             }
         }
     }

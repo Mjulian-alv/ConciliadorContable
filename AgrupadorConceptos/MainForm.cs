@@ -37,7 +37,7 @@ namespace AgrupadorConceptos
                 using (var connection = DatabaseHelper.GetConnection())
                 {
                     connection.Open();
-                    var perfil = connection.QueryFirstOrDefault<PerfilBanco>("SELECT * FROM PerfilesBanco WHERE Id = @Id", new { Id = idPerfil });
+                    var perfil = connection.QueryFirstOrDefault<PerfilBanco>("SELECT * FROM bancos.PerfilesBanco WHERE Id = @Id", new { Id = idPerfil });
                     if (perfil != null)
                     {
                         txtBanco.Text = perfil.NombreBanco;
@@ -152,11 +152,11 @@ namespace AgrupadorConceptos
                             LlenarComboBox(cmbColumnaHaber, headers);
                             LlenarComboBox(cmbColumnaFecha, headers);
 
-                            MessageBox.Show("Encabezados cargados correctamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            MessageBox.Show("Encabezados cargados correctamente.", "ï¿½xito", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         }
                         else
                         {
-                            MessageBox.Show("El archivo Excel está vacío.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            MessageBox.Show("El archivo Excel estï¿½ vacï¿½o.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         }
                     }
                 }
@@ -178,7 +178,7 @@ namespace AgrupadorConceptos
         {
             if (string.IsNullOrWhiteSpace(txtBanco.Text))
             {
-                MessageBox.Show("Debe ingresar un nombre de banco.", "Validación", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Debe ingresar un nombre de banco.", "Validaciï¿½n", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -206,8 +206,8 @@ namespace AgrupadorConceptos
                     if (_idPerfilEditar.HasValue)
                     {
                         string sql = @"
-                            UPDATE PerfilesBanco 
-                            SET NombreBanco = @NombreBanco, ColumnaConcepto = @ColumnaConcepto, 
+                            UPDATE bancos.PerfilesBanco
+                            SET NombreBanco = @NombreBanco, ColumnaConcepto = @ColumnaConcepto,
                                 ColumnaDescripcion = @ColumnaDescripcion, EsCodigo = @EsCodigo, 
                                 FilaEncabezado = @FilaEncabezado, TipoImporte = @TipoImporte, 
                                 ColumnaImporteUnico = @ColumnaImporteUnico, ColumnaDebe = @ColumnaDebe, 
@@ -218,8 +218,8 @@ namespace AgrupadorConceptos
                     else
                     {
                         string sql = @"
-                            INSERT INTO PerfilesBanco 
-                            (NombreBanco, ColumnaConcepto, ColumnaDescripcion, EsCodigo, FilaEncabezado, TipoImporte, ColumnaImporteUnico, ColumnaDebe, ColumnaHaber, ColumnaFecha) 
+                            INSERT INTO bancos.PerfilesBanco
+                            (NombreBanco, ColumnaConcepto, ColumnaDescripcion, EsCodigo, FilaEncabezado, TipoImporte, ColumnaImporteUnico, ColumnaDebe, ColumnaHaber, ColumnaFecha)
                             VALUES 
                             (@NombreBanco, @ColumnaConcepto, @ColumnaDescripcion, @EsCodigo, @FilaEncabezado, @TipoImporte, @ColumnaImporteUnico, @ColumnaDebe, @ColumnaHaber, @ColumnaFecha)";
                         
@@ -227,8 +227,8 @@ namespace AgrupadorConceptos
                     }
                 }
 
-                MessageBox.Show("Perfil guardado correctamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                this.Close(); // Cerramos al guardar para volver al menú principal
+                MessageBox.Show("Perfil guardado correctamente.", "ï¿½xito", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                this.Close(); // Cerramos al guardar para volver al menï¿½ principal
             }
             catch (Exception ex)
             {
@@ -239,7 +239,7 @@ namespace AgrupadorConceptos
         private void LimpiarFomulario()
         {
             txtBanco.Clear();
-            lblArchivoExcel.Text = "Ningún archivo seleccionado";
+            lblArchivoExcel.Text = "Ningï¿½n archivo seleccionado";
             cmbColumnaConcepto.Items.Clear();
             cmbColumnaDescripcion.Items.Clear();
             cmbImporteUnico.Items.Clear();

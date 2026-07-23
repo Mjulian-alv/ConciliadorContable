@@ -55,7 +55,7 @@ namespace AgrupadorConceptos
             using var cn = DatabaseHelper.GetConnection();
             cn.Open();
             _archivosDisponibles = cn.Query<ArchivoImportado>(
-                "SELECT * FROM ArchivosImportados ORDER BY Fecha DESC").ToList();
+                "SELECT * FROM bancos.ArchivosImportados ORDER BY Fecha DESC").ToList();
 
             clbArchivos.Items.Clear();
             foreach (var a in _archivosDisponibles)
@@ -72,7 +72,7 @@ namespace AgrupadorConceptos
             using var cn = DatabaseHelper.GetConnection();
             cn.Open();
             var conceptos = cn.Query<string>(
-                $@"SELECT DISTINCT ConceptoFinal FROM MovimientosArchivo
+                $@"SELECT DISTINCT ConceptoFinal FROM bancos.MovimientosArchivo
                    WHERE IdArchivo IN ({string.Join(",", ids)})
                      AND ConceptoFinal IS NOT NULL AND ConceptoFinal <> ''
                    ORDER BY ConceptoFinal").ToList();

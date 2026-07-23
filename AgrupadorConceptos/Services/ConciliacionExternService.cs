@@ -18,7 +18,7 @@ namespace AgrupadorConceptos.Services
             using var cn = DatabaseHelper.GetConnection();
             cn.Open();
             return cn.Query<ConciliacionSesion>(
-                @"SELECT * FROM ConciliacionSesiones
+                @"SELECT * FROM bancos.ConciliacionSesiones
                   WHERE IdArchivoImportado = @Id
                      OR (ArchivosJson IS NOT NULL AND ArchivosJson LIKE @Like)
                   ORDER BY FechaCreacion DESC",
@@ -30,7 +30,7 @@ namespace AgrupadorConceptos.Services
             using var cn = DatabaseHelper.GetConnection();
             cn.Open();
             return cn.Query<ConciliacionSesion>(
-                "SELECT * FROM ConciliacionSesiones ORDER BY FechaCreacion DESC").ToList();
+                "SELECT * FROM bancos.ConciliacionSesiones ORDER BY FechaCreacion DESC").ToList();
         }
 
         public static ConciliacionSesion CrearSesion(string nombre, List<int> idsArchivos,
@@ -45,9 +45,9 @@ namespace AgrupadorConceptos.Services
             int primerArchivo    = idsArchivos.First();
 
             var idSesion = cn.ExecuteScalar<int>(@"
-                INSERT INTO ConciliacionSesiones (Nombre, FechaCreacion, IdArchivoImportado, ArchivosJson, ConceptosJson, Estado)
+                INSERT INTO bancos.ConciliacionSesiones (Nombre, FechaCreacion, IdArchivoImportado, ArchivosJson, ConceptosJson, Estado)
                 VALUES (@Nombre, @Fecha, @IdArchivo, @ArchivosJson, @Conceptos, 'EnProceso');
-                SELECT last_insert_rowid();",
+                SELECT CAST(SCOPE_IDENTITY() AS INT);",
                 new { Nombre = nombre, Fecha = DateTime.Now, IdArchivo = primerArchivo,
                       ArchivosJson = archivosJson, Conceptos = conceptosJson },
                 tx);
@@ -55,7 +55,7 @@ namespace AgrupadorConceptos.Services
             foreach (var item in itemsExternos)
             {
                 cn.Execute(@"
-                    INSERT INTO ConciliacionItemsExternos (IdSesion, Fecha, Importe, Detalle, Conciliado)
+                    INSERT INTO bancos.ConciliacionItemsExternos (IdSesion, Fecha, Importe, Detalle, Conciliado)
                     VALUES (@IdSesion, @Fecha, @Importe, @Detalle, 0)",
                     new { IdSesion = idSesion, item.Fecha, item.Importe, item.Detalle }, tx);
             }
@@ -63,21 +63,29 @@ namespace AgrupadorConceptos.Services
             tx.Commit();
 
             return cn.QuerySingle<ConciliacionSesion>(
-                "SELECT * FROM ConciliacionSesiones WHERE Id = @Id", new { Id = idSesion });
+                "SELECT * FROM bancos.ConciliacionSesiones WHERE Id = @Id", new { Id = idSesion });
         }
 
         public static void EliminarSesion(int idSesion)
         {
             using var cn = DatabaseHelper.GetConnection();
             cn.Open();
-            cn.Execute("DELETE FROM ConciliacionSesiones WHERE Id = @Id", new { Id = idSesion });
+            using var tx = cn.BeginTransaction();
+
+            // Borrado explícito y ordenado: las FK de ConciliacionItemsExternos/ConciliacionPares
+            // hacia ConciliacionSesiones no tienen ON DELETE CASCADE en SQL Server (caminos múltiples).
+            cn.Execute("DELETE FROM bancos.ConciliacionPares WHERE IdSesion = @Id", new { Id = idSesion }, tx);
+            cn.Execute("DELETE FROM bancos.ConciliacionItemsExternos WHERE IdSesion = @Id", new { Id = idSesion }, tx);
+            cn.Execute("DELETE FROM bancos.ConciliacionSesiones WHERE Id = @Id", new { Id = idSesion }, tx);
+
+            tx.Commit();
         }
 
         public static void MarcarFinalizada(int idSesion)
         {
             using var cn = DatabaseHelper.GetConnection();
             cn.Open();
-            cn.Execute("UPDATE ConciliacionSesiones SET Estado = 'Finalizada' WHERE Id = @Id",
+            cn.Execute("UPDATE bancos.ConciliacionSesiones SET Estado = 'Finalizada' WHERE Id = @Id",
                 new { Id = idSesion });
         }
 
@@ -88,7 +96,7 @@ namespace AgrupadorConceptos.Services
             using var cn = DatabaseHelper.GetConnection();
             cn.Open();
             return cn.Query<ConciliacionItemExterno>(
-                "SELECT * FROM ConciliacionItemsExternos WHERE IdSesion = @Id AND Conciliado = 0 ORDER BY Fecha, Importe",
+                "SELECT * FROM bancos.ConciliacionItemsExternos WHERE IdSesion = @Id AND Conciliado = 0 ORDER BY Fecha, Importe",
                 new { Id = idSesion }).ToList();
         }
 
@@ -97,7 +105,7 @@ namespace AgrupadorConceptos.Services
             using var cn = DatabaseHelper.GetConnection();
             cn.Open();
             return cn.Query<ConciliacionItemExterno>(
-                "SELECT * FROM ConciliacionItemsExternos WHERE IdSesion = @Id ORDER BY Fecha, Importe",
+                "SELECT * FROM bancos.ConciliacionItemsExternos WHERE IdSesion = @Id ORDER BY Fecha, Importe",
                 new { Id = idSesion }).ToList();
         }
 
@@ -109,18 +117,18 @@ namespace AgrupadorConceptos.Services
             cn.Open();
 
             var sesion = cn.QuerySingle<ConciliacionSesion>(
-                "SELECT * FROM ConciliacionSesiones WHERE Id = @Id", new { Id = idSesion });
+                "SELECT * FROM bancos.ConciliacionSesiones WHERE Id = @Id", new { Id = idSesion });
 
             var conceptos = System.Text.Json.JsonSerializer.Deserialize<List<string>>(sesion.ConceptosJson)
                             ?? new List<string>();
 
             var idsConciliados = cn.Query<int>(
-                "SELECT IdMovimientoProcesado FROM ConciliacionPares WHERE IdSesion = @Id",
+                "SELECT IdMovimientoProcesado FROM bancos.ConciliacionPares WHERE IdSesion = @Id",
                 new { Id = idSesion }).ToHashSet();
 
             var ids = string.Join(",", sesion.IdsArchivos);
             var todos = cn.Query<MovimientoProcesado>(
-                $"SELECT * FROM MovimientosArchivo WHERE IdArchivo IN ({ids})").ToList();
+                $"SELECT * FROM bancos.MovimientosArchivo WHERE IdArchivo IN ({ids})").ToList();
 
             return todos
                 .Where(m => conceptos.Contains(m.ConceptoFinal, StringComparer.OrdinalIgnoreCase)
@@ -134,15 +142,15 @@ namespace AgrupadorConceptos.Services
             cn.Open();
 
             var sesion = cn.QuerySingle<ConciliacionSesion>(
-                "SELECT * FROM ConciliacionSesiones WHERE Id = @Id", new { Id = idSesion });
+                "SELECT * FROM bancos.ConciliacionSesiones WHERE Id = @Id", new { Id = idSesion });
 
             var idsConciliados = cn.Query<int>(
-                "SELECT IdMovimientoProcesado FROM ConciliacionPares WHERE IdSesion = @Id",
+                "SELECT IdMovimientoProcesado FROM bancos.ConciliacionPares WHERE IdSesion = @Id",
                 new { Id = idSesion }).ToHashSet();
 
             var ids = string.Join(",", sesion.IdsArchivos);
             return cn.Query<MovimientoProcesado>(
-                $"SELECT * FROM MovimientosArchivo WHERE IdArchivo IN ({ids})")
+                $"SELECT * FROM bancos.MovimientosArchivo WHERE IdArchivo IN ({ids})")
                 .Where(m => !idsConciliados.Contains(m.Id))
                 .ToList();
         }
@@ -159,9 +167,9 @@ namespace AgrupadorConceptos.Services
                        m.Fecha  AS FechaExtracto, 
                        CASE WHEN m.Debitos <> 0 THEN m.Debitos ELSE m.Creditos END AS ImporteExtracto,
                        m.ConceptoFinal AS ConceptoFinalExtracto
-                FROM ConciliacionPares p
-                JOIN ConciliacionItemsExternos e ON p.IdItemExterno         = e.Id
-                JOIN MovimientosArchivo        m ON p.IdMovimientoProcesado = m.Id
+                FROM bancos.ConciliacionPares p
+                JOIN bancos.ConciliacionItemsExternos e ON p.IdItemExterno         = e.Id
+                JOIN bancos.MovimientosArchivo        m ON p.IdMovimientoProcesado = m.Id
                 WHERE p.IdSesion = @Id
                 ORDER BY p.FechaConciliacion",
                 new { Id = idSesion }).ToList();
@@ -174,13 +182,13 @@ namespace AgrupadorConceptos.Services
             using var tx = cn.BeginTransaction();
 
             cn.Execute(@"
-                INSERT INTO ConciliacionPares (IdSesion, IdItemExterno, IdMovimientoProcesado, TipoMatch, FechaConciliacion)
+                INSERT INTO bancos.ConciliacionPares (IdSesion, IdItemExterno, IdMovimientoProcesado, TipoMatch, FechaConciliacion)
                 VALUES (@IdSesion, @IdItemExterno, @IdMovimiento, @TipoMatch, @Fecha)",
                 new { IdSesion = idSesion, IdItemExterno = idItemExterno,
                       IdMovimiento = idMovimiento, TipoMatch = tipoMatch.ToString(),
                       Fecha = DateTime.Now }, tx);
 
-            cn.Execute("UPDATE ConciliacionItemsExternos SET Conciliado = 1 WHERE Id = @Id",
+            cn.Execute("UPDATE bancos.ConciliacionItemsExternos SET Conciliado = 1 WHERE Id = @Id",
                 new { Id = idItemExterno }, tx);
 
             tx.Commit();
@@ -193,11 +201,11 @@ namespace AgrupadorConceptos.Services
             using var tx = cn.BeginTransaction();
 
             var par = cn.QuerySingleOrDefault<ConciliacionPar>(
-                "SELECT * FROM ConciliacionPares WHERE Id = @Id", new { Id = idPar });
+                "SELECT * FROM bancos.ConciliacionPares WHERE Id = @Id", new { Id = idPar });
             if (par == null) return;
 
-            cn.Execute("DELETE FROM ConciliacionPares WHERE Id = @Id", new { Id = idPar }, tx);
-            cn.Execute("UPDATE ConciliacionItemsExternos SET Conciliado = 0 WHERE Id = @Id",
+            cn.Execute("DELETE FROM bancos.ConciliacionPares WHERE Id = @Id", new { Id = idPar }, tx);
+            cn.Execute("UPDATE bancos.ConciliacionItemsExternos SET Conciliado = 0 WHERE Id = @Id",
                 new { Id = par.IdItemExterno }, tx);
 
             tx.Commit();
