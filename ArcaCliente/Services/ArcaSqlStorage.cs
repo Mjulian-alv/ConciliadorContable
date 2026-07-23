@@ -31,7 +31,7 @@ namespace ArcaCliente.Services
             var list = new List<PerfilOffline>();
             using var cn = Open();
             using var cmd = cn.CreateCommand();
-            cmd.CommandText = "SELECT * FROM ArcaPerfilesOffline ORDER BY Nombre";
+            cmd.CommandText = "SELECT * FROM arca.ArcaPerfilesOffline ORDER BY Nombre";
             using var r = cmd.ExecuteReader();
             while (r.Read())
             {
@@ -79,14 +79,14 @@ namespace ArcaCliente.Services
             using var cn = Open();
             using var tx = cn.BeginTransaction();
 
-            Execute(cn, "DELETE FROM ArcaPerfilesOffline", tx);
+            Execute(cn, "DELETE FROM arca.ArcaPerfilesOffline", tx);
 
             foreach (var p in perfiles)
             {
                 using var cmd = cn.CreateCommand();
                 cmd.Transaction = tx;
                 cmd.CommandText = @"
-                    INSERT INTO ArcaPerfilesOffline
+                    INSERT INTO arca.ArcaPerfilesOffline
                         (Id, Nombre, TipoArchivo, Separador, Encoding, HojaExcel,
                          TieneCabecera, ColFecha, ColPuntoVenta, ColNumero, ColTipoComprobante,
                          ColCuit, ColNombreProveedor, ColTotal,
@@ -95,41 +95,41 @@ namespace ArcaCliente.Services
                          FormatoFecha, SeparadorDecimal, CarpetaCsvArca,
                          SistemaExportacion, ConfigPreseaJson, DirectivasJson)
                     VALUES
-                        ($Id, $Nombre, $TipoArchivo, $Separador, $Encoding, $HojaExcel,
-                         $TieneCabecera, $ColFecha, $ColPuntoVenta, $ColNumero, $ColTipoComprobante,
-                         $ColCuit, $ColNombreProveedor, $ColTotal,
-                         $PosFecha, $PosPuntoVenta, $PosNumero, $PosTipoComprobante,
-                         $PosCuit, $PosNombreProveedor, $PosTotal,
-                         $FormatoFecha, $SeparadorDecimal, $CarpetaCsvArca,
-                         $SistemaExportacion, $ConfigPreseaJson, $DirectivasJson)";
+                        (@Id, @Nombre, @TipoArchivo, @Separador, @Encoding, @HojaExcel,
+                         @TieneCabecera, @ColFecha, @ColPuntoVenta, @ColNumero, @ColTipoComprobante,
+                         @ColCuit, @ColNombreProveedor, @ColTotal,
+                         @PosFecha, @PosPuntoVenta, @PosNumero, @PosTipoComprobante,
+                         @PosCuit, @PosNombreProveedor, @PosTotal,
+                         @FormatoFecha, @SeparadorDecimal, @CarpetaCsvArca,
+                         @SistemaExportacion, @ConfigPreseaJson, @DirectivasJson)";
 
-                cmd.Parameters.AddWithValue("$Id",                  p.Id.ToString());
-                cmd.Parameters.AddWithValue("$Nombre",              p.Nombre ?? "");
-                cmd.Parameters.AddWithValue("$TipoArchivo",         (int)p.TipoArchivo);
-                cmd.Parameters.AddWithValue("$Separador",           p.Separador ?? ";");
-                cmd.Parameters.AddWithValue("$Encoding",            p.Encoding ?? "UTF-8");
-                cmd.Parameters.AddWithValue("$HojaExcel",           (object?)p.HojaExcel ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("$TieneCabecera",       p.TieneCabecera ? 1 : 0);
-                cmd.Parameters.AddWithValue("$ColFecha",            (object?)p.ColFecha ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("$ColPuntoVenta",       (object?)p.ColPuntoVenta ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("$ColNumero",           (object?)p.ColNumero ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("$ColTipoComprobante",  (object?)p.ColTipoComprobante ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("$ColCuit",             (object?)p.ColCuit ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("$ColNombreProveedor",  (object?)p.ColNombreProveedor ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("$ColTotal",            (object?)p.ColTotal ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("$PosFecha",            p.PosFecha);
-                cmd.Parameters.AddWithValue("$PosPuntoVenta",       p.PosPuntoVenta);
-                cmd.Parameters.AddWithValue("$PosNumero",           p.PosNumero);
-                cmd.Parameters.AddWithValue("$PosTipoComprobante",  p.PosTipoComprobante);
-                cmd.Parameters.AddWithValue("$PosCuit",             p.PosCuit);
-                cmd.Parameters.AddWithValue("$PosNombreProveedor",  p.PosNombreProveedor);
-                cmd.Parameters.AddWithValue("$PosTotal",            p.PosTotal);
-                cmd.Parameters.AddWithValue("$FormatoFecha",        p.FormatoFecha ?? "dd/MM/yyyy");
-                cmd.Parameters.AddWithValue("$SeparadorDecimal",    p.SeparadorDecimal ?? ".");
-                cmd.Parameters.AddWithValue("$CarpetaCsvArca",      (object?)p.CarpetaCsvArca ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("$SistemaExportacion",  (int)p.SistemaExportacion);
-                cmd.Parameters.AddWithValue("$ConfigPreseaJson",    p.ConfigPresea == null ? DBNull.Value : JsonSerializer.Serialize(p.ConfigPresea, JsonOpts));
-                cmd.Parameters.AddWithValue("$DirectivasJson",      JsonSerializer.Serialize(p.DirectivasConciliacion, JsonOpts));
+                cmd.Parameters.AddWithValue("@Id",                  p.Id.ToString());
+                cmd.Parameters.AddWithValue("@Nombre",              p.Nombre ?? "");
+                cmd.Parameters.AddWithValue("@TipoArchivo",         (int)p.TipoArchivo);
+                cmd.Parameters.AddWithValue("@Separador",           p.Separador ?? ";");
+                cmd.Parameters.AddWithValue("@Encoding",            p.Encoding ?? "UTF-8");
+                cmd.Parameters.AddWithValue("@HojaExcel",           (object?)p.HojaExcel ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@TieneCabecera",       p.TieneCabecera ? 1 : 0);
+                cmd.Parameters.AddWithValue("@ColFecha",            (object?)p.ColFecha ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ColPuntoVenta",       (object?)p.ColPuntoVenta ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ColNumero",           (object?)p.ColNumero ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ColTipoComprobante",  (object?)p.ColTipoComprobante ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ColCuit",             (object?)p.ColCuit ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ColNombreProveedor",  (object?)p.ColNombreProveedor ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ColTotal",            (object?)p.ColTotal ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@PosFecha",            p.PosFecha);
+                cmd.Parameters.AddWithValue("@PosPuntoVenta",       p.PosPuntoVenta);
+                cmd.Parameters.AddWithValue("@PosNumero",           p.PosNumero);
+                cmd.Parameters.AddWithValue("@PosTipoComprobante",  p.PosTipoComprobante);
+                cmd.Parameters.AddWithValue("@PosCuit",             p.PosCuit);
+                cmd.Parameters.AddWithValue("@PosNombreProveedor",  p.PosNombreProveedor);
+                cmd.Parameters.AddWithValue("@PosTotal",            p.PosTotal);
+                cmd.Parameters.AddWithValue("@FormatoFecha",        p.FormatoFecha ?? "dd/MM/yyyy");
+                cmd.Parameters.AddWithValue("@SeparadorDecimal",    p.SeparadorDecimal ?? ".");
+                cmd.Parameters.AddWithValue("@CarpetaCsvArca",      (object?)p.CarpetaCsvArca ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@SistemaExportacion",  (int)p.SistemaExportacion);
+                cmd.Parameters.AddWithValue("@ConfigPreseaJson",    p.ConfigPresea == null ? DBNull.Value : JsonSerializer.Serialize(p.ConfigPresea, JsonOpts));
+                cmd.Parameters.AddWithValue("@DirectivasJson",      JsonSerializer.Serialize(p.DirectivasConciliacion, JsonOpts));
                 cmd.ExecuteNonQuery();
             }
 
@@ -143,7 +143,7 @@ namespace ArcaCliente.Services
             var list = new List<PerfilFiscal>();
             using var cn = Open();
             using var cmd = cn.CreateCommand();
-            cmd.CommandText = "SELECT * FROM ArcaPerfilesFiscales ORDER BY Nombre";
+            cmd.CommandText = "SELECT * FROM arca.ArcaPerfilesFiscales ORDER BY Nombre";
             using var r = cmd.ExecuteReader();
             while (r.Read())
             {
@@ -171,36 +171,36 @@ namespace ArcaCliente.Services
             using var cn = Open();
             using var tx = cn.BeginTransaction();
 
-            Execute(cn, "DELETE FROM ArcaPerfilesFiscales", tx);
+            Execute(cn, "DELETE FROM arca.ArcaPerfilesFiscales", tx);
 
             foreach (var p in perfiles)
             {
                 using var cmd = cn.CreateCommand();
                 cmd.Transaction = tx;
                 cmd.CommandText = @"
-                    INSERT INTO ArcaPerfilesFiscales
+                    INSERT INTO arca.ArcaPerfilesFiscales
                         (Id, Nombre, Username, Password, Cuit,
                          IntegracionHabilitada, Sistema,
                          ConciliacionConnectionString, ConciliacionQuery,
                          OctosisConnectionString, ArcaApiUrl, DirectivasJson)
                     VALUES
-                        ($Id, $Nombre, $Username, $Password, $Cuit,
-                         $IntegracionHabilitada, $Sistema,
-                         $ConciliacionConnectionString, $ConciliacionQuery,
-                         $OctosisConnectionString, $ArcaApiUrl, $DirectivasJson)";
+                        (@Id, @Nombre, @Username, @Password, @Cuit,
+                         @IntegracionHabilitada, @Sistema,
+                         @ConciliacionConnectionString, @ConciliacionQuery,
+                         @OctosisConnectionString, @ArcaApiUrl, @DirectivasJson)";
 
-                cmd.Parameters.AddWithValue("$Id",                           p.Id.ToString());
-                cmd.Parameters.AddWithValue("$Nombre",                       p.Nombre ?? "");
-                cmd.Parameters.AddWithValue("$Username",                     p.Username ?? "");
-                cmd.Parameters.AddWithValue("$Password",                     p.Password ?? "");
-                cmd.Parameters.AddWithValue("$Cuit",                         p.Cuit ?? "");
-                cmd.Parameters.AddWithValue("$IntegracionHabilitada",        p.IntegracionHabilitada ? 1 : 0);
-                cmd.Parameters.AddWithValue("$Sistema",                      (int)p.Sistema);
-                cmd.Parameters.AddWithValue("$ConciliacionConnectionString", (object?)p.ConciliacionConnectionString ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("$ConciliacionQuery",            (object?)p.ConciliacionQuery ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("$OctosisConnectionString",      (object?)p.OctosisConnectionString ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("$ArcaApiUrl",                   (object?)p.ArcaApiUrl ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("$DirectivasJson",               JsonSerializer.Serialize(p.DirectivasConciliacion, JsonOpts));
+                cmd.Parameters.AddWithValue("@Id",                           p.Id.ToString());
+                cmd.Parameters.AddWithValue("@Nombre",                       p.Nombre ?? "");
+                cmd.Parameters.AddWithValue("@Username",                     p.Username ?? "");
+                cmd.Parameters.AddWithValue("@Password",                     p.Password ?? "");
+                cmd.Parameters.AddWithValue("@Cuit",                         p.Cuit ?? "");
+                cmd.Parameters.AddWithValue("@IntegracionHabilitada",        p.IntegracionHabilitada ? 1 : 0);
+                cmd.Parameters.AddWithValue("@Sistema",                      (int)p.Sistema);
+                cmd.Parameters.AddWithValue("@ConciliacionConnectionString", (object?)p.ConciliacionConnectionString ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ConciliacionQuery",            (object?)p.ConciliacionQuery ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@OctosisConnectionString",      (object?)p.OctosisConnectionString ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ArcaApiUrl",                   (object?)p.ArcaApiUrl ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@DirectivasJson",               JsonSerializer.Serialize(p.DirectivasConciliacion, JsonOpts));
                 cmd.ExecuteNonQuery();
             }
 
