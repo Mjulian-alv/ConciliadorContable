@@ -214,7 +214,7 @@ namespace ArcaCliente.Services
             var list = new List<EquivalenciaTipoComprobante>();
             using var cn = Open();
             using var cmd = cn.CreateCommand();
-            cmd.CommandText = "SELECT CodigoAfip, TipoSistema, Letra FROM ArcaEquivalencias";
+            cmd.CommandText = "SELECT CodigoAfip, TipoSistema, Letra FROM arca.ArcaEquivalencias";
             using var r = cmd.ExecuteReader();
             while (r.Read())
                 list.Add(new EquivalenciaTipoComprobante
@@ -231,16 +231,16 @@ namespace ArcaCliente.Services
             using var cn = Open();
             using var tx = cn.BeginTransaction();
 
-            Execute(cn, "DELETE FROM ArcaEquivalencias", tx);
+            Execute(cn, "DELETE FROM arca.ArcaEquivalencias", tx);
 
             foreach (var i in items)
             {
                 using var cmd = cn.CreateCommand();
                 cmd.Transaction = tx;
-                cmd.CommandText = "INSERT INTO ArcaEquivalencias (CodigoAfip, TipoSistema, Letra) VALUES ($c, $t, $l)";
-                cmd.Parameters.AddWithValue("$c", i.CodigoAfip ?? "");
-                cmd.Parameters.AddWithValue("$t", i.TipoSistema ?? "");
-                cmd.Parameters.AddWithValue("$l", i.Letra ?? "");
+                cmd.CommandText = "INSERT INTO arca.ArcaEquivalencias (CodigoAfip, TipoSistema, Letra) VALUES (@c, @t, @l)";
+                cmd.Parameters.AddWithValue("@c", i.CodigoAfip ?? "");
+                cmd.Parameters.AddWithValue("@t", i.TipoSistema ?? "");
+                cmd.Parameters.AddWithValue("@l", i.Letra ?? "");
                 cmd.ExecuteNonQuery();
             }
 
@@ -254,7 +254,7 @@ namespace ArcaCliente.Services
             var list = new List<ConfigPreseaProveedor>();
             using var cn = Open();
             using var cmd = cn.CreateCommand();
-            cmd.CommandText = "SELECT * FROM PreseaProveedores ORDER BY Nombre";
+            cmd.CommandText = "SELECT * FROM arca.PreseaProveedores ORDER BY Nombre";
             using var r = cmd.ExecuteReader();
             while (r.Read())
                 list.Add(ReadPreseaProveedor(r));
@@ -266,8 +266,8 @@ namespace ArcaCliente.Services
             string key = SoloDigitos(cuit);
             using var cn = Open();
             using var cmd = cn.CreateCommand();
-            cmd.CommandText = "SELECT * FROM PreseaProveedores WHERE Cuit = $cuit";
-            cmd.Parameters.AddWithValue("$cuit", key);
+            cmd.CommandText = "SELECT * FROM arca.PreseaProveedores WHERE Cuit = @cuit";
+            cmd.Parameters.AddWithValue("@cuit", key);
             using var r = cmd.ExecuteReader();
             return r.Read() ? ReadPreseaProveedor(r) : null;
         }
@@ -292,33 +292,27 @@ namespace ArcaCliente.Services
             using var cmd = cn.CreateCommand();
             cmd.Transaction = tx;
             cmd.CommandText = @"
-                INSERT INTO PreseaProveedores
-                    (Cuit, Nombre, CodigoProveedor, CuentaContableProveedor, CuentaDebe,
-                     Centro, Provincia, Condicion, Descuento, Fiscal)
-                VALUES
-                    ($Cuit, $Nombre, $CodigoProveedor, $CuentaContableProveedor, $CuentaDebe,
-                     $Centro, $Provincia, $Condicion, $Descuento, $Fiscal)
-                ON CONFLICT(Cuit) DO UPDATE SET
-                    Nombre = excluded.Nombre,
-                    CodigoProveedor = excluded.CodigoProveedor,
-                    CuentaContableProveedor = excluded.CuentaContableProveedor,
-                    CuentaDebe = excluded.CuentaDebe,
-                    Centro = excluded.Centro,
-                    Provincia = excluded.Provincia,
-                    Condicion = excluded.Condicion,
-                    Descuento = excluded.Descuento,
-                    Fiscal = excluded.Fiscal";
+                MERGE arca.PreseaProveedores AS t
+                USING (SELECT @Cuit AS Cuit) AS s ON t.Cuit = s.Cuit
+                WHEN MATCHED THEN UPDATE SET
+                    Nombre = @Nombre, CodigoProveedor = @CodigoProveedor,
+                    CuentaContableProveedor = @CuentaContableProveedor, CuentaDebe = @CuentaDebe,
+                    Centro = @Centro, Provincia = @Provincia, Condicion = @Condicion,
+                    Descuento = @Descuento, Fiscal = @Fiscal
+                WHEN NOT MATCHED THEN INSERT
+                    (Cuit, Nombre, CodigoProveedor, CuentaContableProveedor, CuentaDebe, Centro, Provincia, Condicion, Descuento, Fiscal)
+                    VALUES (@Cuit, @Nombre, @CodigoProveedor, @CuentaContableProveedor, @CuentaDebe, @Centro, @Provincia, @Condicion, @Descuento, @Fiscal);";
 
-            cmd.Parameters.AddWithValue("$Cuit",                    SoloDigitos(p.Cuit));
-            cmd.Parameters.AddWithValue("$Nombre",                  p.Nombre ?? "");
-            cmd.Parameters.AddWithValue("$CodigoProveedor",         p.CodigoProveedor ?? "");
-            cmd.Parameters.AddWithValue("$CuentaContableProveedor", p.CuentaContableProveedor ?? "");
-            cmd.Parameters.AddWithValue("$CuentaDebe",              p.CuentaDebe ?? "");
-            cmd.Parameters.AddWithValue("$Centro",                  p.Centro ?? "");
-            cmd.Parameters.AddWithValue("$Provincia",               p.Provincia ?? "");
-            cmd.Parameters.AddWithValue("$Condicion",               p.Condicion ?? "");
-            cmd.Parameters.AddWithValue("$Descuento",               p.Descuento.ToString(CultureInfo.InvariantCulture));
-            cmd.Parameters.AddWithValue("$Fiscal",                  p.Fiscal ?? "");
+            cmd.Parameters.AddWithValue("@Cuit",                    SoloDigitos(p.Cuit));
+            cmd.Parameters.AddWithValue("@Nombre",                  p.Nombre ?? "");
+            cmd.Parameters.AddWithValue("@CodigoProveedor",         p.CodigoProveedor ?? "");
+            cmd.Parameters.AddWithValue("@CuentaContableProveedor", p.CuentaContableProveedor ?? "");
+            cmd.Parameters.AddWithValue("@CuentaDebe",              p.CuentaDebe ?? "");
+            cmd.Parameters.AddWithValue("@Centro",                  p.Centro ?? "");
+            cmd.Parameters.AddWithValue("@Provincia",               p.Provincia ?? "");
+            cmd.Parameters.AddWithValue("@Condicion",               p.Condicion ?? "");
+            cmd.Parameters.AddWithValue("@Descuento",               p.Descuento);
+            cmd.Parameters.AddWithValue("@Fiscal",                  p.Fiscal ?? "");
             cmd.ExecuteNonQuery();
         }
 
@@ -332,7 +326,7 @@ namespace ArcaCliente.Services
             Centro                  = r.GetString(r.GetOrdinal("Centro")),
             Provincia               = r.GetString(r.GetOrdinal("Provincia")),
             Condicion               = r.GetString(r.GetOrdinal("Condicion")),
-            Descuento               = ParseDec(Str(r, "Descuento")),
+            Descuento               = r.GetDecimal(r.GetOrdinal("Descuento")),
             Fiscal                  = r.GetString(r.GetOrdinal("Fiscal")),
         };
 
