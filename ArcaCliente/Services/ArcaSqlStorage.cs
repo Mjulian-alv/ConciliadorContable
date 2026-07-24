@@ -21,7 +21,19 @@ namespace ArcaCliente.Services
         public static void InitializeDatabase()
         {
             using var cn = Open();
-            Execute(cn, ArcaSqlSchema.Ddl);
+            try
+            {
+                Execute(cn, ArcaSqlSchema.Ddl);
+            }
+            catch (SqlException ex) when (ex.Number == 2714)
+            {
+                // Ventana de carrera entre el chequeo IF OBJECT_ID(...) IS NULL y el
+                // CREATE TABLE: dos instancias de ArcaCliente abriendo el modulo por
+                // primera vez casi simultaneamente contra un schema arca recien
+                // provisionado pueden pasar ambas el chequeo antes de que la otra
+                // confirme el CREATE. El objeto ya existe (creado por el proceso
+                // concurrente) => no-op.
+            }
         }
 
         // ── Perfiles Offline ──────────────────────────────────────────────────────
@@ -74,6 +86,14 @@ namespace ArcaCliente.Services
             return list;
         }
 
+        // NOTA - riesgo de lost update: este patron (DELETE de toda la tabla + reinsert
+        // de la lista completa en memoria del llamador, en una sola transaccion) era
+        // seguro bajo SQLite por-estacion (un unico escritor por construccion). Contra
+        // la base SQL Server compartida, si dos estaciones guardan casi al mismo tiempo,
+        // el segundo Save pisa en silencio los cambios del primero con una lista stale.
+        // No se resuelve aca (requeriria concurrencia optimista real: columna de
+        // version/rowversion, o upserts por fila en lugar de delete-all+reinsert).
+        // Mismo riesgo aplica a SavePerfilesFiscales y SaveEquivalencias mas abajo.
         public static void SavePerfilesOffline(List<PerfilOffline> perfiles)
         {
             using var cn = Open();
@@ -166,6 +186,7 @@ namespace ArcaCliente.Services
             return list;
         }
 
+        // NOTA - riesgo de lost update: ver comentario en SavePerfilesOffline.
         public static void SavePerfilesFiscales(List<PerfilFiscal> perfiles)
         {
             using var cn = Open();
@@ -226,6 +247,7 @@ namespace ArcaCliente.Services
             return list;
         }
 
+        // NOTA - riesgo de lost update: ver comentario en SavePerfilesOffline.
         public static void SaveEquivalencias(IEnumerable<EquivalenciaTipoComprobante> items)
         {
             using var cn = Open();
