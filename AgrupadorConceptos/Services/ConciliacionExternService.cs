@@ -231,8 +231,8 @@ namespace AgrupadorConceptos.Services
             {
                 var candidatos = pendientesExtracto
                     .Where(m => !conciliadosExtracto.Contains(m.Id)
-                             && FechasIguales(ext.Fecha, m.Fecha)
-                             && ImportesIguales(ext.Importe, m))
+                             && ComparadorConciliacion.FechasIguales(ext.Fecha, m.Fecha)
+                             && ComparadorConciliacion.ImportesIguales(ext.Importe, m))
                     .ToList();
 
                 if (candidatos.Count == 1)
@@ -259,7 +259,7 @@ namespace AgrupadorConceptos.Services
             {
                 var candidatos = pendientes2
                     .Where(m => !conciliadosExtracto.Contains(m.Id)
-                             && ImportesIguales(ext.Importe, m))
+                             && ComparadorConciliacion.ImportesIguales(ext.Importe, m))
                     .ToList();
 
                 if (candidatos.Count == 1)
@@ -277,25 +277,7 @@ namespace AgrupadorConceptos.Services
             return (totalConciliados, duplicados);
         }
 
-        // ── Helpers ───────────────────────────────────────────────────────────────
-
-        private static bool FechasIguales(string fechaExt, string fechaExtracto)
-        {
-            if (string.IsNullOrWhiteSpace(fechaExt) || string.IsNullOrWhiteSpace(fechaExtracto))
-                return false;
-
-            string[] formatos = { "dd/MM/yyyy", "yyyy-MM-dd", "d/M/yyyy", "MM/dd/yyyy", "dd-MM-yyyy" };
-            if (DateTime.TryParseExact(fechaExt.Trim(),     formatos, CultureInfo.InvariantCulture, DateTimeStyles.None, out var d1) &&
-                DateTime.TryParseExact(fechaExtracto.Trim(), formatos, CultureInfo.InvariantCulture, DateTimeStyles.None, out var d2))
-                return d1.Date == d2.Date;
-
-            return string.Equals(fechaExt.Trim(), fechaExtracto.Trim(), StringComparison.OrdinalIgnoreCase);
-        }
-
-        public static decimal ImporteEfectivo(MovimientoProcesado m) =>
-            m.Debitos != 0 ? Math.Abs(m.Debitos) : Math.Abs(m.Creditos);
-
-        private static bool ImportesIguales(decimal importeExt, MovimientoProcesado m) =>
-            Math.Abs(importeExt) == ImporteEfectivo(m);
+        // Los criterios de igualdad (fecha/importe) viven en ComparadorConciliacion,
+        // compartidos con el resaltado manual de ConciliacionExternForm.
     }
 }

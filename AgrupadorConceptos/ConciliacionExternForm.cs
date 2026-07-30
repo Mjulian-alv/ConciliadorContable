@@ -236,8 +236,8 @@ namespace AgrupadorConceptos
                 return;
             }
 
-            bool fechaMatch   = ConciliacionExternService_FechasIguales(_externoSeleccionado.Fecha, m.Fecha);
-            bool importeMatch = Math.Abs(_externoSeleccionado.Importe) == ConciliacionExternService.ImporteEfectivo(m);
+            bool fechaMatch   = ComparadorConciliacion.FechasIguales(_externoSeleccionado.Fecha, m.Fecha);
+            bool importeMatch = Math.Abs(_externoSeleccionado.Importe) == ComparadorConciliacion.ImporteEfectivo(m);
 
             if (fechaMatch && importeMatch)
                 e.RowElement.BackColor = Color.LightGreen;
@@ -258,8 +258,8 @@ namespace AgrupadorConceptos
             var movimiento = dgvExtractoPendiente.CurrentRow.DataBoundItem as MovimientoProcesado;
             if (movimiento == null) return;
 
-            bool fechaMatch   = ConciliacionExternService_FechasIguales(_externoSeleccionado.Fecha, movimiento.Fecha);
-            bool importeMatch = Math.Abs(_externoSeleccionado.Importe) == ConciliacionExternService.ImporteEfectivo(movimiento);
+            bool fechaMatch   = ComparadorConciliacion.FechasIguales(_externoSeleccionado.Fecha, movimiento.Fecha);
+            bool importeMatch = Math.Abs(_externoSeleccionado.Importe) == ComparadorConciliacion.ImporteEfectivo(movimiento);
             var tipoMatch = TipoMatch.Manual; //(fechaMatch && importeMatch) ? TipoMatch.FechaImporte : TipoMatch.SoloImporte;
 
             ConciliacionExternService.ConciliarPar(
@@ -327,7 +327,7 @@ namespace AgrupadorConceptos
             foreach (var x in pendExt)
             { wsPend.Cell(rp,1).Value="Externo"; wsPend.Cell(rp,2).Value=x.Fecha; wsPend.Cell(rp,3).Value=(double)x.Importe; wsPend.Cell(rp,4).Value=x.Detalle; rp++; }
             foreach (var m in pendExtr)
-            { wsPend.Cell(rp,1).Value="Extracto"; wsPend.Cell(rp,2).Value=m.Fecha; wsPend.Cell(rp,3).Value=(double)ConciliacionExternService.ImporteEfectivo(m); wsPend.Cell(rp,4).Value=m.ConceptoFinal; rp++; }
+            { wsPend.Cell(rp,1).Value="Extracto"; wsPend.Cell(rp,2).Value=m.Fecha; wsPend.Cell(rp,3).Value=(double)ComparadorConciliacion.ImporteEfectivo(m); wsPend.Cell(rp,4).Value=m.ConceptoFinal; rp++; }
 
             wb.SaveAs(dlg.FileName);
             MessageBox.Show("Exportado correctamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -480,17 +480,6 @@ namespace AgrupadorConceptos
             if (decimal.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var v)) return Math.Abs(v);
             if (decimal.TryParse(s, NumberStyles.Any, new CultureInfo("es-AR"), out v)) return Math.Abs(v);
             return 0;
-        }
-
-        // Expuesto para uso en la clase sin acceso al servicio interno
-        private static bool ConciliacionExternService_FechasIguales(string a, string b)
-        {
-            if (string.IsNullOrWhiteSpace(a) || string.IsNullOrWhiteSpace(b)) return false;
-            string[] fmts = { "dd/MM/yyyy", "yyyy-MM-dd", "d/M/yyyy", "MM/dd/yyyy" };
-            if (DateTime.TryParseExact(a.Trim(), fmts, CultureInfo.InvariantCulture, DateTimeStyles.None, out var d1) &&
-                DateTime.TryParseExact(b.Trim(), fmts, CultureInfo.InvariantCulture, DateTimeStyles.None, out var d2))
-                return d1.Date == d2.Date;
-            return string.Equals(a.Trim(), b.Trim(), StringComparison.OrdinalIgnoreCase);
         }
     }
 }

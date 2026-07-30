@@ -56,7 +56,7 @@ namespace AgrupadorConceptos
             {
                 m.Id,
                 m.Fecha,
-                Importe = ConciliacionExternService.ImporteEfectivo(m),
+                Importe = ComparadorConciliacion.ImporteEfectivo(m),
                 m.ConceptoFinal
             });
             dgv.DataSource = display;

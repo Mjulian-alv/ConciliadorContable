@@ -8,6 +8,7 @@ using ExcelDataReader;
 using Dapper;
 using AgrupadorConceptos.Models;
 using AgrupadorConceptos.Data;
+using AgrupadorConceptos.Services;
 using Telerik.WinControls.UI;
 using System.Drawing;
 using ClosedXML.Excel;
@@ -150,28 +151,6 @@ namespace AgrupadorConceptos
             CargarPerfiles();
         }
 
-        private void AplicarHomologacionALineas(MovimientoProcesado mov, PerfilBanco perfil, Dictionary<string, string> dicHomologacion)
-        {
-            string valorABuscar = perfil.EsCodigo ? mov.ConceptoOriginal : mov.DescripcionOriginal;
-            if (perfil.EsCodigo)
-            {
-                if (dicHomologacion.TryGetValue(valorABuscar, out string homologado))
-                {
-                    mov.ConceptoEstandar = homologado;
-                    mov.ConceptoFinal = string.IsNullOrWhiteSpace(mov.ConceptoFinal) || mov.ConceptoFinal == "Pendiente Homologar" ? homologado : mov.ConceptoFinal;
-                }
-            }
-            else
-            {
-                var match = dicHomologacion.FirstOrDefault(d => valorABuscar.IndexOf(d.Key, StringComparison.OrdinalIgnoreCase) >= 0);
-                if (match.Key != null)
-                {
-                    mov.ConceptoEstandar = match.Value;
-                    mov.ConceptoFinal = string.IsNullOrWhiteSpace(mov.ConceptoFinal) || mov.ConceptoFinal == "Pendiente Homologar" ? match.Value : mov.ConceptoFinal;
-                }
-            }
-        }
-
         private void btnCargarSesion_Click(object sender, EventArgs e)
         {
             if (cmbArchivos.SelectedItem is ArchivoImportado archivo && cboPerfiles.SelectedItem is PerfilBanco perfil)
@@ -195,9 +174,9 @@ namespace AgrupadorConceptos
                     {
                         foreach (var mov in movs)
                         {
-                            if (mov.ConceptoEstandar == "Pendiente Homologar")
+                            if (mov.ConceptoEstandar == ConceptosBancarios.PendienteHomologar)
                             {
-                                AplicarHomologacionALineas(mov, perfil, dicHomologacion);
+                                HomologacionMatcher.AplicarA(mov, perfil.EsCodigo, dicHomologacion);
                                 connection.Execute("UPDATE bancos.MovimientosArchivo SET ConceptoEstandar = @ConceptoEstandar, ConceptoFinal = @ConceptoFinal WHERE Id = @Id", mov, tx);
                             }
                         }
@@ -229,8 +208,8 @@ namespace AgrupadorConceptos
                         {
                             if (mov.ConceptoEstandar == conceptoStandard)
                             {
-                                mov.ConceptoEstandar = "Pendiente Homologar";
-                                mov.ConceptoFinal = "Pendiente Homologar";
+                                mov.ConceptoEstandar = ConceptosBancarios.PendienteHomologar;
+                                mov.ConceptoFinal = ConceptosBancarios.PendienteHomologar;
                                 connection.Execute("UPDATE bancos.MovimientosArchivo SET ConceptoEstandar = @ConceptoEstandar, ConceptoFinal = @ConceptoFinal WHERE Id = @Id", mov, tx);
                             }
                         }
@@ -320,7 +299,7 @@ namespace AgrupadorConceptos
         {
             if (movs == null) return;
             int total = movs.Count;
-            int homologados = movs.Count(m => m.ConceptoEstandar != "Pendiente Homologar");
+            int homologados = movs.Count(m => m.ConceptoEstandar != ConceptosBancarios.PendienteHomologar);
             int pendientes = total - homologados;
             lblTotalRegistros.Text = $"Registros leídos: {total}   |   Homologados: {homologados}   |   Pendientes: {pendientes}";
         }
@@ -334,7 +313,7 @@ namespace AgrupadorConceptos
                 return;
             }
 
-            var pendientes = movimientos.Count(m => string.IsNullOrWhiteSpace(m.ConceptoFinal) || m.ConceptoFinal == "Pendiente Homologar");
+            var pendientes = movimientos.Count(m => ConceptosBancarios.EstaPendiente(m.ConceptoFinal));
             if (pendientes > 0)
             {
                 var r = MessageBox.Show($"Hay {pendientes} movimientos sin homologar. ¿Desea continuar con la exportación ignorando estos registros?", "Advertencia", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
@@ -342,7 +321,7 @@ namespace AgrupadorConceptos
             }
 
             var consolidado = movimientos
-                .Where(m => !string.IsNullOrWhiteSpace(m.ConceptoFinal) && m.ConceptoFinal != "Pendiente Homologar")
+                .Where(m => !ConceptosBancarios.EstaPendiente(m.ConceptoFinal))
                 .GroupBy(m => m.ConceptoFinal)
                 .Select(g => new {
                     Concepto = g.Key,
@@ -476,7 +455,7 @@ namespace AgrupadorConceptos
             var movInfo = (MovimientoProcesado)dgvDatos.CurrentRow.DataBoundItem;
             bool reemplazapornuevo = false;
             string conceptopareemplazar = "";
-            if (movInfo.ConceptoEstandar != "Pendiente Homologar")
+            if (movInfo.ConceptoEstandar != ConceptosBancarios.PendienteHomologar)
             {
                 var diag = MessageBox.Show($"El movimiento ya se encuentra homologado como '{movInfo.ConceptoEstandar}'. ¿Desea crear una nueva homologación para la descripción/concepto '{movInfo.ConceptoOriginal}'?", "Aviso", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                 if (diag != DialogResult.Yes) return;
@@ -617,17 +596,10 @@ namespace AgrupadorConceptos
                             creditos = haber;
                         }
 
-                        string conceptoEstandar = "Pendiente Homologar";
                         string valorABuscar = perfil.EsCodigo ? concepto : descripcion;
-                        if (perfil.EsCodigo)
-                        {
-                            if (dicHomologacion.TryGetValue(valorABuscar, out string hom)) conceptoEstandar = hom;
-                        }
-                        else
-                        {
-                            var match = dicHomologacion.FirstOrDefault(d => valorABuscar.IndexOf(d.Key, StringComparison.OrdinalIgnoreCase) >= 0);
-                            if (match.Key != null) conceptoEstandar = match.Value;
-                        }
+                        string conceptoEstandar =
+                            HomologacionMatcher.Resolver(dicHomologacion, valorABuscar, perfil.EsCodigo)
+                            ?? ConceptosBancarios.PendienteHomologar;
 
                         movimientos.Add(new MovimientoProcesado
                         {
@@ -637,7 +609,7 @@ namespace AgrupadorConceptos
                             Debitos             = debitos,
                             Creditos            = creditos,
                             ConceptoEstandar    = conceptoEstandar,
-                            ConceptoFinal       = conceptoEstandar == "Pendiente Homologar" ? "" : conceptoEstandar,
+                            ConceptoFinal       = conceptoEstandar == ConceptosBancarios.PendienteHomologar ? "" : conceptoEstandar,
                             IdArchivo           = idArchivo
                         });
                     }

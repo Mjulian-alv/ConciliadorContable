@@ -4,6 +4,7 @@ using System.Linq;
 using System.Windows.Forms;
 using AgrupadorConceptos.Models;
 using AgrupadorConceptos.Data;
+using AgrupadorConceptos.Services;
 using Dapper;
 using Telerik.WinControls.UI;
 
@@ -37,7 +38,7 @@ namespace AgrupadorConceptos
         private void CargarDatos()
         {
             var pendientesAgrupados = _movimientos
-                .Where(m => m.ConceptoEstandar == "Pendiente Homologar")
+                .Where(m => m.ConceptoEstandar == ConceptosBancarios.PendienteHomologar)
                 .GroupBy(m => new { m.ConceptoOriginal, m.DescripcionOriginal })
                 .Select(g => new
                 {
@@ -89,35 +90,16 @@ namespace AgrupadorConceptos
             using (var connection = DatabaseHelper.GetConnection())
             {
                 var dicHomologacion = connection.Query(@"
-                    SELECT h.ValorOriginal, c.Nombre as ConceptoEstandar 
+                    SELECT h.ValorOriginal, c.Nombre as ConceptoEstandar
                     FROM bancos.HomologacionConceptos h
                     INNER JOIN bancos.ConceptosEstandar c ON h.IdConceptoEstandar = c.Id
-                    WHERE h.IdPerfilBanco = @IdPerfil", new { IdPerfil = _idPerfil })
+                    WHERE h.IdPerfilBanco = @IdPerfil ORDER BY c.Nombre DESC", new { IdPerfil = _idPerfil })
                     .ToDictionary(x => (string)x.ValorOriginal, x => (string)x.ConceptoEstandar, StringComparer.OrdinalIgnoreCase);
 
                 foreach (var mov in _movimientos)
                 {
-                    if (mov.ConceptoEstandar == "Pendiente Homologar")
-                    {
-                        string valorABuscar = _esCodigo ? mov.ConceptoOriginal : mov.DescripcionOriginal;
-                        if (_esCodigo)
-                        {
-                            if (dicHomologacion.TryGetValue(valorABuscar, out string homologado))
-                            {
-                                mov.ConceptoEstandar = homologado;
-                                mov.ConceptoFinal = string.IsNullOrWhiteSpace(mov.ConceptoFinal) || mov.ConceptoFinal == "Pendiente Homologar" ? homologado : mov.ConceptoFinal;
-                            }
-                        }
-                        else
-                        {
-                            var match = dicHomologacion.FirstOrDefault(d => valorABuscar.IndexOf(d.Key, StringComparison.OrdinalIgnoreCase) >= 0);
-                            if (match.Key != null)
-                            {
-                                mov.ConceptoEstandar = match.Value;
-                                mov.ConceptoFinal = string.IsNullOrWhiteSpace(mov.ConceptoFinal) || mov.ConceptoFinal == "Pendiente Homologar" ? match.Value : mov.ConceptoFinal;
-                            }
-                        }
-                    }
+                    if (mov.ConceptoEstandar == ConceptosBancarios.PendienteHomologar)
+                        HomologacionMatcher.AplicarA(mov, _esCodigo, dicHomologacion);
                 }
             }
         }
