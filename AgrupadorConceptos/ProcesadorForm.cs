@@ -187,7 +187,7 @@ namespace AgrupadorConceptos
                         SELECT h.ValorOriginal, c.Nombre as ConceptoEstandar
                         FROM bancos.HomologacionConceptos h
                         INNER JOIN bancos.ConceptosEstandar c ON h.IdConceptoEstandar = c.Id
-                        WHERE h.IdPerfilBanco = @IdPerfil", new { IdPerfil = perfil.Id })
+                        WHERE h.IdPerfilBanco = @IdPerfil ORDER BY c.nombre desc", new { IdPerfil = perfil.Id })
                         .ToDictionary(x => (string)x.ValorOriginal, x => (string)x.ConceptoEstandar, StringComparer.OrdinalIgnoreCase);
 
                     // Una sola transacción para todos los UPDATE, por el mismo motivo que en la importación.
@@ -212,7 +212,34 @@ namespace AgrupadorConceptos
                 }
             }
         }
+        private void marcarComoPendiente(string conceptoStandard)
+        {
+            if (cmbArchivos.SelectedItem is ArchivoImportado archivo && cboPerfiles.SelectedItem is PerfilBanco perfil)
+            {
+                // Aplicar mapeos nuevamente por si algo cambió en la configuración de homologaciones (opcional)
+                using (var connection = DatabaseHelper.GetConnection())
+                {
+                    connection.Open();
 
+                    List<MovimientoProcesado> movs = connection.Query<MovimientoProcesado>("SELECT * FROM bancos.MovimientosArchivo WHERE IdArchivo = @IdArchivo", new { IdArchivo = archivo.Id }).ToList();
+                    // Una sola transacción para todos los UPDATE, por el mismo motivo que en la importación.
+                    using (var tx = connection.BeginTransaction())
+                    {
+                        foreach (var mov in movs)
+                        {
+                            if (mov.ConceptoEstandar == conceptoStandard)
+                            {
+                                mov.ConceptoEstandar = "Pendiente Homologar";
+                                mov.ConceptoFinal = "Pendiente Homologar";
+                                connection.Execute("UPDATE bancos.MovimientosArchivo SET ConceptoEstandar = @ConceptoEstandar, ConceptoFinal = @ConceptoFinal WHERE Id = @Id", mov, tx);
+                            }
+                        }
+                        tx.Commit();
+                    }
+
+                }
+            }
+        }
         private void btnBorrarSesion_Click(object sender, EventArgs e)
         {
             if (cmbArchivos.SelectedItem is ArchivoImportado archivo)
@@ -447,10 +474,15 @@ namespace AgrupadorConceptos
             }
 
             var movInfo = (MovimientoProcesado)dgvDatos.CurrentRow.DataBoundItem;
+            bool reemplazapornuevo = false;
+            string conceptopareemplazar = "";
             if (movInfo.ConceptoEstandar != "Pendiente Homologar")
             {
                 var diag = MessageBox.Show($"El movimiento ya se encuentra homologado como '{movInfo.ConceptoEstandar}'. ¿Desea crear una nueva homologación para la descripción/concepto '{movInfo.ConceptoOriginal}'?", "Aviso", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                 if (diag != DialogResult.Yes) return;
+                reemplazapornuevo = true;
+                conceptopareemplazar = movInfo.ConceptoEstandar;
+
             }
 
             var perfil = (PerfilBanco)cboPerfiles.SelectedItem;
@@ -461,7 +493,13 @@ namespace AgrupadorConceptos
 
             if (frmHomologar.HomologacionExitosa)
             {
+                if (reemplazapornuevo)
+                {
+                    marcarComoPendiente(conceptopareemplazar);
+                }
                 btnCargarSesion_Click(null, null); // Recargar la sesión desde DB
+                
+
             }
         }
 
@@ -524,7 +562,7 @@ namespace AgrupadorConceptos
                     SELECT h.ValorOriginal, c.Nombre as ConceptoEstandar
                     FROM bancos.HomologacionConceptos h
                     INNER JOIN bancos.ConceptosEstandar c ON h.IdConceptoEstandar = c.Id
-                    WHERE h.IdPerfilBanco = @IdPerfil", new { IdPerfil = perfil.Id })
+                    WHERE h.IdPerfilBanco = @IdPerfil ORDER BY c.nombre desc", new { IdPerfil = perfil.Id })
                     .ToDictionary(x => (string)x.ValorOriginal, x => (string)x.ConceptoEstandar, StringComparer.OrdinalIgnoreCase);
 
                 swParseo.Start();

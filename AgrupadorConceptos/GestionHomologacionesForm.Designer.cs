@@ -15,40 +15,55 @@ namespace AgrupadorConceptos
 
         private void InitializeComponent()
         {
-            this.dgvHomologaciones = new Telerik.WinControls.UI.RadGridView();
-            this.btnEliminar = new System.Windows.Forms.Button();
-            ((System.ComponentModel.ISupportInitialize)(this.dgvHomologaciones)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.dgvHomologaciones.MasterTemplate)).BeginInit();
-            this.SuspendLayout();
-            
+            Telerik.WinControls.UI.TableViewDefinition tableViewDefinition1 = new Telerik.WinControls.UI.TableViewDefinition();
+            dgvHomologaciones = new Telerik.WinControls.UI.RadGridView();
+            btnEliminar = new System.Windows.Forms.Button();
+            ((System.ComponentModel.ISupportInitialize)dgvHomologaciones).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)dgvHomologaciones.MasterTemplate).BeginInit();
+            SuspendLayout();
+            // 
             // dgvHomologaciones
-            this.dgvHomologaciones.Location = new System.Drawing.Point(12, 12);
-            this.dgvHomologaciones.Name = "dgvHomologaciones";
-            this.dgvHomologaciones.ReadOnly = true;
-            this.dgvHomologaciones.Size = new System.Drawing.Size(660, 300);
-            this.dgvHomologaciones.MasterTemplate.AutoSizeColumnsMode = Telerik.WinControls.UI.GridViewAutoSizeColumnsMode.Fill;
-            this.dgvHomologaciones.MasterTemplate.AllowAddNewRow = false;
-            this.dgvHomologaciones.MasterTemplate.AllowDeleteRow = false;
-            this.dgvHomologaciones.MasterTemplate.AllowEditRow = false;
-
+            // 
+            dgvHomologaciones.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            dgvHomologaciones.EnableCustomFiltering = true;
+            dgvHomologaciones.Location = new System.Drawing.Point(12, 12);
+            // 
+            // 
+            // 
+            dgvHomologaciones.MasterTemplate.AllowAddNewRow = false;
+            dgvHomologaciones.MasterTemplate.AllowDeleteRow = false;
+            dgvHomologaciones.MasterTemplate.AllowEditRow = false;
+            dgvHomologaciones.MasterTemplate.AutoSizeColumnsMode = Telerik.WinControls.UI.GridViewAutoSizeColumnsMode.Fill;
+            dgvHomologaciones.MasterTemplate.EnableCustomFiltering = true;
+            dgvHomologaciones.MasterTemplate.EnableFiltering = true;
+            dgvHomologaciones.MasterTemplate.ViewDefinition = tableViewDefinition1;
+            dgvHomologaciones.Name = "dgvHomologaciones";
+            dgvHomologaciones.ReadOnly = true;
+            dgvHomologaciones.Size = new System.Drawing.Size(660, 300);
+            dgvHomologaciones.TabIndex = 1;
+            // 
             // btnEliminar
-            this.btnEliminar.Location = new System.Drawing.Point(12, 320);
-            this.btnEliminar.Name = "btnEliminar";
-            this.btnEliminar.Size = new System.Drawing.Size(150, 30);
-            this.btnEliminar.Text = "Eliminar Seleccionada";
-            this.btnEliminar.UseVisualStyleBackColor = true;
-            this.btnEliminar.Click += new System.EventHandler(this.btnEliminar_Click);
-
+            // 
+            btnEliminar.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left;
+            btnEliminar.Location = new System.Drawing.Point(12, 320);
+            btnEliminar.Name = "btnEliminar";
+            btnEliminar.Size = new System.Drawing.Size(150, 30);
+            btnEliminar.TabIndex = 0;
+            btnEliminar.Text = "Eliminar Seleccionada";
+            btnEliminar.UseVisualStyleBackColor = true;
+            btnEliminar.Click += btnEliminar_Click;
+            // 
             // GestionHomologacionesForm
-            this.ClientSize = new System.Drawing.Size(684, 361);
-            this.Controls.Add(this.btnEliminar);
-            this.Controls.Add(this.dgvHomologaciones);
-            this.Name = "GestionHomologacionesForm";
-            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.Text = "Gestión de Homologaciones";
-            ((System.ComponentModel.ISupportInitialize)(this.dgvHomologaciones.MasterTemplate)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.dgvHomologaciones)).EndInit();
-            this.ResumeLayout(false);
+            // 
+            ClientSize = new System.Drawing.Size(684, 361);
+            Controls.Add(btnEliminar);
+            Controls.Add(dgvHomologaciones);
+            Name = "GestionHomologacionesForm";
+            StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
+            Text = "Gestión de Homologaciones";
+            ((System.ComponentModel.ISupportInitialize)dgvHomologaciones.MasterTemplate).EndInit();
+            ((System.ComponentModel.ISupportInitialize)dgvHomologaciones).EndInit();
+            ResumeLayout(false);
         }
 
         private Telerik.WinControls.UI.RadGridView dgvHomologaciones;

@@ -13,7 +13,7 @@ namespace AgrupadorConceptos
         private string _valorOriginal;
 
         public bool HomologacionExitosa { get; private set; } = false;
-
+        public string sConcepto { get; private set; } = "";
         public HomologarForm(int idPerfilBanco, string valorOriginal)
         {
             InitializeComponent();
@@ -87,6 +87,7 @@ namespace AgrupadorConceptos
                         new { IdPerfilBanco = _idPerfilBanco, ValorOriginal = valorClave, IdConceptoEstandar = idConceptoEstandar });
 
                     HomologacionExitosa = true;
+                    sConcepto = conceptoEstandarTexto;
                     this.Close();
                 }
             }

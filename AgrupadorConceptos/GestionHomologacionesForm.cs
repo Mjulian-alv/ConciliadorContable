@@ -39,7 +39,10 @@ namespace AgrupadorConceptos
                 int id = (int)rowData.Id;
                 using (var cn = DatabaseHelper.GetConnection())
                 {
+                    cn.Open();
                     cn.Execute("DELETE FROM bancos.HomologacionConceptos WHERE Id = @Id", new { Id = id });
+
+                    cn.Close();
                 }
                 CargarDatos();
             }
