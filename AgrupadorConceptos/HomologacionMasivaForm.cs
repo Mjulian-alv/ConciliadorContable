@@ -5,7 +5,6 @@ using System.Windows.Forms;
 using AgrupadorConceptos.Models;
 using AgrupadorConceptos.Data;
 using AgrupadorConceptos.Services;
-using Dapper;
 using Telerik.WinControls.UI;
 
 namespace AgrupadorConceptos
@@ -87,20 +86,12 @@ namespace AgrupadorConceptos
 
         private void AplicarMapeos()
         {
-            using (var connection = DatabaseHelper.GetConnection())
-            {
-                var dicHomologacion = connection.Query(@"
-                    SELECT h.ValorOriginal, c.Nombre as ConceptoEstandar
-                    FROM bancos.HomologacionConceptos h
-                    INNER JOIN bancos.ConceptosEstandar c ON h.IdConceptoEstandar = c.Id
-                    WHERE h.IdPerfilBanco = @IdPerfil ORDER BY c.Nombre DESC", new { IdPerfil = _idPerfil })
-                    .ToDictionary(x => (string)x.ValorOriginal, x => (string)x.ConceptoEstandar, StringComparer.OrdinalIgnoreCase);
+            var dicHomologacion = HomologacionStorage.ObtenerDiccionario(_idPerfil);
 
-                foreach (var mov in _movimientos)
-                {
-                    if (mov.ConceptoEstandar == ConceptosBancarios.PendienteHomologar)
-                        HomologacionMatcher.AplicarA(mov, _esCodigo, dicHomologacion);
-                }
+            foreach (var mov in _movimientos)
+            {
+                if (mov.ConceptoEstandar == ConceptosBancarios.PendienteHomologar)
+                    HomologacionMatcher.AplicarA(mov, _esCodigo, dicHomologacion);
             }
         }
     }

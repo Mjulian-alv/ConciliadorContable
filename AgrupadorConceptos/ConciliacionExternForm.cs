@@ -10,7 +10,6 @@ using AgrupadorConceptos.Data;
 using AgrupadorConceptos.Models;
 using AgrupadorConceptos.Services;
 using ClosedXML.Excel;
-using Dapper;
 using ExcelDataReader;
 using Telerik.WinControls.UI;
 using Telerik.WinControls;
@@ -51,10 +50,7 @@ namespace AgrupadorConceptos
 
         private void CargarArchivosEnPanel()
         {
-            using var cn = DatabaseHelper.GetConnection();
-            cn.Open();
-            _archivosDisponibles = cn.Query<ArchivoImportado>(
-                "SELECT * FROM bancos.ArchivosImportados ORDER BY Fecha DESC").ToList();
+            _archivosDisponibles = ArchivoImportadoStorage.ObtenerTodos();
 
             clbArchivos.Items.Clear();
             foreach (var a in _archivosDisponibles)
@@ -68,13 +64,7 @@ namespace AgrupadorConceptos
             if (seleccionados.Count == 0) return;
 
             var ids = seleccionados.Select(a => a.Id).ToList();
-            using var cn = DatabaseHelper.GetConnection();
-            cn.Open();
-            var conceptos = cn.Query<string>(
-                $@"SELECT DISTINCT ConceptoFinal FROM bancos.MovimientosArchivo
-                   WHERE IdArchivo IN ({string.Join(",", ids)})
-                     AND ConceptoFinal IS NOT NULL AND ConceptoFinal <> ''
-                   ORDER BY ConceptoFinal").ToList();
+            var conceptos = MovimientoStorage.ObtenerConceptosFinalesDistintos(ids);
 
             foreach (var c in conceptos)
                 clbConceptos.Items.Add(c, false);

@@ -5,7 +5,6 @@ using System.Linq;
 using System.IO;
 using System.Windows.Forms;
 using ExcelDataReader;
-using Dapper;
 using AgrupadorConceptos.Models;
 using AgrupadorConceptos.Data;
 using AgrupadorConceptos.Services;
@@ -69,25 +68,21 @@ namespace AgrupadorConceptos
         {
             try
             {
-                using (var connection = DatabaseHelper.GetConnection())
+                var perfiles = PerfilBancoStorage.ObtenerTodos();
+
+                var selectedId = cboPerfiles.SelectedValue;
+                cboPerfiles.SelectedIndexChanged -= CboPerfiles_SelectedIndexChanged;
+
+                cboPerfiles.DataSource = perfiles;
+                cboPerfiles.DisplayMember = "NombreBanco";
+                cboPerfiles.ValueMember = "Id";
+
+                if (selectedId != null && perfiles.Any(p => p.Id == (int)selectedId))
                 {
-                    connection.Open();
-                    var perfiles = connection.Query<PerfilBanco>("SELECT * FROM bancos.PerfilesBanco").ToList();
-                    
-                    var selectedId = cboPerfiles.SelectedValue;
-                    cboPerfiles.SelectedIndexChanged -= CboPerfiles_SelectedIndexChanged;
-                    
-                    cboPerfiles.DataSource = perfiles;
-                    cboPerfiles.DisplayMember = "NombreBanco";
-                    cboPerfiles.ValueMember = "Id";
-
-                    if (selectedId != null && perfiles.Any(p => p.Id == (int)selectedId))
-                    {
-                        cboPerfiles.SelectedValue = selectedId;
-                    }
-
-                    cboPerfiles.SelectedIndexChanged += CboPerfiles_SelectedIndexChanged;
+                    cboPerfiles.SelectedValue = selectedId;
                 }
+
+                cboPerfiles.SelectedIndexChanged += CboPerfiles_SelectedIndexChanged;
             }
             catch (Exception ex)
             {
@@ -105,19 +100,16 @@ namespace AgrupadorConceptos
         {
             if (cboPerfiles.SelectedItem is PerfilBanco perfil)
             {
-                using (var connection = DatabaseHelper.GetConnection())
-                {
-                    var archivos = connection.Query<ArchivoImportado>("SELECT * FROM bancos.ArchivosImportados WHERE IdPerfilBanco = @IdPerfilBanco ORDER BY Fecha DESC", new { IdPerfilBanco = perfil.Id }).ToList();
-                    
-                    var selectedId = cmbArchivos.SelectedValue;
-                    cmbArchivos.DataSource = archivos;
-                    cmbArchivos.DisplayMember = "DisplayName";
-                    cmbArchivos.ValueMember = "Id";
+                var archivos = ArchivoImportadoStorage.ObtenerPorPerfil(perfil.Id);
 
-                    if (selectedId != null && archivos.Any(a => a.Id == (int)selectedId))
-                    {
-                        cmbArchivos.SelectedValue = selectedId;
-                    }
+                var selectedId = cmbArchivos.SelectedValue;
+                cmbArchivos.DataSource = archivos;
+                cmbArchivos.DisplayMember = "DisplayName";
+                cmbArchivos.ValueMember = "Id";
+
+                if (selectedId != null && archivos.Any(a => a.Id == (int)selectedId))
+                {
+                    cmbArchivos.SelectedValue = selectedId;
                 }
             }
             else
@@ -155,68 +147,45 @@ namespace AgrupadorConceptos
         {
             if (cmbArchivos.SelectedItem is ArchivoImportado archivo && cboPerfiles.SelectedItem is PerfilBanco perfil)
             {
-                // Aplicar mapeos nuevamente por si algo cambió en la configuración de homologaciones (opcional)
-                using (var connection = DatabaseHelper.GetConnection())
+                // Aplicar mapeos nuevamente por si algo cambió en la configuración de homologaciones
+                var movs = MovimientoStorage.ObtenerPorArchivo(archivo.Id);
+                var dicHomologacion = HomologacionStorage.ObtenerDiccionario(perfil.Id);
+
+                var rehomologados = new List<MovimientoProcesado>();
+                foreach (var mov in movs)
                 {
-                    connection.Open();
-
-                    List<MovimientoProcesado> movs = connection.Query<MovimientoProcesado>("SELECT * FROM bancos.MovimientosArchivo WHERE IdArchivo = @IdArchivo", new { IdArchivo = archivo.Id }).ToList();
-
-                    var dicHomologacion = connection.Query(@"
-                        SELECT h.ValorOriginal, c.Nombre as ConceptoEstandar
-                        FROM bancos.HomologacionConceptos h
-                        INNER JOIN bancos.ConceptosEstandar c ON h.IdConceptoEstandar = c.Id
-                        WHERE h.IdPerfilBanco = @IdPerfil ORDER BY c.nombre desc", new { IdPerfil = perfil.Id })
-                        .ToDictionary(x => (string)x.ValorOriginal, x => (string)x.ConceptoEstandar, StringComparer.OrdinalIgnoreCase);
-
-                    // Una sola transacción para todos los UPDATE, por el mismo motivo que en la importación.
-                    using (var tx = connection.BeginTransaction())
+                    if (mov.ConceptoEstandar == ConceptosBancarios.PendienteHomologar)
                     {
-                        foreach (var mov in movs)
-                        {
-                            if (mov.ConceptoEstandar == ConceptosBancarios.PendienteHomologar)
-                            {
-                                HomologacionMatcher.AplicarA(mov, perfil.EsCodigo, dicHomologacion);
-                                connection.Execute("UPDATE bancos.MovimientosArchivo SET ConceptoEstandar = @ConceptoEstandar, ConceptoFinal = @ConceptoFinal WHERE Id = @Id", mov, tx);
-                            }
-                        }
-                        tx.Commit();
+                        HomologacionMatcher.AplicarA(mov, perfil.EsCodigo, dicHomologacion);
+                        rehomologados.Add(mov);
                     }
-
-                    dgvDatos.DataSource = null;
-                    dgvDatos.DataSource = movs;
-                    ConfigurarGrilla();
-
-                    ActualizarResumen(movs);
                 }
+                MovimientoStorage.ActualizarConceptos(rehomologados);
+
+                dgvDatos.DataSource = null;
+                dgvDatos.DataSource = movs;
+                ConfigurarGrilla();
+
+                ActualizarResumen(movs);
             }
         }
         private void marcarComoPendiente(string conceptoStandard)
         {
-            if (cmbArchivos.SelectedItem is ArchivoImportado archivo && cboPerfiles.SelectedItem is PerfilBanco perfil)
+            if (cmbArchivos.SelectedItem is ArchivoImportado archivo && cboPerfiles.SelectedItem is PerfilBanco)
             {
-                // Aplicar mapeos nuevamente por si algo cambió en la configuración de homologaciones (opcional)
-                using (var connection = DatabaseHelper.GetConnection())
+                var movs = MovimientoStorage.ObtenerPorArchivo(archivo.Id);
+
+                var vueltosAPendiente = new List<MovimientoProcesado>();
+                foreach (var mov in movs)
                 {
-                    connection.Open();
-
-                    List<MovimientoProcesado> movs = connection.Query<MovimientoProcesado>("SELECT * FROM bancos.MovimientosArchivo WHERE IdArchivo = @IdArchivo", new { IdArchivo = archivo.Id }).ToList();
-                    // Una sola transacción para todos los UPDATE, por el mismo motivo que en la importación.
-                    using (var tx = connection.BeginTransaction())
+                    if (mov.ConceptoEstandar == conceptoStandard)
                     {
-                        foreach (var mov in movs)
-                        {
-                            if (mov.ConceptoEstandar == conceptoStandard)
-                            {
-                                mov.ConceptoEstandar = ConceptosBancarios.PendienteHomologar;
-                                mov.ConceptoFinal = ConceptosBancarios.PendienteHomologar;
-                                connection.Execute("UPDATE bancos.MovimientosArchivo SET ConceptoEstandar = @ConceptoEstandar, ConceptoFinal = @ConceptoFinal WHERE Id = @Id", mov, tx);
-                            }
-                        }
-                        tx.Commit();
+                        mov.ConceptoEstandar = ConceptosBancarios.PendienteHomologar;
+                        mov.ConceptoFinal = ConceptosBancarios.PendienteHomologar;
+                        vueltosAPendiente.Add(mov);
                     }
-
                 }
+                MovimientoStorage.ActualizarConceptos(vueltosAPendiente);
             }
         }
         private void btnBorrarSesion_Click(object sender, EventArgs e)
@@ -225,20 +194,17 @@ namespace AgrupadorConceptos
             {
                 if (MessageBox.Show($"¿Desea borrar el archivo {archivo.NombreArchivo} y todos sus movimientos?", "Confirmar", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                 {
-                    using (var connection = DatabaseHelper.GetConnection())
+                    try
                     {
-                        try
-                        {
-                            connection.Execute("DELETE FROM bancos.ArchivosImportados WHERE Id = @Id", new { Id = archivo.Id });
-                        }
-                        catch (Microsoft.Data.SqlClient.SqlException)
-                        {
-                            MessageBox.Show("No se puede borrar: el archivo tiene sesiones de conciliación asociadas.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                            return;
-                        }
-                        CargarArchivosDelPerfil();
-                        dgvDatos.DataSource = null;
+                        ArchivoImportadoStorage.Eliminar(archivo.Id);
                     }
+                    catch (Microsoft.Data.SqlClient.SqlException)
+                    {
+                        MessageBox.Show("No se puede borrar: el archivo tiene sesiones de conciliación asociadas.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                    CargarArchivosDelPerfil();
+                    dgvDatos.DataSource = null;
                 }
             }
         }
@@ -279,10 +245,7 @@ namespace AgrupadorConceptos
         {
             if (e.Column.Name == "ConceptoFinal" && e.Row.DataBoundItem is MovimientoProcesado mov)
             {
-                using (var connection = DatabaseHelper.GetConnection())
-                {
-                    connection.Execute("UPDATE bancos.MovimientosArchivo SET ConceptoFinal = @ConceptoFinal WHERE Id = @Id", new { ConceptoFinal = mov.ConceptoFinal, Id = mov.Id });
-                }
+                MovimientoStorage.ActualizarConceptoFinal(mov.Id, mov.ConceptoFinal);
             }
         }
 
@@ -524,25 +487,16 @@ namespace AgrupadorConceptos
                 this.Invoke(() => PB_Importar.Value1 = 10);
 
                 using var stream = File.Open(filePath, FileMode.Open, FileAccess.Read);
-                using var connection = DatabaseHelper.GetConnection();
-                connection.Open();
 
                 // Insertar registro del archivo
                 string nombreArchivo = Path.GetFileName(filePath);
-                int idArchivo = connection.QuerySingle<int>(
-                    "INSERT INTO bancos.ArchivosImportados (IdPerfilBanco, NombreArchivo, Fecha) OUTPUT INSERTED.Id VALUES (@IdPerfil, @Nombre, @Fecha);",
-                    new { IdPerfil = perfil.Id, Nombre = nombreArchivo, Fecha = DateTime.Now });
+                int idArchivo = ArchivoImportadoStorage.Insertar(perfil.Id, nombreArchivo, DateTime.Now);
 
                 // Step 1: Homologando
                 AvanzarStep(1);
                 this.Invoke(() => PB_Importar.Value1 = 30);
 
-                var dicHomologacion = connection.Query(@"
-                    SELECT h.ValorOriginal, c.Nombre as ConceptoEstandar
-                    FROM bancos.HomologacionConceptos h
-                    INNER JOIN bancos.ConceptosEstandar c ON h.IdConceptoEstandar = c.Id
-                    WHERE h.IdPerfilBanco = @IdPerfil ORDER BY c.nombre desc", new { IdPerfil = perfil.Id })
-                    .ToDictionary(x => (string)x.ValorOriginal, x => (string)x.ConceptoEstandar, StringComparer.OrdinalIgnoreCase);
+                var dicHomologacion = HomologacionStorage.ObtenerDiccionario(perfil.Id);
 
                 swParseo.Start();
                 string ext = Path.GetExtension(filePath).ToLowerInvariant();
@@ -627,32 +581,18 @@ namespace AgrupadorConceptos
                     SPB_Importar.Steps[2].SecondHeader = $"0 / {total}";
                 });
 
-                int guardados = 0;
-                // Una sola transacción para todo el lote: sin esto cada INSERT commitea
-                // por separado y espera un fsync de disco por fila.
-                using (var tx = connection.BeginTransaction())
+                MovimientoStorage.InsertarLote(movimientos, (guardados, cantidad) =>
                 {
-                    foreach (var mov in movimientos)
-                    {
-                        mov.Id = connection.QuerySingle<int>(@"
-                            INSERT INTO bancos.MovimientosArchivo (IdArchivo, Fecha, ConceptoOriginal, DescripcionOriginal, Debitos, Creditos, ConceptoEstandar, ConceptoFinal)
-                            OUTPUT INSERTED.Id
-                            VALUES (@IdArchivo, @Fecha, @ConceptoOriginal, @DescripcionOriginal, @Debitos, @Creditos, @ConceptoEstandar, @ConceptoFinal);", mov, tx);
+                    // Actualizar cada 500 registros (o el último) para no saturar la UI
+                    if (guardados % 500 != 0 && guardados != cantidad) return;
 
-                        guardados++;
-                        // Actualizar cada 500 registros (o el último) para no saturar la UI
-                        if (guardados % 500 == 0 || guardados == total)
-                        {
-                            int pbValue = 65 + (int)(20.0 * guardados / total); // de 65 a 85
-                            this.Invoke(() =>
-                            {
-                                PB_Importar.Value1 = pbValue;
-                                SPB_Importar.Steps[2].SecondHeader = $"{guardados} / {total}";
-                            });
-                        }
-                    }
-                    tx.Commit();
-                }
+                    int pbValue = 65 + (int)(20.0 * guardados / cantidad); // de 65 a 85
+                    this.Invoke(() =>
+                    {
+                        PB_Importar.Value1 = pbValue;
+                        SPB_Importar.Steps[2].SecondHeader = $"{guardados} / {cantidad}";
+                    });
+                });
                 swGuardado.Stop();
                 Debug.WriteLine($"[Importar] {total} movs | parseo {swParseo.ElapsedMilliseconds} ms | guardado {swGuardado.ElapsedMilliseconds} ms | total {swTotal.ElapsedMilliseconds} ms");
 

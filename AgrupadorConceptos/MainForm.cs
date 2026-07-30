@@ -3,7 +3,6 @@ using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using ExcelDataReader;
-using Dapper;
 using AgrupadorConceptos.Models;
 using AgrupadorConceptos.Data;
 
@@ -34,53 +33,49 @@ namespace AgrupadorConceptos
         {
             try
             {
-                using (var connection = DatabaseHelper.GetConnection())
+                var perfil = PerfilBancoStorage.ObtenerPorId(idPerfil);
+                if (perfil != null)
                 {
-                    connection.Open();
-                    var perfil = connection.QueryFirstOrDefault<PerfilBanco>("SELECT * FROM bancos.PerfilesBanco WHERE Id = @Id", new { Id = idPerfil });
-                    if (perfil != null)
+                    txtBanco.Text = perfil.NombreBanco;
+                    numFilaEncabezado.Value = perfil.FilaEncabezado;
+                    chkEsCodigo.Checked = perfil.EsCodigo;
+                    radImporteUnico.Checked = perfil.TipoImporte == 1;
+                    radDebeHaber.Checked = perfil.TipoImporte == 2;
+
+                    cmbColumnaConcepto.Items.Add(perfil.ColumnaConcepto);
+                    cmbColumnaConcepto.SelectedItem = perfil.ColumnaConcepto;
+
+                    if (!string.IsNullOrEmpty(perfil.ColumnaDescripcion))
                     {
-                        txtBanco.Text = perfil.NombreBanco;
-                        numFilaEncabezado.Value = perfil.FilaEncabezado;
-                        chkEsCodigo.Checked = perfil.EsCodigo;
-                        radImporteUnico.Checked = perfil.TipoImporte == 1;
-                        radDebeHaber.Checked = perfil.TipoImporte == 2;
-                        
-                        cmbColumnaConcepto.Items.Add(perfil.ColumnaConcepto);
-                        cmbColumnaConcepto.SelectedItem = perfil.ColumnaConcepto;
-
-                        if (!string.IsNullOrEmpty(perfil.ColumnaDescripcion))
-                        {
-                            cmbColumnaDescripcion.Items.Add(perfil.ColumnaDescripcion);
-                            cmbColumnaDescripcion.SelectedItem = perfil.ColumnaDescripcion;
-                        }
-
-                        if (!string.IsNullOrEmpty(perfil.ColumnaImporteUnico))
-                        {
-                            cmbImporteUnico.Items.Add(perfil.ColumnaImporteUnico);
-                            cmbImporteUnico.SelectedItem = perfil.ColumnaImporteUnico;
-                        }
-
-                        if (!string.IsNullOrEmpty(perfil.ColumnaDebe))
-                        {
-                            cmbColumnaDebe.Items.Add(perfil.ColumnaDebe);
-                            cmbColumnaDebe.SelectedItem = perfil.ColumnaDebe;
-                        }
-
-                        if (!string.IsNullOrEmpty(perfil.ColumnaHaber))
-                        {
-                            cmbColumnaHaber.Items.Add(perfil.ColumnaHaber);
-                            cmbColumnaHaber.SelectedItem = perfil.ColumnaHaber;
-                        }
-
-                        if (!string.IsNullOrEmpty(perfil.ColumnaFecha))
-                        {
-                            cmbColumnaFecha.Items.Add(perfil.ColumnaFecha);
-                            cmbColumnaFecha.SelectedItem = perfil.ColumnaFecha;
-                        }
-
-                        lblArchivoExcel.Text = "Cargue un excel para ver todas las columnas.";
+                        cmbColumnaDescripcion.Items.Add(perfil.ColumnaDescripcion);
+                        cmbColumnaDescripcion.SelectedItem = perfil.ColumnaDescripcion;
                     }
+
+                    if (!string.IsNullOrEmpty(perfil.ColumnaImporteUnico))
+                    {
+                        cmbImporteUnico.Items.Add(perfil.ColumnaImporteUnico);
+                        cmbImporteUnico.SelectedItem = perfil.ColumnaImporteUnico;
+                    }
+
+                    if (!string.IsNullOrEmpty(perfil.ColumnaDebe))
+                    {
+                        cmbColumnaDebe.Items.Add(perfil.ColumnaDebe);
+                        cmbColumnaDebe.SelectedItem = perfil.ColumnaDebe;
+                    }
+
+                    if (!string.IsNullOrEmpty(perfil.ColumnaHaber))
+                    {
+                        cmbColumnaHaber.Items.Add(perfil.ColumnaHaber);
+                        cmbColumnaHaber.SelectedItem = perfil.ColumnaHaber;
+                    }
+
+                    if (!string.IsNullOrEmpty(perfil.ColumnaFecha))
+                    {
+                        cmbColumnaFecha.Items.Add(perfil.ColumnaFecha);
+                        cmbColumnaFecha.SelectedItem = perfil.ColumnaFecha;
+                    }
+
+                    lblArchivoExcel.Text = "Cargue un excel para ver todas las columnas.";
                 }
             }
             catch (Exception ex)
@@ -199,33 +194,10 @@ namespace AgrupadorConceptos
 
             try
             {
-                using (var connection = DatabaseHelper.GetConnection())
-                {
-                    connection.Open();
-                    
-                    if (_idPerfilEditar.HasValue)
-                    {
-                        string sql = @"
-                            UPDATE bancos.PerfilesBanco
-                            SET NombreBanco = @NombreBanco, ColumnaConcepto = @ColumnaConcepto,
-                                ColumnaDescripcion = @ColumnaDescripcion, EsCodigo = @EsCodigo, 
-                                FilaEncabezado = @FilaEncabezado, TipoImporte = @TipoImporte, 
-                                ColumnaImporteUnico = @ColumnaImporteUnico, ColumnaDebe = @ColumnaDebe, 
-                                ColumnaHaber = @ColumnaHaber, ColumnaFecha = @ColumnaFecha
-                            WHERE Id = @Id";
-                        connection.Execute(sql, perfil);
-                    }
-                    else
-                    {
-                        string sql = @"
-                            INSERT INTO bancos.PerfilesBanco
-                            (NombreBanco, ColumnaConcepto, ColumnaDescripcion, EsCodigo, FilaEncabezado, TipoImporte, ColumnaImporteUnico, ColumnaDebe, ColumnaHaber, ColumnaFecha)
-                            VALUES 
-                            (@NombreBanco, @ColumnaConcepto, @ColumnaDescripcion, @EsCodigo, @FilaEncabezado, @TipoImporte, @ColumnaImporteUnico, @ColumnaDebe, @ColumnaHaber, @ColumnaFecha)";
-                        
-                        connection.Execute(sql, perfil);
-                    }
-                }
+                if (_idPerfilEditar.HasValue)
+                    PerfilBancoStorage.Actualizar(perfil);
+                else
+                    PerfilBancoStorage.Insertar(perfil);
 
                 MessageBox.Show("Perfil guardado correctamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 this.Close(); // Cerramos al guardar para volver al menú principal

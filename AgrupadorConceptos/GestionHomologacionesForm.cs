@@ -1,9 +1,7 @@
 using System;
-using System.Linq;
 using System.Windows.Forms;
-using Dapper;
 using AgrupadorConceptos.Data;
-using Telerik.WinControls.UI;
+using AgrupadorConceptos.Models;
 
 namespace AgrupadorConceptos
 {
@@ -18,32 +16,15 @@ namespace AgrupadorConceptos
 
         private void CargarDatos()
         {
-            using (var cn = DatabaseHelper.GetConnection())
-            {
-                var data = cn.Query(@"
-                    SELECT h.Id, p.NombreBanco as Banco, h.ValorOriginal, c.Nombre as ConceptoEstandar
-                    FROM bancos.HomologacionConceptos h
-                    JOIN bancos.PerfilesBanco p ON h.IdPerfilBanco = p.Id
-                    JOIN bancos.ConceptosEstandar c ON h.IdConceptoEstandar = c.Id
-                ").ToList();
-                dgvHomologaciones.DataSource = null;
-                dgvHomologaciones.DataSource = data;
-            }
+            dgvHomologaciones.DataSource = null;
+            dgvHomologaciones.DataSource = HomologacionStorage.ObtenerListado();
         }
-        
+
         private void btnEliminar_Click(object sender, EventArgs e)
         {
-            if (dgvHomologaciones.CurrentRow != null)
+            if (dgvHomologaciones.CurrentRow?.DataBoundItem is HomologacionListado fila)
             {
-                var rowData = (dynamic)dgvHomologaciones.CurrentRow.DataBoundItem;
-                int id = (int)rowData.Id;
-                using (var cn = DatabaseHelper.GetConnection())
-                {
-                    cn.Open();
-                    cn.Execute("DELETE FROM bancos.HomologacionConceptos WHERE Id = @Id", new { Id = id });
-
-                    cn.Close();
-                }
+                HomologacionStorage.Eliminar(fila.Id);
                 CargarDatos();
             }
             else

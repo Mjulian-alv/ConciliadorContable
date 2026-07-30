@@ -22,6 +22,18 @@ namespace AgrupadorConceptos.Data
         }
 
         /// <summary>
+        /// Igual que <see cref="GetConnection"/> pero ya abierta. Es lo que necesitan
+        /// los *Storage en casi todos sus métodos; existe para no repetir el
+        /// GetConnection()+Open() en cada uno.
+        /// </summary>
+        public static SqlConnection Open()
+        {
+            var cn = GetConnection();
+            cn.Open();
+            return cn;
+        }
+
+        /// <summary>
         /// Crea schema/tablas/índices si no existen. Run-once por proceso:
         /// idempotente gracias al flag _inicializada.
         /// </summary>
