@@ -1,16 +1,12 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.IO;
 using System.Windows.Forms;
-using ExcelDataReader;
 using AgrupadorConceptos.Models;
 using AgrupadorConceptos.Data;
 using AgrupadorConceptos.Services;
 using Telerik.WinControls.UI;
 using System.Drawing;
-using ClosedXML.Excel;
 using System.Threading;
 
 namespace AgrupadorConceptos
@@ -147,20 +143,7 @@ namespace AgrupadorConceptos
         {
             if (cmbArchivos.SelectedItem is ArchivoImportado archivo && cboPerfiles.SelectedItem is PerfilBanco perfil)
             {
-                // Aplicar mapeos nuevamente por si algo cambió en la configuración de homologaciones
-                var movs = MovimientoStorage.ObtenerPorArchivo(archivo.Id);
-                var dicHomologacion = HomologacionStorage.ObtenerDiccionario(perfil.Id);
-
-                var rehomologados = new List<MovimientoProcesado>();
-                foreach (var mov in movs)
-                {
-                    if (mov.ConceptoEstandar == ConceptosBancarios.PendienteHomologar)
-                    {
-                        HomologacionMatcher.AplicarA(mov, perfil.EsCodigo, dicHomologacion);
-                        rehomologados.Add(mov);
-                    }
-                }
-                MovimientoStorage.ActualizarConceptos(rehomologados);
+                var movs = SesionMovimientosService.RehomologarPendientes(archivo.Id, perfil);
 
                 dgvDatos.DataSource = null;
                 dgvDatos.DataSource = movs;
@@ -169,23 +152,12 @@ namespace AgrupadorConceptos
                 ActualizarResumen(movs);
             }
         }
+
         private void marcarComoPendiente(string conceptoStandard)
         {
             if (cmbArchivos.SelectedItem is ArchivoImportado archivo && cboPerfiles.SelectedItem is PerfilBanco)
             {
-                var movs = MovimientoStorage.ObtenerPorArchivo(archivo.Id);
-
-                var vueltosAPendiente = new List<MovimientoProcesado>();
-                foreach (var mov in movs)
-                {
-                    if (mov.ConceptoEstandar == conceptoStandard)
-                    {
-                        mov.ConceptoEstandar = ConceptosBancarios.PendienteHomologar;
-                        mov.ConceptoFinal = ConceptosBancarios.PendienteHomologar;
-                        vueltosAPendiente.Add(mov);
-                    }
-                }
-                MovimientoStorage.ActualizarConceptos(vueltosAPendiente);
+                SesionMovimientosService.MarcarComoPendiente(archivo.Id, conceptoStandard);
             }
         }
         private void btnBorrarSesion_Click(object sender, EventArgs e)
@@ -276,24 +248,14 @@ namespace AgrupadorConceptos
                 return;
             }
 
-            var pendientes = movimientos.Count(m => ConceptosBancarios.EstaPendiente(m.ConceptoFinal));
+            var pendientes = ConsolidadoExporter.ContarPendientes(movimientos);
             if (pendientes > 0)
             {
                 var r = MessageBox.Show($"Hay {pendientes} movimientos sin homologar. ¿Desea continuar con la exportación ignorando estos registros?", "Advertencia", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
                 if (r != DialogResult.Yes) return;
             }
 
-            var consolidado = movimientos
-                .Where(m => !ConceptosBancarios.EstaPendiente(m.ConceptoFinal))
-                .GroupBy(m => m.ConceptoFinal)
-                .Select(g => new {
-                    Concepto = g.Key,
-                    Debitos = Math.Abs(Math.Round(g.Sum(x => x.Debitos), 2)),
-                    Creditos = Math.Round(g.Sum(x => x.Creditos), 2),
-                    Saldo = Math.Round(g.Sum(x => x.Creditos)- Math.Abs(g.Sum(x => x.Debitos)), 2)
-                })
-                .OrderBy(x => x.Concepto)
-                .ToList();
+            var consolidado = ConsolidadoExporter.Calcular(movimientos);
 
             using (SaveFileDialog sfd = new SaveFileDialog { Filter = "Archivos de Excel (*.xlsx)|*.xlsx", FileName = "Consolidado.xlsx" })
             {
@@ -301,55 +263,8 @@ namespace AgrupadorConceptos
                 {
                     try
                     {
-                        using var wb = new XLWorkbook();
-                        var ws = wb.Worksheets.Add("Consolidado");
-
-                        // Título y fecha (opcional, como en arcacliente)
-                        ws.Cell(1, 1).Value = $"Consolidado Bancario - {DateTime.Now:dd/MM/yyyy HH:mm} - {cmbArchivos.SelectedText}";
-                        ws.Cell(1, 1).Style.Font.Bold = true;
-                        ws.Cell(1, 1).Style.Font.FontSize = 12;
-                        ws.Range(1, 1, 1, 4).Merge();
-
-                        // Encabezados
-                        const int headerRow = 2;
-                        ws.Cell(headerRow, 1).Value = "Concepto Final";
-                        ws.Cell(headerRow, 2).Value = "Débitos";
-                        ws.Cell(headerRow, 3).Value = "Créditos";
-                        ws.Cell(headerRow, 4).Value = "Saldo";
-
-                        var hr = ws.Range(headerRow, 1, headerRow, 4);
-                        hr.Style.Font.Bold = true;
-                        hr.Style.Font.FontColor = XLColor.White;
-                        hr.Style.Fill.BackgroundColor = XLColor.FromArgb(50, 50, 50);
-                        hr.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                        hr.Style.Border.BottomBorder = XLBorderStyleValues.Medium;
-                        hr.Style.Border.BottomBorderColor = XLColor.Black;
-
-                        // Datos
-                        int row = headerRow + 1;
-                        foreach (var item in consolidado)
-                        {
-                            ws.Cell(row, 1).Value = item.Concepto;
-                            ws.Cell(row, 2).Value = item.Debitos;
-                            ws.Cell(row, 3).Value = item.Creditos;
-                            ws.Cell(row, 4).Value = item.Saldo;
-
-                            ws.Cell(row, 2).Style.NumberFormat.Format = "#,##0.00";
-                            ws.Cell(row, 3).Style.NumberFormat.Format = "#,##0.00";
-                            ws.Cell(row, 4).Style.NumberFormat.Format = "#,##0.00";
-
-                            row++;
-                        }
-
-                        // Formato final
-                        ws.Columns().AdjustToContents(1, row);
-                        ws.SheetView.Freeze(headerRow, 0);
-
-                        var dataRange = ws.Range(1, 1, row - 1, 4);
-                        dataRange.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
-                        dataRange.Style.Border.OutsideBorderColor = XLColor.Gray;
-
-                        wb.SaveAs(sfd.FileName);
+                        string titulo = $"Consolidado Bancario - {DateTime.Now:dd/MM/yyyy HH:mm} - {cmbArchivos.SelectedText}";
+                        ConsolidadoExporter.ExportarAExcel(consolidado, titulo, sfd.FileName);
                         MessageBox.Show("Consolidado exportado a Excel exitosamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                     catch (Exception ex)
@@ -445,22 +360,6 @@ namespace AgrupadorConceptos
             }
         }
 
-        private decimal ParsearDecimal(object valor)
-        {
-            if (valor == null) return 0m;
-            if (valor is double d) return (decimal)d;
-            if (valor is decimal dec) return dec;
-            if (valor is int i) return (decimal)i;
-            
-            string strValor = valor.ToString().Trim();
-            if (string.IsNullOrEmpty(strValor)) return 0m;
-
-            if (decimal.TryParse(strValor, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.CurrentCulture, out decimal res1)) return res1;
-            if (decimal.TryParse(strValor, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out decimal res2)) return res2;
-            
-            return 0m;
-        }
-
         private void AvanzarStep(int stepIndex)
         {
             this.Invoke(() =>
@@ -476,132 +375,15 @@ namespace AgrupadorConceptos
 
         private void ProcesarArchivoExcel(string filePath, PerfilBanco perfil, bool mostrarMensajeExito)
         {
-            var movimientos = new List<MovimientoProcesado>();
-            var swTotal = Stopwatch.StartNew();
-            var swParseo = new Stopwatch();
-            var swGuardado = new Stopwatch();
             try
             {
-                // Step 0: Leyendo Excel
-                AvanzarStep(0);
-                this.Invoke(() => PB_Importar.Value1 = 10);
-
-                using var stream = File.Open(filePath, FileMode.Open, FileAccess.Read);
-
-                // Insertar registro del archivo
-                string nombreArchivo = Path.GetFileName(filePath);
-                int idArchivo = ArchivoImportadoStorage.Insertar(perfil.Id, nombreArchivo, DateTime.Now);
-
-                // Step 1: Homologando
-                AvanzarStep(1);
-                this.Invoke(() => PB_Importar.Value1 = 30);
-
-                var dicHomologacion = HomologacionStorage.ObtenerDiccionario(perfil.Id);
-
-                swParseo.Start();
-                string ext = Path.GetExtension(filePath).ToLowerInvariant();
-                using var reader = ext == ".csv"
-                    ? ExcelReaderFactory.CreateCsvReader(stream)
-                    : ExcelReaderFactory.CreateReader(stream);
-
-                // Avanzar hasta la fila de encabezado
-                for (int i = 1; i < perfil.FilaEncabezado; i++)
-                    reader.Read();
-
-                if (reader.Read())
-                {
-                    var headers = new List<string>();
-                    for (int i = 0; i < reader.FieldCount; i++)
-                        headers.Add(reader.GetValue(i)?.ToString()?.Trim() ?? "");
-
-                    int idxConcepto     = headers.IndexOf(perfil.ColumnaConcepto ?? "");
-                    int idxDescripcion  = string.IsNullOrEmpty(perfil.ColumnaDescripcion) ? -1 : headers.IndexOf(perfil.ColumnaDescripcion);
-                    int idxFecha        = string.IsNullOrEmpty(perfil.ColumnaFecha) ? -1 : headers.IndexOf(perfil.ColumnaFecha);
-                    int idxImporteUnico = perfil.TipoImporte == 1 ? headers.IndexOf(perfil.ColumnaImporteUnico ?? "") : -1;
-                    int idxDebe         = perfil.TipoImporte == 2 ? headers.IndexOf(perfil.ColumnaDebe ?? "") : -1;
-                    int idxHaber        = perfil.TipoImporte == 2 ? headers.IndexOf(perfil.ColumnaHaber ?? "") : -1;
-
-                    if (idxConcepto == -1)
-                    {
-                        this.Invoke(() => MessageBox.Show("No se encontró la columna del concepto en la fila especificada (verifique el perfil y el archivo)."));
-                        return;
-                    }
-
-                    while (reader.Read())
-                    {
-                        string concepto    = reader.GetValue(idxConcepto)?.ToString() ?? "";
-                        string descripcion = idxDescripcion != -1 ? (reader.GetValue(idxDescripcion)?.ToString() ?? "") : concepto;
-                        string fecha       = idxFecha != -1 ? (reader.GetValue(idxFecha)?.ToString() ?? "") : "";
-
-                        if (string.IsNullOrWhiteSpace(concepto)) continue;
-
-                        decimal debitos = 0, creditos = 0;
-                        if (perfil.TipoImporte == 1 && idxImporteUnico != -1)
-                        {
-                            decimal importeUnico = ParsearDecimal(reader.GetValue(idxImporteUnico));
-                            if (importeUnico < 0) debitos = Math.Abs(importeUnico);
-                            else creditos = Math.Abs(importeUnico);
-                        }
-                        else if (perfil.TipoImporte == 2)
-                        {
-                            decimal debe  = idxDebe  != -1 ? ParsearDecimal(reader.GetValue(idxDebe))  : 0m;
-                            decimal haber = idxHaber != -1 ? ParsearDecimal(reader.GetValue(idxHaber)) : 0m;
-                            debitos  = debe > 0 ? -debe : debe;
-                            creditos = haber;
-                        }
-
-                        string valorABuscar = perfil.EsCodigo ? concepto : descripcion;
-                        string conceptoEstandar =
-                            HomologacionMatcher.Resolver(dicHomologacion, valorABuscar, perfil.EsCodigo)
-                            ?? ConceptosBancarios.PendienteHomologar;
-
-                        movimientos.Add(new MovimientoProcesado
-                        {
-                            ConceptoOriginal    = concepto,
-                            DescripcionOriginal = descripcion,
-                            Fecha               = fecha,
-                            Debitos             = debitos,
-                            Creditos            = creditos,
-                            ConceptoEstandar    = conceptoEstandar,
-                            ConceptoFinal       = conceptoEstandar == ConceptosBancarios.PendienteHomologar ? "" : conceptoEstandar,
-                            IdArchivo           = idArchivo
-                        });
-                    }
-                }
-
-                swParseo.Stop();
-
-                // Step 2: Guardando en DB
-                AvanzarStep(2);
-                swGuardado.Start();
-                int total = movimientos.Count;
-                this.Invoke(() =>
-                {
-                    PB_Importar.Value1 = 65;
-                    SPB_Importar.Steps[2].SecondHeader = $"0 / {total}";
-                });
-
-                MovimientoStorage.InsertarLote(movimientos, (guardados, cantidad) =>
-                {
-                    // Actualizar cada 500 registros (o el último) para no saturar la UI
-                    if (guardados % 500 != 0 && guardados != cantidad) return;
-
-                    int pbValue = 65 + (int)(20.0 * guardados / cantidad); // de 65 a 85
-                    this.Invoke(() =>
-                    {
-                        PB_Importar.Value1 = pbValue;
-                        SPB_Importar.Steps[2].SecondHeader = $"{guardados} / {cantidad}";
-                    });
-                });
-                swGuardado.Stop();
-                Debug.WriteLine($"[Importar] {total} movs | parseo {swParseo.ElapsedMilliseconds} ms | guardado {swGuardado.ElapsedMilliseconds} ms | total {swTotal.ElapsedMilliseconds} ms");
+                var movimientos = ImportacionService.ImportarArchivo(filePath, perfil, ReportarProgresoImportacion);
 
                 // Step 3: Mostrando datos
                 AvanzarStep(3);
-                this.Invoke(() => PB_Importar.Value1 = 90);
-
                 this.Invoke(() =>
                 {
+                    PB_Importar.Value1 = 90;
                     CargarArchivosDelPerfil();
                     dgvDatos.DataSource = null;
                     dgvDatos.DataSource = movimientos;
@@ -618,6 +400,49 @@ namespace AgrupadorConceptos
             catch (Exception ex)
             {
                 this.Invoke(() => MessageBox.Show($"Ocurrió un error al procesar el archivo Excel: {ex.Message}", "Error de Lectura", MessageBoxButtons.OK, MessageBoxIcon.Error));
+            }
+        }
+
+        /// <summary>
+        /// Traduce el avance que reporta ImportacionService a los steps de Telerik.
+        /// Corre en el hilo de background, así que todo toque de UI va por Invoke.
+        /// </summary>
+        private void ReportarProgresoImportacion(ProgresoImportacion p)
+        {
+            switch (p.Paso)
+            {
+                case ProgresoImportacion.PasoLeyendo:
+                    AvanzarStep(0);
+                    this.Invoke(() => PB_Importar.Value1 = 10);
+                    break;
+
+                case ProgresoImportacion.PasoHomologando:
+                    AvanzarStep(1);
+                    this.Invoke(() => PB_Importar.Value1 = 30);
+                    break;
+
+                case ProgresoImportacion.PasoGuardando:
+                    if (p.Guardados == 0)
+                    {
+                        AvanzarStep(2);
+                        this.Invoke(() =>
+                        {
+                            PB_Importar.Value1 = 65;
+                            SPB_Importar.Steps[2].SecondHeader = $"0 / {p.Total}";
+                        });
+                        break;
+                    }
+
+                    // Actualizar cada 500 registros (o el último) para no saturar la UI
+                    if (p.Guardados % 500 != 0 && p.Guardados != p.Total) break;
+
+                    int pbValue = 65 + (int)(20.0 * p.Guardados / p.Total); // de 65 a 85
+                    this.Invoke(() =>
+                    {
+                        PB_Importar.Value1 = pbValue;
+                        SPB_Importar.Steps[2].SecondHeader = $"{p.Guardados} / {p.Total}";
+                    });
+                    break;
             }
         }
     }

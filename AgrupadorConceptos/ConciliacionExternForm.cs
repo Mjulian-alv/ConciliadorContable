@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -10,7 +9,6 @@ using AgrupadorConceptos.Data;
 using AgrupadorConceptos.Models;
 using AgrupadorConceptos.Services;
 using ClosedXML.Excel;
-using ExcelDataReader;
 using Telerik.WinControls.UI;
 using Telerik.WinControls;
 
@@ -385,91 +383,15 @@ namespace AgrupadorConceptos
 
         private List<ConciliacionItemExterno> LeerArchivoExterno(string path)
         {
-            string ext = Path.GetExtension(path).ToLowerInvariant();
             try
             {
-                return ext == ".csv" ? LeerCsv(path) : LeerExcel(path);
+                return ArchivoExternoReader.Leer(path);
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Error al leer el archivo: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return null;
             }
-        }
-
-        private List<ConciliacionItemExterno> LeerExcel(string path)
-        {
-            var result = new List<ConciliacionItemExterno>();
-            using var stream = File.Open(path, FileMode.Open, FileAccess.Read);
-            using var reader = ExcelReaderFactory.CreateReader(stream);
-            var ds = reader.AsDataSet(new ExcelDataSetConfiguration
-            { ConfigureDataTable = _ => new ExcelDataTableConfiguration { UseHeaderRow = true } });
-
-            var table = ds.Tables[0];
-            int iF = BuscarColumna(table, "fecha");
-            int iI = BuscarColumna(table, "importe");
-            int iD = BuscarColumna(table, "concepto");
-
-            if (iF < 0 || iI < 0 || iD < 0)
-            { MessageBox.Show("El archivo debe tener columnas Fecha, Importe y Concepto.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error); return null; }
-
-            foreach (System.Data.DataRow row in table.Rows)
-            {
-                if (row[iI] == DBNull.Value) continue;
-                result.Add(new ConciliacionItemExterno
-                {
-                    Fecha   = row[iF]?.ToString()?.Trim(),
-                    Importe = ParseImporte(row[iI]?.ToString()),
-                    Detalle = row[iD]?.ToString()?.Trim()
-                });
-            }
-            return result;
-        }
-
-        private List<ConciliacionItemExterno> LeerCsv(string path)
-        {
-            var result = new List<ConciliacionItemExterno>();
-            var lines  = File.ReadAllLines(path);
-            if (lines.Length < 2) return result;
-
-            char sep = lines[0].Contains(';') ? ';' : ',';
-            var headers = lines[0].Split(sep);
-            int iF = BuscarColumnaArr(headers, "fecha");
-            int iI = BuscarColumnaArr(headers, "importe");
-            int iD = BuscarColumnaArr(headers, "concepto");
-
-            if (iF < 0 || iI < 0 || iD < 0)
-            { MessageBox.Show("El archivo CSV debe tener columnas Fecha, Importe y Concepto.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error); return null; }
-
-            for (int i = 1; i < lines.Length; i++)
-            {
-                var cols = lines[i].Split(sep);
-                if (cols.Length <= Math.Max(iF, Math.Max(iI, iD))) continue;
-                result.Add(new ConciliacionItemExterno
-                {
-                    Fecha   = cols[iF].Trim(),
-                    Importe = ParseImporte(cols[iI]),
-                    Detalle = cols[iD].Trim()
-                });
-            }
-            return result;
-        }
-
-        private static int BuscarColumna(System.Data.DataTable table, string nombre) =>
-            Enumerable.Range(0, table.Columns.Count)
-                .FirstOrDefault(i => table.Columns[i].ColumnName.Trim()
-                    .IndexOf(nombre, StringComparison.OrdinalIgnoreCase) >= 0, -1);
-
-        private static int BuscarColumnaArr(string[] headers, string nombre) =>
-            Array.FindIndex(headers, h => h.Trim().IndexOf(nombre, StringComparison.OrdinalIgnoreCase) >= 0);
-
-        private static decimal ParseImporte(string s)
-        {
-            if (string.IsNullOrWhiteSpace(s)) return 0;
-            s = s.Replace("$", "").Replace(" ", "").Trim();
-            if (decimal.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var v)) return Math.Abs(v);
-            if (decimal.TryParse(s, NumberStyles.Any, new CultureInfo("es-AR"), out v)) return Math.Abs(v);
-            return 0;
         }
     }
 }
