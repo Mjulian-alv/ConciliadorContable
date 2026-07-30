@@ -109,48 +109,54 @@ namespace AgrupadorConceptos.Services
 
         // ── Movimientos del extracto ──────────────────────────────────────────────
 
+        /// <summary>
+        /// Movimientos de los archivos de la sesión que todavía no se conciliaron,
+        /// restringidos a los conceptos que la sesión eligió conciliar.
+        /// </summary>
         public static List<MovimientoProcesado> ObtenerMovimientosPendientes(int idSesion)
         {
-            using var cn = DatabaseHelper.GetConnection();
-            cn.Open();
-
-            var sesion = cn.QuerySingle<ConciliacionSesion>(
-                "SELECT * FROM bancos.ConciliacionSesiones WHERE Id = @Id", new { Id = idSesion });
+            var (sesion, movimientosSinConciliar) = CargarMovimientosSinConciliar(idSesion);
 
             var conceptos = System.Text.Json.JsonSerializer.Deserialize<List<string>>(sesion.ConceptosJson)
                             ?? new List<string>();
 
-            var idsConciliados = cn.Query<int>(
-                "SELECT IdMovimientoProcesado FROM bancos.ConciliacionPares WHERE IdSesion = @Id",
-                new { Id = idSesion }).ToHashSet();
-
-            var ids = string.Join(",", sesion.IdsArchivos);
-            var todos = cn.Query<MovimientoProcesado>(
-                $"SELECT * FROM bancos.MovimientosArchivo WHERE IdArchivo IN ({ids})").ToList();
-
-            return todos
-                .Where(m => conceptos.Contains(m.ConceptoFinal, StringComparer.OrdinalIgnoreCase)
-                         && !idsConciliados.Contains(m.Id))
+            return movimientosSinConciliar
+                .Where(m => conceptos.Contains(m.ConceptoFinal, StringComparer.OrdinalIgnoreCase))
                 .ToList();
         }
 
+        /// <summary>
+        /// Igual que <see cref="ObtenerMovimientosPendientes"/> pero sin filtrar por
+        /// concepto: se usa en la conciliación manual, donde el usuario puede emparejar
+        /// contra cualquier movimiento del extracto.
+        /// </summary>
         public static List<MovimientoProcesado> ObtenerMovimientosSinConcepto(int idSesion)
         {
-            using var cn = DatabaseHelper.GetConnection();
-            cn.Open();
+            var (_, movimientosSinConciliar) = CargarMovimientosSinConciliar(idSesion);
+            return movimientosSinConciliar;
+        }
 
-            var sesion = cn.QuerySingle<ConciliacionSesion>(
-                "SELECT * FROM bancos.ConciliacionSesiones WHERE Id = @Id", new { Id = idSesion });
+        private static (ConciliacionSesion Sesion, List<MovimientoProcesado> SinConciliar)
+            CargarMovimientosSinConciliar(int idSesion)
+        {
+            ConciliacionSesion sesion;
+            HashSet<int> idsConciliados;
 
-            var idsConciliados = cn.Query<int>(
-                "SELECT IdMovimientoProcesado FROM bancos.ConciliacionPares WHERE IdSesion = @Id",
-                new { Id = idSesion }).ToHashSet();
+            using (var cn = DatabaseHelper.Open())
+            {
+                sesion = cn.QuerySingle<ConciliacionSesion>(
+                    "SELECT * FROM bancos.ConciliacionSesiones WHERE Id = @Id", new { Id = idSesion });
 
-            var ids = string.Join(",", sesion.IdsArchivos);
-            return cn.Query<MovimientoProcesado>(
-                $"SELECT * FROM bancos.MovimientosArchivo WHERE IdArchivo IN ({ids})")
+                idsConciliados = cn.Query<int>(
+                    "SELECT IdMovimientoProcesado FROM bancos.ConciliacionPares WHERE IdSesion = @Id",
+                    new { Id = idSesion }).ToHashSet();
+            }
+
+            var sinConciliar = MovimientoStorage.ObtenerPorArchivos(sesion.IdsArchivos)
                 .Where(m => !idsConciliados.Contains(m.Id))
                 .ToList();
+
+            return (sesion, sinConciliar);
         }
 
         // ── Pares conciliados ────────────────────────────────────────────────────
