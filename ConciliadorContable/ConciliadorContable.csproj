@@ -10,13 +10,22 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.7" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
+    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="3.53.3" />
     <PackageReference Include="UI.for.WinForms.AllControls.Net90" Version="2024.4.1113" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\ArcaCliente\ArcaCliente.csproj" />
     <ProjectReference Include="..\AgrupadorConceptos\AgrupadorConceptos.csproj" />
+  </ItemGroup>
+
+  <!-- secrets.config no se versiona: si no existe, no se copia y App.config
+       queda con Password=DEFINIR. appSettings file="secrets.config" lo resuelve
+       relativo al directorio de salida, por eso hay que copiarlo. -->
+  <ItemGroup>
+    <None Include="secrets.config" Condition="Exists('secrets.config')" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="secrets.config.example" CopyToOutputDirectory="Never" />
   </ItemGroup>
 
   <ProjectExtensions><VisualStudio><UserProperties ShouldAddDPIScalingManifest="" /></VisualStudio></ProjectExtensions>
