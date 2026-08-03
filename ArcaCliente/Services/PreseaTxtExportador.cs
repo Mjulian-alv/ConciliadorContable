@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Text;
 using ArcaCliente.Models;
 
 namespace ArcaCliente.Services
@@ -103,7 +102,7 @@ namespace ArcaCliente.Services
                 });
             }
 
-            File.WriteAllLines(ruta, filas, ObtenerEncoding(cfg.Encoding));
+            File.WriteAllLines(ruta, filas, TextParsingUtils.ObtenerEncoding(cfg.Encoding));
             PreseaExportMemoryStorage.RegistrarRange(registros);
 
             return filas.Count;
@@ -139,11 +138,5 @@ namespace ArcaCliente.Services
         private static string San1(string s) =>
             string.IsNullOrWhiteSpace(s) ? string.Empty : s.Trim().Substring(0, 1).ToUpperInvariant();
 
-        private static Encoding ObtenerEncoding(string nombre) =>
-            nombre?.ToUpperInvariant() switch
-            {
-                "LATIN-1" or "ISO-8859-1" or "LATIN1" => Encoding.Latin1,
-                _ => new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)
-            };
     }
 }

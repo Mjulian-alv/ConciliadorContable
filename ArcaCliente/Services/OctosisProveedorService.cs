@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Threading.Tasks;
+using static ArcaCliente.Services.DbHelpers;
 
 namespace ArcaCliente.Services
 {
@@ -79,12 +80,5 @@ namespace ArcaCliente.Services
             });
         }
 
-        private static void AddParameter(IDbCommand cmd, string name, object value)
-        {
-            var p = cmd.CreateParameter();
-            p.ParameterName = name;
-            p.Value         = value;
-            cmd.Parameters.Add(p);
-        }
     }
 }

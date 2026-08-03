@@ -1,5 +1,3 @@
-using System.Linq;
-
 namespace ArcaCliente.Services
 {
     /// <summary>
@@ -19,19 +17,16 @@ namespace ArcaCliente.Services
         /// </summary>
         public static string Generar(string cuit, string tipoCmp, string ptoVta, string nro)
         {
-            string c  = SoloDigitos(cuit);
+            string c  = TextParsingUtils.SoloDigitos(cuit);
             string t  = NormalizarNumero(tipoCmp);
             string pv = NormalizarNumero(ptoVta);
             string n  = NormalizarNumero(nro);
             return $"{c}|{t}|{pv}|{n}";
         }
 
-        private static string SoloDigitos(string s) =>
-            string.IsNullOrEmpty(s) ? string.Empty : new string(s.Where(char.IsDigit).ToArray());
-
         private static string NormalizarNumero(string s)
         {
-            string d = SoloDigitos(s).TrimStart('0');
+            string d = TextParsingUtils.SoloDigitos(s).TrimStart('0');
             return d.Length == 0 ? "0" : d;
         }
     }

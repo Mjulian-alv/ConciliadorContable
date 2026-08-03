@@ -2,6 +2,7 @@ using System;
 using System.Data;
 using System.Threading.Tasks;
 using ArcaCliente.Models;
+using static ArcaCliente.Services.DbHelpers;
 
 namespace ArcaCliente.Services
 {
@@ -419,12 +420,5 @@ namespace ArcaCliente.Services
         private static string FormatoHoraAuditoria(DateTime d) =>
             d.ToString("HH:mm:ss");
 
-        private static void AddParameter(IDbCommand cmd, string name, object? value)
-        {
-            var p = cmd.CreateParameter();
-            p.ParameterName = name;
-            p.Value         = value ?? DBNull.Value;
-            cmd.Parameters.Add(p);
-        }
     }
 }

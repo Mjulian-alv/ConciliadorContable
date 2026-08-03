@@ -63,7 +63,7 @@ namespace ArcaCliente.Services
             foreach (var row in tabla.Filas)
             {
                 nroFila++;
-                string cuit = SoloDigitos(Get(row, colCuit));
+                string cuit = TextParsingUtils.SoloDigitos(Get(row, colCuit));
                 if (cuit.Length == 0) { sinCuit++; continue; }
 
                 list.Add(new ConfigPreseaProveedor
@@ -102,9 +102,6 @@ namespace ArcaCliente.Services
             string.IsNullOrEmpty(col) ? string.Empty
             : row.TryGetValue(col, out var v) ? (v ?? string.Empty).Trim()
             : string.Empty;
-
-        private static string SoloDigitos(string s) =>
-            string.IsNullOrEmpty(s) ? string.Empty : new string(s.Where(char.IsDigit).ToArray());
 
         private static decimal ParseDec(string s, NumberFormatInfo nfi)
         {

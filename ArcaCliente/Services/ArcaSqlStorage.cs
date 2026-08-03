@@ -285,7 +285,7 @@ namespace ArcaCliente.Services
 
         public static ConfigPreseaProveedor GetPreseaProveedor(string cuit)
         {
-            string key = SoloDigitos(cuit);
+            string key = TextParsingUtils.SoloDigitos(cuit);
             using var cn = Open();
             using var cmd = cn.CreateCommand();
             cmd.CommandText = "SELECT * FROM arca.PreseaProveedores WHERE Cuit = @cuit";
@@ -325,7 +325,7 @@ namespace ArcaCliente.Services
                     (Cuit, Nombre, CodigoProveedor, CuentaContableProveedor, CuentaDebe, Centro, Provincia, Condicion, Descuento, Fiscal)
                     VALUES (@Cuit, @Nombre, @CodigoProveedor, @CuentaContableProveedor, @CuentaDebe, @Centro, @Provincia, @Condicion, @Descuento, @Fiscal);";
 
-            cmd.Parameters.AddWithValue("@Cuit",                    SoloDigitos(p.Cuit));
+            cmd.Parameters.AddWithValue("@Cuit",                    TextParsingUtils.SoloDigitos(p.Cuit));
             cmd.Parameters.AddWithValue("@Nombre",                  p.Nombre ?? "");
             cmd.Parameters.AddWithValue("@CodigoProveedor",         p.CodigoProveedor ?? "");
             cmd.Parameters.AddWithValue("@CuentaContableProveedor", p.CuentaContableProveedor ?? "");
@@ -493,9 +493,6 @@ namespace ArcaCliente.Services
             int ord = r.GetOrdinal(col);
             return r.IsDBNull(ord) ? null : r.GetString(ord);
         }
-
-        private static string SoloDigitos(string? s) =>
-            string.IsNullOrEmpty(s) ? string.Empty : new string(System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Where(s, char.IsDigit)));
 
         private static T? Deserialize<T>(string? json) where T : class
         {

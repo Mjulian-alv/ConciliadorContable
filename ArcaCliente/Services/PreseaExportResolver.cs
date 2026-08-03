@@ -21,7 +21,7 @@ namespace ArcaCliente.Services
                 var csv = item.SourceArca;
 
                 string cuitRaw = !string.IsNullOrWhiteSpace(csv?.NroDocEmisor) ? csv.NroDocEmisor : item.CuitProveedor;
-                string cuit = SoloDigitos(cuitRaw);
+                string cuit = TextParsingUtils.SoloDigitos(cuitRaw);
                 string tipo = !string.IsNullOrWhiteSpace(csv?.TipoComprobante) ? csv.TipoComprobante : item.TipoComprobante;
                 string pv   = !string.IsNullOrWhiteSpace(csv?.PuntoVenta) ? csv.PuntoVenta : item.PuntoVenta;
                 string nro  = !string.IsNullOrWhiteSpace(csv?.NumeroDesde) ? csv.NumeroDesde : item.Numero;
@@ -71,8 +71,5 @@ namespace ArcaCliente.Services
 
         private static string Coalesce(string preferido, string fallback) =>
             !string.IsNullOrWhiteSpace(preferido) ? preferido.Trim() : (fallback ?? string.Empty).Trim();
-
-        private static string SoloDigitos(string s) =>
-            string.IsNullOrEmpty(s) ? string.Empty : new string(s.Where(char.IsDigit).ToArray());
     }
 }

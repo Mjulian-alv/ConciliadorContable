@@ -124,13 +124,13 @@ namespace ArcaCliente.Services
                 return resultado;
 
             var separador = headerLine.Contains(';') ? ';' : ',';
-            var headers = SplitLine(headerLine, separador);
+            var headers = TextParsingUtils.SplitLine(headerLine, separador).ToArray();
 
             // Construir mapa: índice de columna ? nombre de propiedad
             var colMap = new Dictionary<int, string>();
             for (int i = 0; i < headers.Length; i++)
             {
-                var h = NormalizarEncabezado(headers[i]);
+                var h = TextParsingUtils.NormalizarEncabezado(headers[i]);
                 if (_headerMap.TryGetValue(h, out var propName))
                     colMap[i] = propName;
             }
@@ -139,7 +139,7 @@ namespace ArcaCliente.Services
             while ((line = stringReader.ReadLine()) != null)
             {
                 if (string.IsNullOrWhiteSpace(line)) continue;
-                var values = SplitLine(line, separador);
+                var values = TextParsingUtils.SplitLine(line, separador).ToArray();
                 resultado.Add(MapearFila(values, colMap));
             }
 
@@ -182,53 +182,6 @@ namespace ArcaCliente.Services
             }
 
             return comp;
-        }
-
-        /// <summary>
-        /// Normaliza un encabezado: minúsculas, sin espacios extremos, sin tildes.
-        /// </summary>
-        private static string NormalizarEncabezado(string header)
-        {
-            if (string.IsNullOrEmpty(header)) return string.Empty;
-
-            header = header.Trim().ToLowerInvariant();
-
-            // Quitar tildes / diacríticos
-            var normalized = header.Normalize(NormalizationForm.FormD);
-            var sb = new StringBuilder(normalized.Length);
-            foreach (char c in normalized)
-            {
-                if (System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c) !=
-                    System.Globalization.UnicodeCategory.NonSpacingMark)
-                    sb.Append(c);
-            }
-            return sb.ToString().Normalize(NormalizationForm.FormC);
-        }
-
-        private static string[] SplitLine(string line, char separator)
-        {
-            var result  = new List<string>();
-            var current = new StringBuilder();
-            bool inQuote = false;
-
-            foreach (char c in line)
-            {
-                if (c == '"')
-                {
-                    inQuote = !inQuote;
-                }
-                else if (c == separator && !inQuote)
-                {
-                    result.Add(current.ToString());
-                    current.Clear();
-                }
-                else
-                {
-                    current.Append(c);
-                }
-            }
-            result.Add(current.ToString());
-            return result.ToArray();
         }
 
         /// <summary>

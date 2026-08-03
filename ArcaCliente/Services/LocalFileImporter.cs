@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Text;
 using ArcaCliente.Models;
 using ClosedXML.Excel;
 
@@ -104,8 +103,8 @@ namespace ArcaCliente.Services
 
         private static List<ComprobanteLocal> ImportarTexto(string ruta, PerfilOffline perfil)
         {
-            var enc       = ObtenerEncoding(perfil.Encoding);
-            var sep       = ObtenerSeparador(perfil.Separador);
+            var enc       = TextParsingUtils.ObtenerEncoding(perfil.Encoding);
+            var sep       = TextParsingUtils.ObtenerSeparador(perfil.Separador);
             var resultado = new List<ComprobanteLocal>();
 
             using var reader = new StreamReader(ruta, enc);
@@ -117,7 +116,7 @@ namespace ArcaCliente.Services
             {
                 if (string.IsNullOrWhiteSpace(line)) continue;
 
-                var campos = SplitLine(line, sep);
+                var campos = TextParsingUtils.SplitLine(line, sep).ToArray();
 
                 if (primera && perfil.TieneCabecera)
                 {
@@ -238,38 +237,6 @@ namespace ArcaCliente.Services
                         local.Total = d;
                     break;
             }
-        }
-
-        private static Encoding ObtenerEncoding(string nombre) =>
-            nombre?.ToUpperInvariant() switch
-            {
-                "LATIN-1" or "ISO-8859-1" or "LATIN1" => Encoding.Latin1,
-                _ => new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)
-            };
-
-        private static char ObtenerSeparador(string sep) =>
-            sep switch
-            {
-                "\t" or "TAB" => '\t',
-                "|"           => '|',
-                ","           => ',',
-                _             => ';'
-            };
-
-        private static string[] SplitLine(string line, char sep)
-        {
-            var result   = new List<string>();
-            var current  = new StringBuilder();
-            bool inQuote = false;
-
-            foreach (char c in line)
-            {
-                if (c == '"')                    inQuote = !inQuote;
-                else if (c == sep && !inQuote) { result.Add(current.ToString()); current.Clear(); }
-                else                             current.Append(c);
-            }
-            result.Add(current.ToString());
-            return result.ToArray();
         }
     }
 }

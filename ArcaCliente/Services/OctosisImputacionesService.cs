@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Threading.Tasks;
 using ArcaCliente.Models;
+using static ArcaCliente.Services.DbHelpers;
 
 namespace ArcaCliente.Services
 {
@@ -401,13 +402,6 @@ namespace ArcaCliente.Services
             return decimal.TryParse(cuenta.Trim(), out var val) && val > 0;
         }
 
-        private static void AddParameter(IDbCommand cmd, string name, object? value)
-        {
-            var p = cmd.CreateParameter();
-            p.ParameterName = name;
-            p.Value         = value ?? DBNull.Value;
-            cmd.Parameters.Add(p);
-        }
 
         private readonly record struct CuentasProveedor(string Contrapartida, string CuentaProveedor);
     }
