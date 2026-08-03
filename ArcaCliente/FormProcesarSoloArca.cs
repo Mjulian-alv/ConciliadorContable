@@ -163,7 +163,7 @@ namespace ArcaCliente
             }
 
             // Info del comprobante
-            lblEmisor.Text = $"Emisor:     {csv.DenominacionEmisor}  (CUIT: {FormatearCuit(csv.NroDocEmisor)})";
+            lblEmisor.Text = $"Emisor:     {csv.DenominacionEmisor}  (CUIT: {Services.CuitFormatter.Formatear(csv.NroDocEmisor)})";
             lblTipo.Text   = $"Tipo:       {csv.TipoComprobante}";
             lblNumero.Text = $"Número:     {(csv.PuntoVenta ?? "").PadLeft(4, '0')}-{(csv.NumeroDesde ?? "").PadLeft(8, '0')}";
             lblFecha.Text  = $"Fecha:      {csv.FechaEmision}";
@@ -604,11 +604,5 @@ namespace ArcaCliente
             btnOmitir.Enabled       = true;
         }
 
-        private static string FormatearCuit(string? cuit)
-        {
-            if (string.IsNullOrWhiteSpace(cuit) || cuit.Length != 11)
-                return cuit ?? string.Empty;
-            return $"{cuit[..2]}-{cuit[2..10]}-{cuit[10]}";
-        }
     }
 }

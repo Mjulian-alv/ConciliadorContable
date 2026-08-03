@@ -206,7 +206,7 @@ namespace ArcaCliente
                     YaExportado  = yaExp,
                     EstadoExport = yaExp ? "Ya exportado" : "Nuevo",
                     Emisor       = item.Emisor ?? csv?.DenominacionEmisor ?? string.Empty,
-                    Cuit         = FormatearCuit(cuit),
+                    Cuit         = Services.CuitFormatter.Formatear(cuit),
                     Tipo         = string.IsNullOrWhiteSpace(descTipo) ? tipo : $"{tipo} - {descTipo}",
                     Numero       = $"{(pv ?? string.Empty).PadLeft(4, '0')}-{(nro ?? string.Empty).PadLeft(8, '0')}",
                     Fecha        = item.Fecha ?? csv?.FechaEmision ?? string.Empty,
@@ -321,12 +321,6 @@ namespace ArcaCliente
         {
             lblScanInfo.Text = texto;
             lblScanInfo.ForeColor = color;
-        }
-
-        private static string FormatearCuit(string cuit)
-        {
-            var d = new string((cuit ?? string.Empty).Where(char.IsDigit).ToArray());
-            return d.Length == 11 ? $"{d[..2]}-{d[2..10]}-{d[10]}" : (cuit ?? string.Empty);
         }
 
         private static T Build<T>(T ctrl, Action<T> cfg) where T : Control

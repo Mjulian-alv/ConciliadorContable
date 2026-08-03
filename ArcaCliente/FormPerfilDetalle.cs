@@ -151,22 +151,13 @@ namespace ArcaCliente
 
             try
             {
-                await System.Threading.Tasks.Task.Run(() =>
-                {
-                    using var conn = new Microsoft.Data.SqlClient.SqlConnection(connString);
-                    conn.Open();
-                    using var cmd = conn.CreateCommand();
-                    cmd.CommandText = "SELECT 1";
-                    cmd.ExecuteScalar();
-                });
-
-                MessageBox.Show("✓ Conexión exitosa", "Test de Conexión",
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"✗ Error al conectar:\n\n{ex.Message}", "Test de Conexión",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                var resultado = await Services.ConnectionTester.ProbarConciliacion(connString);
+                if (resultado.Exitoso)
+                    MessageBox.Show("✓ Conexión exitosa", "Test de Conexión",
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                else
+                    MessageBox.Show($"✗ Error al conectar:\n\n{resultado.Mensaje}", "Test de Conexión",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
             {
@@ -192,27 +183,13 @@ namespace ArcaCliente
 
             try
             {
-                await System.Threading.Tasks.Task.Run(() =>
-                {
-                    using var conn = new Microsoft.Data.SqlClient.SqlConnection(connString);
-                    conn.Open();
-                    
-                    // Probar que exista la tabla sy_system (específica de Octosis)
-                    using var cmd = conn.CreateCommand();
-                    cmd.CommandText = "SELECT TOP 1 idsqlsucur FROM sy_system";
-                    var result = cmd.ExecuteScalar();
-
-                    if (result == null || result == DBNull.Value)
-                        throw new InvalidOperationException("Conexión exitosa pero no se encontró configuración en sy_system. ¿Es una base de Octosis?");
-                });
-
-                MessageBox.Show("✓ Conexión exitosa a Octosis", "Test de Conexión",
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"✗ Error al conectar:\n\n{ex.Message}", "Test de Conexión",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                var resultado = await Services.ConnectionTester.ProbarOctosis(connString);
+                if (resultado.Exitoso)
+                    MessageBox.Show("✓ Conexión exitosa a Octosis", "Test de Conexión",
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                else
+                    MessageBox.Show($"✗ Error al conectar:\n\n{resultado.Mensaje}", "Test de Conexión",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
             {

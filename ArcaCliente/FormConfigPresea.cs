@@ -91,7 +91,7 @@ namespace ArcaCliente
         private static void SeleccionarCombo(RadDropDownList cmb, string valor)
         {
             foreach (RadListDataItem item in cmb.Items)
-                if (item.Value?.ToString() == valor)
+                if (string.Equals(item.Value?.ToString(), valor, StringComparison.OrdinalIgnoreCase))
                 { cmb.SelectedItem = item; return; }
             if (cmb.Items.Count > 0) cmb.SelectedIndex = 0;
         }
