@@ -1,19 +1,28 @@
 ﻿using System;
+using System.Configuration;
 using System.Data;
 using ArcaCliente.Models;
 
 namespace ArcaCliente.Services
 {
     /// <summary>
-    /// Configuración de la conciliación con la base de datos local.
+    /// Configuración de la conciliación con la base de datos local (Octosis).
     /// Modificá ConnectionString, Query y ConnectionFactory según tu entorno.
     /// Los valores por perfil tienen precedencia; si no están configurados se usan estos defaults.
     /// </summary>
     public static class ConciliacionConfig
     {
         // ── 1. Cadena de conexión (default) ─────────────────────────────────────
+        // La credencial real NO va acá: este archivo se versiona en un repo público.
+        // Se toma del appSetting "OctosisConnectionString", que se define en
+        // ConciliadorContable/secrets.config (ignorado por git). Sin ese archivo queda
+        // el placeholder y la conexión falla, que es el comportamiento buscado en una
+        // instalación sin configurar.
+        private const string Default =
+            "Server=192.168.7.51;Database=Logistica;User Id=octosis;Password=DEFINIR;TrustServerCertificate=True;";
+
         public static string ConnectionString { get; set; } =
-            "Server=192.168.7.51;Database=Logistica;User Id=octosis;Password=123.456;TrustServerCertificate=True;";
+            ConfigurationManager.AppSettings["OctosisConnectionString"] ?? Default;
 
         // ── 2. Query (default) ───────────────────────────────────────────────────
         // Columnas requeridas por ConciliacionService:
