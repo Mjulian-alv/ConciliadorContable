@@ -416,34 +416,14 @@ namespace ArcaCliente
 
             e.RowElement.DrawFill      = true;
             e.RowElement.GradientStyle = Telerik.WinControls.GradientStyles.Solid;
-            e.RowElement.BackColor     = item.Estado switch
-            {
-                EstadoConciliacion.Conciliado        => Color.FromArgb(170, 240, 209),
-                EstadoConciliacion.DiferenciaImporte => Color.FromArgb(254, 240, 186),
-                EstadoConciliacion.SoloARCA          => Color.FromArgb(255, 205, 210),
-                EstadoConciliacion.SoloSistema       => Color.FromArgb(206, 212, 237),
-                _                                    => Color.White
-            };
+            e.RowElement.BackColor     = EstadoConciliacionColores.Rgb.TryGetValue(item.Estado, out var rgb)
+                ? Color.FromArgb(rgb.R, rgb.G, rgb.B)
+                : Color.White;
         }
 
         private static void EnriquecerSoloArca(System.Collections.Generic.List<ItemConciliacion> items)
         {
-            var soloArca = items.Where(x => x.Estado == EstadoConciliacion.SoloARCA).ToList();
-            foreach (var item in soloArca)
-            {
-                // PASO 2 — tipo de comprobante
-                var parseado     = TipoComprobanteMapper.Parse(item.TipoComprobante.PadLeft(3,Char.Parse("0")));
-                item.TipoOctosis = parseado.TipoOctosis;
-                item.Letra       = parseado.Letra;
-
-                // PASO 3 — moneda y tipo de cambio
-                if (item.SourceArca != null)
-                    item.Moneda = MonedaResolver.Resolver(item.SourceArca);
-            }
-
-            var desconocidos = TipoComprobanteMapper
-                .ObtenerDesconocidos(soloArca.Select(x => x.TipoComprobante.PadLeft(3, Char.Parse("0"))))
-                .ToList();
+            var desconocidos = SoloArcaEnricher.Enriquecer(items);
 
             if (desconocidos.Count > 0)
             {

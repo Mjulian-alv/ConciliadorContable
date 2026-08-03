@@ -8,14 +8,11 @@ namespace ArcaCliente.Services
 {
     public static class ConciliacionExcelExporter
     {
-        // Mismos colores que la grilla
-        private static readonly Dictionary<EstadoConciliacion, XLColor> _colores = new()
-        {
-            [EstadoConciliacion.Conciliado]        = XLColor.FromArgb(170, 240, 209),
-            [EstadoConciliacion.DiferenciaImporte] = XLColor.FromArgb(254, 240, 186),
-            [EstadoConciliacion.SoloARCA]          = XLColor.FromArgb(255, 205, 210),
-            [EstadoConciliacion.SoloSistema]       = XLColor.FromArgb(206, 212, 237),
-        };
+        // Misma paleta que la grilla (EstadoConciliacionColores), convertida a XLColor.
+        private static readonly Dictionary<EstadoConciliacion, XLColor> _colores =
+            EstadoConciliacionColores.Rgb.ToDictionary(
+                kv => kv.Key,
+                kv => XLColor.FromArgb(kv.Value.R, kv.Value.G, kv.Value.B));
 
         private static readonly (string Header, Func<ItemConciliacion, object> Value)[] _columnas =
         [
