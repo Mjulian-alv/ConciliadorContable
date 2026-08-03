@@ -255,7 +255,7 @@ namespace ArcaCliente
             dtpFechaInicio.Name = "dtpFechaInicio";
             dtpFechaInicio.Size = new System.Drawing.Size(248, 24);
             dtpFechaInicio.TabIndex = 6;
-            dtpFechaInicio.TabStop = false;
+            dtpFechaInicio.TabStop = true;
             dtpFechaInicio.Text = "viernes, 27 de marzo de 2026";
             dtpFechaInicio.Value = new System.DateTime(2026, 3, 27, 8, 50, 38, 132);
             // 
@@ -273,7 +273,7 @@ namespace ArcaCliente
             dtpFechaFin.Name = "dtpFechaFin";
             dtpFechaFin.Size = new System.Drawing.Size(248, 24);
             dtpFechaFin.TabIndex = 8;
-            dtpFechaFin.TabStop = false;
+            dtpFechaFin.TabStop = true;
             dtpFechaFin.Text = "viernes, 27 de marzo de 2026";
             dtpFechaFin.Value = new System.DateTime(2026, 3, 27, 8, 50, 38, 157);
             // 

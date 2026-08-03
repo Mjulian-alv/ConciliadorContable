@@ -11,7 +11,7 @@ using Telerik.WinControls.UI;
 namespace ArcaCliente
 {
     /// <summary>
-    /// Formulario de conciliaci�n offline: los comprobantes ARCA se leen desde
+    /// Formulario de conciliación offline: los comprobantes ARCA se leen desde
     /// una carpeta de CSVs locales y los comprobantes del sistema se leen desde
     /// un archivo configurado en el <see cref="PerfilOffline"/>.
     /// </summary>
@@ -51,7 +51,7 @@ namespace ArcaCliente
             gridComprobantes.RowFormatting   += GridComprobantes_RowFormatting;
             gridComprobantes.CellDoubleClick += GridComprobantes_CellDoubleClick;
 
-            lblPerfilActivo.Text = $"{perfil.Nombre}  �  {perfil.TipoArchivo}";
+            lblPerfilActivo.Text = $"{perfil.Nombre}  •  {perfil.TipoArchivo}";
             grpLocal.Text = $"Sistema local ({perfil.TipoArchivo})";
 
             if (!string.IsNullOrWhiteSpace(perfil.CarpetaCsvArca))
@@ -83,8 +83,8 @@ namespace ArcaCliente
         {
             if (string.IsNullOrWhiteSpace(txtCarpeta.Text))
             {
-                MessageBox.Show("Seleccion� una carpeta con archivos CSV.",
-                    "Validaci�n", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("Seleccioná una carpeta con archivos CSV.",
+                    "Validación", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -96,8 +96,9 @@ namespace ArcaCliente
                     txtCarpeta.Text, "*.csv",
                     System.IO.SearchOption.TopDirectoryOnly).Length;
 
-                lblConteoCsv.Text = $"{archivos} archivo(s) � {_comprobantesArca.Count} registros";
-                lblConteoCsv.ForeColor = _comprobantesArca.Count > 0 ? Color.DarkGreen : Color.DarkOrange;
+                var colorCsv = _comprobantesArca.Count > 0 ? Color.DarkGreen : Color.DarkOrange;
+                lblConteoCsv.Text = $"{IconoEstado(colorCsv)} {archivos} archivo(s)  •  {_comprobantesArca.Count} registros";
+                lblConteoCsv.ForeColor = colorCsv;
 
                 CargarGridArca(_comprobantesArca);
                 MostrarEstado($"CSV cargados: {_comprobantesArca.Count} comprobantes.", Color.DarkGreen);
@@ -108,7 +109,7 @@ namespace ArcaCliente
             }
             catch (Exception ex)
             {
-                lblConteoCsv.Text = "Error al cargar";
+                lblConteoCsv.Text = $"{IconoEstado(Color.DarkRed)} Error al cargar";
                 lblConteoCsv.ForeColor = Color.DarkRed;
                 MostrarEstado("Error al cargar CSV.", Color.DarkRed);
                 MessageBox.Show($"Error al leer los archivos CSV:\n\n{ex.Message}",
@@ -116,7 +117,7 @@ namespace ArcaCliente
             }
         }
 
-        // ?? Fuente local ??????????????????????????????????????????????????????????
+        // ── Fuente local ─────────────────────────────────────────────────────────
 
         private void BtnBrowseArchivo_Click(object sender, EventArgs e)
         {
@@ -145,8 +146,8 @@ namespace ArcaCliente
         {
             if (string.IsNullOrWhiteSpace(txtArchivo.Text))
             {
-                MessageBox.Show("Seleccion� el archivo del sistema local.",
-                    "Validaci�n", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("Seleccioná el archivo del sistema local.",
+                    "Validación", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -157,14 +158,15 @@ namespace ArcaCliente
                 dtpFechaInicio.Value = _comprobantesLocales.Min(c => c.Fecha);
                 dtpFechaFin.Value = _comprobantesLocales.Max(c => c.Fecha);
 
-                lblConteoLocal.Text = $"{_comprobantesLocales.Count} registros cargados";
-                lblConteoLocal.ForeColor = _comprobantesLocales.Count > 0 ? Color.DarkGreen : Color.DarkOrange;
+                var colorLocal = _comprobantesLocales.Count > 0 ? Color.DarkGreen : Color.DarkOrange;
+                lblConteoLocal.Text = $"{IconoEstado(colorLocal)} {_comprobantesLocales.Count} registros cargados";
+                lblConteoLocal.ForeColor = colorLocal;
 
                 MostrarEstado($"Archivo local cargado: {_comprobantesLocales.Count} registros.", Color.DarkGreen);
             }
             catch (Exception ex)
             {
-                lblConteoLocal.Text = "Error al cargar";
+                lblConteoLocal.Text = $"{IconoEstado(Color.DarkRed)} Error al cargar";
                 lblConteoLocal.ForeColor = Color.DarkRed;
                 MostrarEstado("Error al cargar el archivo local.", Color.DarkRed);
                 MessageBox.Show($"Error al leer el archivo:\n\n{ex.Message}",
@@ -172,21 +174,21 @@ namespace ArcaCliente
             }
         }
 
-        // ?? Conciliaci�n ??????????????????????????????????????????????????????????
+        // ── Conciliación ─────────────────────────────────────────────────────────
 
         private void BtnConciliar_Click(object sender, EventArgs e)
         {
             if (_comprobantesArca.Count == 0 && _comprobantesLocales.Count == 0)
             {
                 MessageBox.Show(
-                    "Carg� al menos los CSV de ARCA o el archivo del sistema local.",
+                    "Cargá al menos los CSV de ARCA o el archivo del sistema local.",
                     "Sin datos", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             if (dtpFechaFin.Value.Date < dtpFechaInicio.Value.Date)
             {
                 MessageBox.Show("La fecha de fin no puede ser anterior a la de inicio.",
-                    "Validaci�n", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    "Validación", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             EjecutarConciliacion();
@@ -225,8 +227,8 @@ namespace ArcaCliente
                 ConfigurarGridConciliacion();
 
                 lblConciliacion.Text = tituloCuit != null
-                    ? $"Conciliaci�n � CUIT {tituloCuit}"
-                    : "Conciliaci�n";
+                    ? $"Conciliación — CUIT {tituloCuit}"
+                    : "Conciliación";
 
                 int conciliados = items.Count(x => x.Estado == EstadoConciliacion.Conciliado);
                 int diferencias = items.Count(x => x.Estado == EstadoConciliacion.DiferenciaImporte);
@@ -237,13 +239,13 @@ namespace ArcaCliente
                 btnExportarConciliacion.Visible = items.Count > 0;
 
                 MostrarEstadoConciliacion(
-                    $"? {conciliados} ok  �  ? {diferencias} dif.  �  ? {soloArca} solo ARCA  �  ? {soloSistema} solo sist.",
+                    $"{conciliados} ok  •  {diferencias} dif.  •  {soloArca} solo ARCA  •  {soloSistema} solo sist.",
                     hayInc ? Color.DarkOrange : Color.DarkGreen);
             }
             catch (Exception ex)
             {
                 MostrarEstadoConciliacion($"Error: {ex.Message}", Color.DarkRed);
-                MessageBox.Show($"Error en conciliaci�n:\n\n{ex.Message}",
+                MessageBox.Show($"Error en conciliación:\n\n{ex.Message}",
                     "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
@@ -266,14 +268,14 @@ namespace ArcaCliente
             if (_comprobantesArca.Count == 0 && _comprobantesLocales.Count == 0)
             {
                 MessageBox.Show(
-                    "Carg� al menos los CSV de ARCA o el archivo del sistema local.",
+                    "Cargá al menos los CSV de ARCA o el archivo del sistema local.",
                     "Sin datos", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             if (dtpFechaFin.Value.Date < dtpFechaInicio.Value.Date)
             {
                 MessageBox.Show("La fecha de fin no puede ser anterior a la de inicio.",
-                    "Validaci�n", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    "Validación", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -333,9 +335,9 @@ namespace ArcaCliente
             {
                 { "FechaEmision",               "Fecha"       },
                 { "TipoComprobante",            "Tipo"        },
-                { "DescripcionTipoComprobante", "Descripci�n" },
+                { "DescripcionTipoComprobante", "Descripción"},
                 { "PuntoVenta",                 "Pto. Vta."   },
-                { "NumeroDesde",                "N�mero"      },
+                { "NumeroDesde",                "Número"      },
                 { "CodAutorizacion",            "CAE / CAI"   },
                 { "NroDocEmisor",               "Doc. Emisor" },
                 { "DenominacionEmisor",         "Emisor"      },
@@ -360,7 +362,7 @@ namespace ArcaCliente
             int conDif = resumen.Count(x => x.TieneDiferencia);
             int ok     = resumen.Count - conDif;
             MostrarEstado(
-                $"? {conDif} con diferencia  �  ? {ok} OK  �  Doble clic en un CUIT para ver el detalle",
+                $"{conDif} con diferencia  •  {ok} OK  •  Doble clic en un CUIT para ver el detalle",
                 conDif > 0 ? Color.DarkOrange : Color.DarkGreen);
         }
 
@@ -397,9 +399,9 @@ namespace ArcaCliente
                 { "FalloDirectivas",            "Dif. con sist."  },
                 { "Fecha",                      "Fecha"            },
                 { "TipoComprobante",            "Tipo"             },
-                { "DescripcionTipoComprobante", "Descripci�n"      },
+                { "DescripcionTipoComprobante", "Descripción"     },
                 { "PuntoVenta",                 "Pto. Vta."        },
-                { "Numero",                     "N�mero"           },
+                { "Numero",                     "Número"           },
                 { "CuitProveedor",              "CUIT"             },
                 { "NombreProveedor",            "Nombre proveedor" },
                 { "TotalARCA",                  "Total ARCA"       },
@@ -464,7 +466,7 @@ namespace ArcaCliente
             new FormDetalleItemConciliacion(item).Show(this);
         }
 
-        // ?? Enriquecimiento Solo ARCA ?????????????????????????????????????????????
+        // ── Enriquecimiento Solo ARCA ────────────────────────────────────────────
 
         private static void EnriquecerSoloArca(List<ItemConciliacion> items)
         {
@@ -474,8 +476,8 @@ namespace ArcaCliente
             {
                 MessageBox.Show(
                     "Se encontraron tipos de comprobante no reconocidos por el mapper:\n\n" +
-                    string.Join("\n", desconocidos.Select(d => $"  � \"{d}\"")) +
-                    "\n\nEstos documentos no podr�n darse de alta autom�ticamente.\n" +
+                    string.Join("\n", desconocidos.Select(d => $"  • \"{d}\"")) +
+                    "\n\nEstos documentos no podrán darse de alta automáticamente.\n" +
                     "Informar al equipo de desarrollo para actualizar el diccionario.",
                     "Tipos de comprobante desconocidos",
                     MessageBoxButtons.OK,
@@ -483,18 +485,30 @@ namespace ArcaCliente
             }
         }
 
-        // ?? Helpers ???????????????????????????????????????????????????????????????
+        // ── Helpers ──────────────────────────────────────────────────────────────
 
         private void MostrarEstado(string texto, Color color)
         {
-            lblEstado.Text = texto;
+            lblEstado.Text = $"{IconoEstado(color)} {texto}";
             lblEstado.ForeColor = color;
         }
 
         private void MostrarEstadoConciliacion(string texto, Color color)
         {
-            lblEstadoConciliacion.Text = texto;
+            lblEstadoConciliacion.Text = $"{IconoEstado(color)} {texto}";
             lblEstadoConciliacion.ForeColor = color;
+        }
+
+        /// <summary>
+        /// Ícono redundante al color, para que el estado no dependa solo de distinguir
+        /// verde/naranja/rojo (accesibilidad para usuarios con daltonismo).
+        /// </summary>
+        private static string IconoEstado(Color color)
+        {
+            if (color == Color.DarkGreen) return "✓";  // ✓
+            if (color == Color.DarkRed) return "✗";    // ✗
+            if (color == Color.DarkOrange) return "⚠"; // ⚠
+            return "•";                                 // •
         }
 
         private void BtnExportarConciliacion_Click(object sender, EventArgs e)
@@ -535,7 +549,7 @@ namespace ArcaCliente
             }
         }
 
-        // ?? Exportaci�n a sistema externo ?????????????????????????????????????
+        // ── Exportación a sistema externo ───────────────────────────────────────
 
         private void InicializarBotonConciliarXCuit()
         {
@@ -562,7 +576,7 @@ namespace ArcaCliente
             ((System.ComponentModel.ISupportInitialize)btnExportarSistema).EndInit();
             pnlLeft.Controls.Add(btnExportarSistema);
 
-            // Mover lblEstado hacia abajo para dejar espacio al nuevo bot�n
+            // Mover lblEstado hacia abajo para dejar espacio al nuevo botón
             lblEstado.Location = new System.Drawing.Point(12, 530);
 
             ActualizarBotonExportarSistema();
@@ -615,7 +629,7 @@ namespace ArcaCliente
                     $"Exportado para {exportador.NombreSistema}: {System.IO.Path.GetFileName(dlg.FileName)}",
                     Color.DarkGreen);
 
-                if (MessageBox.Show("�Abrir el archivo?", "Exportado",
+                if (MessageBox.Show("¿Abrir el archivo?", "Exportado",
                         MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                     System.Diagnostics.Process.Start(
                         new System.Diagnostics.ProcessStartInfo(dlg.FileName)
@@ -628,7 +642,7 @@ namespace ArcaCliente
             }
         }
 
-        // ?? Exportaci�n SOLO ARCA a PRESEA por QR (Fase 3) ????????????????????
+        // ── Exportación SOLO ARCA a PRESEA por QR (Fase 3) ──────────────────────
 
         private Telerik.WinControls.UI.RadButton btnExportarPreseaQr;
 
@@ -655,15 +669,15 @@ namespace ArcaCliente
         {
             if (gridConciliacion.DataSource is not List<ItemConciliacion> items || items.Count == 0)
             {
-                MessageBox.Show("Ejecut� la conciliaci�n primero para obtener los comprobantes SOLO ARCA.",
-                    "Sin conciliaci�n", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("Ejecutá la conciliación primero para obtener los comprobantes SOLO ARCA.",
+                    "Sin conciliación", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
             var soloArca = items.Where(x => x.Estado == EstadoConciliacion.SoloARCA).ToList();
             if (soloArca.Count == 0)
             {
-                MessageBox.Show("No hay comprobantes SOLO ARCA en la conciliaci�n actual.",
+                MessageBox.Show("No hay comprobantes SOLO ARCA en la conciliación actual.",
                     "Sin pendientes", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
