@@ -35,6 +35,18 @@ namespace ArcaCliente.Services
 
                 bool enMapa = prov != null && !string.IsNullOrWhiteSpace(prov.CodigoProveedor);
 
+                decimal otrosTributos = PreseaCalculos.ParseDecimal(csv?.OtrosTributos);
+                var percepciones = new List<PreseaPercepcionLinea>();
+                if (otrosTributos != 0m)
+                {
+                    percepciones.Add(new PreseaPercepcionLinea
+                    {
+                        Concepto     = "Otros Tributos (ARCA)",
+                        CampoDestino = "IB",
+                        Importe      = otrosTributos,
+                    });
+                }
+
                 result.Add(new PreseaLineaExport
                 {
                     Item            = item,
@@ -63,6 +75,9 @@ namespace ArcaCliente.Services
                     Fiscal     = Coalesce(prov?.Fiscal, cfg.Fiscal),
                     Imputa     = cfg.Imputa,
                     Descuento  = prov?.Descuento ?? 0m,
+
+                    Percepciones          = percepciones,
+                    OtrosTributosOriginal = otrosTributos,
                 });
             }
 

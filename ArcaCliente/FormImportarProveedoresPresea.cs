@@ -1,3 +1,6 @@
+using ArcaCliente.Models;
+using ArcaCliente.Services;
+using Conciliador.Comun;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -5,8 +8,6 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
-using ArcaCliente.Models;
-using ArcaCliente.Services;
 using Telerik.WinControls.UI;
 
 namespace ArcaCliente
@@ -21,86 +22,56 @@ namespace ArcaCliente
     public partial class FormImportarProveedoresPresea : Telerik.WinControls.UI.RadForm
     {
         private const string Entidad = PreseaProveedorImporter.Entidad;
-
         private readonly Dictionary<string, RadDropDownList> _combos = new();
         private TablaLeida _tabla;
         private MapeoColumnasArchivo _mapeoGuardado;
-
-        private RadTextBox      txtArchivo;
-        private RadDropDownList cmbSeparador;
-        private RadDropDownList cmbEncoding;
-        private RadSpinEditor   spnFila;
-        private RadDropDownList cmbSepDec;
-        private RadTextBox      txtHoja;
-        private RadGridView     gridPreview;
-        private RadLabel        lblEstado;
 
         public FormImportarProveedoresPresea()
         {
             InitializeComponent();
             Icon = AppIcons.Arca;
-            BuildUi();
+            ArcaSqlStorage.Instancia.Mensajes += ArcaSqlStorage_Mensajes;
+
+            PoblarCombosFijos();
+            PoblarMapeoDinamico();
             CargarMapeoGuardado();
         }
 
-        // ── Construccion de la UI ───────────────────────────────────────────────────
-
-        private void BuildUi()
+        private void ArcaSqlStorage_Mensajes(object sender, mensajeEventArgs e)
         {
-            // grpArchivo
-            var grpArchivo = new GroupBox { Text = "Archivo", Location = new Point(12, 8), Size = new Size(736, 118), TabStop = false };
+            // Aquí actualizas tu pantalla de forma segura
+            // Ejemplo si usas un TextBox o una barra de estado:
+            SetEstado(e.mensaje,Color.Green);
+        }
 
-            grpArchivo.Controls.Add(Lbl("Archivo:", 12, 22));
-            txtArchivo = Build(new RadTextBox(), c => { c.Location = new Point(12, 42); c.Size = new Size(516, 20); });
-            grpArchivo.Controls.Add(txtArchivo);
+        private void btnCerrar_Click(object sender, EventArgs e)
+        {
+            DialogResult = DialogResult.Cancel;
+            Close();
+        }
 
-            grpArchivo.Controls.Add(Build(new RadButton(), b =>
-            {
-                b.Location = new Point(536, 40); b.Size = new Size(90, 26); b.Text = "Examinar...";
-                b.Click += BtnExaminar_Click;
-            }));
-            grpArchivo.Controls.Add(Build(new RadButton(), b =>
-            {
-                b.Location = new Point(632, 40); b.Size = new Size(92, 26); b.Text = "Leer columnas";
-                b.Click += BtnLeer_Click;
-            }));
+        /// <summary>Carga los items fijos de los combos de formato de archivo (Designer solo declara los controles).</summary>
+        private void PoblarCombosFijos()
+        {
+            CargarItems(cmbSeparador, new[] { ("; (punto y coma)", ";"), (", (coma)", ","), ("Tab", "\t"), ("| (pipe)", "|") });
+            CargarItems(cmbEncoding,  new[] { ("UTF-8", "UTF-8"), ("Latin-1", "Latin-1") });
+            CargarItems(cmbSepDec,    new[] { (". (punto)", "."), (", (coma)", ",") });
+        }
 
-            grpArchivo.Controls.Add(Lbl("Separador", 12, 74, 100));
-            cmbSeparador = ComboValores(12, 90, 110, new[]
-            {
-                ("; (punto y coma)", ";"), (", (coma)", ","), ("Tab", "\t"), ("| (pipe)", "|")
-            });
-            grpArchivo.Controls.Add(cmbSeparador);
+        private static void CargarItems(RadDropDownList cmb, (string Texto, string Valor)[] items)
+        {
+            foreach (var (texto, valor) in items)
+                cmb.Items.Add(new RadListDataItem(texto, valor));
+            if (cmb.Items.Count > 0) cmb.SelectedIndex = 0;
+        }
 
-            grpArchivo.Controls.Add(Lbl("Encoding", 130, 74, 100));
-            cmbEncoding = ComboValores(130, 90, 100, new[] { ("UTF-8", "UTF-8"), ("Latin-1", "Latin-1") });
-            grpArchivo.Controls.Add(cmbEncoding);
-
-            grpArchivo.Controls.Add(Lbl("Fila encab.", 238, 74, 70));
-            spnFila = Build(new RadSpinEditor(), s =>
-            {
-                s.Location = new Point(238, 90); s.Size = new Size(60, 20);
-                s.Minimum = 1; s.Maximum = 100; s.Value = 1;
-            });
-            grpArchivo.Controls.Add(spnFila);
-
-            grpArchivo.Controls.Add(Lbl("Sep. decimal", 306, 74, 100));
-            cmbSepDec = ComboValores(306, 90, 100, new[] { (". (punto)", "."), (", (coma)", ",") });
-            grpArchivo.Controls.Add(cmbSepDec);
-
-            grpArchivo.Controls.Add(Lbl("Hoja Excel", 414, 74, 100));
-            txtHoja = Build(new RadTextBox(), c => { c.Location = new Point(414, 90); c.Size = new Size(150, 20); });
-            grpArchivo.Controls.Add(txtHoja);
-
-            Controls.Add(grpArchivo);
-
-            // grpMapeo
-            var grpMapeo = new GroupBox
-            {
-                Text = "Mapeo: campo de PRESEA  ->  columna del archivo",
-                Location = new Point(12, 132), Size = new Size(736, 300), TabStop = false
-            };
-
+        /// <summary>
+        /// Genera un combo de mapeo por cada <see cref="PreseaProveedorImporter.Campos"/>: la
+        /// cantidad de campos es data-driven, por eso este bloque queda en codigo (mismo criterio
+        /// que las columnas de un RadGridView).
+        /// </summary>
+        private void PoblarMapeoDinamico()
+        {
             var campos = PreseaProveedorImporter.Campos;
             for (int i = 0; i < campos.Length; i++)
             {
@@ -119,44 +90,6 @@ namespace ArcaCliente
                 grpMapeo.Controls.Add(combo);
                 _combos[campos[i].Campo] = combo;
             }
-            Controls.Add(grpMapeo);
-
-            // grpPreview
-            var grpPreview = new GroupBox { Text = "Vista previa", Location = new Point(12, 438), Size = new Size(736, 150), TabStop = false };
-            gridPreview = Build(new RadGridView(), g =>
-            {
-                g.Location = new Point(8, 20); g.Size = new Size(720, 122);
-                g.ReadOnly = true;
-                g.AllowAddNewRow = false;
-                g.AutoSizeColumnsMode = GridViewAutoSizeColumnsMode.Fill;
-            });
-            grpPreview.Controls.Add(gridPreview);
-            Controls.Add(grpPreview);
-
-            // Panel inferior
-            var pnl = Build(new RadPanel(), p => { p.Dock = DockStyle.Bottom; p.Size = new Size(760, 44); });
-
-            lblEstado = Build(new RadLabel(), l => { l.Location = new Point(12, 14); l.Text = string.Empty; });
-            pnl.Controls.Add(lblEstado);
-
-            pnl.Controls.Add(Build(new RadButton(), b =>
-            {
-                b.Location = new Point(440, 8); b.Size = new Size(110, 28); b.Text = "Previsualizar";
-                b.Click += BtnPrevisualizar_Click;
-            }));
-            pnl.Controls.Add(Build(new RadButton(), b =>
-            {
-                b.Location = new Point(556, 8); b.Size = new Size(96, 28); b.Text = "Importar";
-                b.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-                b.Click += BtnImportar_Click;
-            }));
-            pnl.Controls.Add(Build(new RadButton(), b =>
-            {
-                b.Location = new Point(658, 8); b.Size = new Size(90, 28); b.Text = "Cerrar";
-                b.Click += (s, e) => { DialogResult = DialogResult.Cancel; Close(); };
-            }));
-
-            Controls.Add(pnl);
         }
 
         // ── Carga del mapeo guardado ─────────────────────────────────────────────────
@@ -362,19 +295,6 @@ namespace ArcaCliente
 
         private static RadLabel Lbl(string text, int x, int y, int w = 200) =>
             Build(new RadLabel(), l => { l.Text = text; l.Location = new Point(x, y); l.Size = new Size(w, 16); });
-
-        private RadDropDownList ComboValores(int x, int y, int w, (string Texto, string Valor)[] items)
-        {
-            var cmb = Build(new RadDropDownList(), c =>
-            {
-                c.Location = new Point(x, y); c.Size = new Size(w, 24);
-                c.DropDownStyle = Telerik.WinControls.RadDropDownStyle.DropDownList;
-            });
-            foreach (var (texto, valor) in items)
-                cmb.Items.Add(new RadListDataItem(texto, valor));
-            if (cmb.Items.Count > 0) cmb.SelectedIndex = 0;
-            return cmb;
-        }
 
         private static void SeleccionarValor(RadDropDownList cmb, string valor)
         {

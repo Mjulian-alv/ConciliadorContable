@@ -47,8 +47,10 @@ namespace ArcaCliente
             gridConciliacion.MasterTemplate.AllowDeleteRow = false;
             gridConciliacion.MasterTemplate.AllowEditRow = false;
             gridConciliacion.RowFormatting   += GridConciliacion_RowFormatting;
+            gridConciliacion.CellFormatting  += GridConciliacion_CellFormatting;
             gridConciliacion.CellDoubleClick += GridConciliacion_CellDoubleClick;
             gridComprobantes.RowFormatting   += GridComprobantes_RowFormatting;
+            gridComprobantes.CellFormatting  += GridComprobantes_CellFormatting;
             gridComprobantes.CellDoubleClick += GridComprobantes_CellDoubleClick;
 
             lblPerfilActivo.Text = $"{perfil.Nombre}  •  {perfil.TipoArchivo}";
@@ -58,11 +60,11 @@ namespace ArcaCliente
                 txtCarpeta.Text = perfil.CarpetaCsvArca;
 
             InicializarBotonConciliarXCuit();
-            InicializarBotonExportarSistema();
+            //InicializarBotonExportarSistema();
             InicializarBotonExportarPreseaQr();
         }
 
-        // ?? Fuente ARCA (CSV) ?????????????????????????????????????????????????????
+        // ── Fuente ARCA (CSV) ────────────────────────────────────────────────────
 
         private void BtnBrowseCarpeta_Click(object sender, EventArgs e)
         {
@@ -102,7 +104,7 @@ namespace ArcaCliente
 
                 CargarGridArca(_comprobantesArca);
                 MostrarEstado($"CSV cargados: {_comprobantesArca.Count} comprobantes.", Color.DarkGreen);
-                ActualizarBotonExportarSistema();
+                //ActualizarBotonExportarSistema();
 
                 _perfil.CarpetaCsvArca = txtCarpeta.Text;
                 GuardarPerfil();
@@ -433,21 +435,50 @@ namespace ArcaCliente
             e.RowElement.BackColor = EstadoConciliacionColores.Rgb.TryGetValue(item.Estado, out var rgb)
                 ? Color.FromArgb(rgb.R, rgb.G, rgb.B)
                 : Color.White;
+            // Forzar texto oscuro: el tema de Telerik pinta la fila "actual"/seleccionada
+            // en blanco (pensado para su propio fondo oscuro de selección), lo que la
+            // vuelve ilegible sobre estos fondos pastel si no se fija ForeColor también.
+            e.RowElement.ForeColor = Color.Black;
         }
 
         private void GridComprobantes_RowFormatting(object sender, RowFormattingEventArgs e)
         {
-            if (e.RowElement.RowInfo is not GridViewDataRowInfo dataRow ||
-                dataRow.DataBoundItem is not ItemConciliacionXCuit item)
-            {
-                e.RowElement.DrawFill = false;
-                return;
-            }
+            //if (e.RowElement.RowInfo is not GridViewDataRowInfo dataRow ||
+            //    dataRow.DataBoundItem is not ItemConciliacionXCuit item)
+            //{
+            //    e.RowElement.DrawFill = false;
+            //    return;
+            //}
             e.RowElement.DrawFill      = true;
             e.RowElement.GradientStyle = Telerik.WinControls.GradientStyles.Solid;
-            e.RowElement.BackColor     = item.TieneDiferencia
-                ? Color.FromArgb(255, 220, 150)
-                : Color.FromArgb(200, 240, 200);
+            //e.RowElement.BackColor     = item.TieneDiferencia
+            //    ? Color.FromArgb(255, 220, 150)
+            //    : Color.FromArgb(200, 240, 200);
+            // Mismo motivo que en GridConciliacion_RowFormatting: sin esto, la fila
+            // "actual"/seleccionada queda con texto blanco del tema sobre fondo pastel.
+            e.RowElement.ForeColor    = Color.Black;
+        }
+
+        /// <summary>
+        /// El ForeColor de RowFormatting no alcanza: Telerik pinta el texto de cada
+        /// celda por separado cuando la fila está "actual"/seleccionada (blanco, pensado
+        /// para su propio fondo oscuro de selección), y eso pisa el color de la fila.
+        /// Mismo patrón que ProcesadorForm.DgvDatos_CellFormatting en AgrupadorConceptos.
+        /// </summary>
+        private void GridConciliacion_CellFormatting(object sender, CellFormattingEventArgs e)
+        {
+            if (e.CellElement.RowInfo is not GridViewDataRowInfo dataRow ||
+                dataRow.DataBoundItem is not ItemConciliacion)
+                return;
+            e.CellElement.ForeColor = Color.Black;
+        }
+
+        private void GridComprobantes_CellFormatting(object sender, CellFormattingEventArgs e)
+        {
+            if (e.CellElement.RowInfo is not GridViewDataRowInfo dataRow ||
+                dataRow.DataBoundItem is not ItemConciliacionXCuit)
+                return;
+            e.CellElement.ForeColor = Color.Black;
         }
 
         private void GridComprobantes_CellDoubleClick(object sender, GridViewCellEventArgs e)

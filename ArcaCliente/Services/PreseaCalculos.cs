@@ -29,6 +29,23 @@ namespace ArcaCliente.Services
             return _monedas.TryGetValue(codigoArca.Trim(), out var c) ? c : 1;
         }
 
+        /// <summary>
+        /// Campos de percepcion/impuesto del layout PRESEA hacia los que se puede redistribuir
+        /// "Otros Tributos" (ARCA): codigo interno (<see cref="Models.PreseaPercepcionLinea.CampoDestino"/>)
+        /// y descripcion para mostrar en el combo de la grilla de revision.
+        /// </summary>
+        public static readonly (string Codigo, string Descripcion)[] CamposPercepcion =
+        {
+            ("IB",               "Percepcion IIBB"),
+            ("IM",               "Percepcion Municipal"),
+            ("IV",               "Percepcion IVA"),
+            ("IN",               "Percepcion Ingresos Nacional"),
+            ("Config1",          "Percepcion configurable 1"),
+            ("Config2",          "Percepcion configurable 2"),
+            ("Sobretasa",        "Sobretasa"),
+            ("ImpuestosInternos","Impuestos internos"),
+        };
+
         public static decimal ParseDecimal(string valor)
         {
             if (string.IsNullOrWhiteSpace(valor)) return 0m;
@@ -90,6 +107,52 @@ namespace ArcaCliente.Services
             }
 
             return (r1, n1, i1, r2, n2, i2);
+        }
+
+        /// <summary>
+        /// Detalle de IVA/Exento/No Gravado que ARCA informa por alicuota, para mostrar en la
+        /// ventana de revision de PRESEA (comprobacion contra el comprobante fisico). Indica a
+        /// que slot del layout PRESEA (Cuenta IVA / Cuenta IVA 2, ver <see cref="ResolverSlotIva"/>)
+        /// queda mapeado cada componente, o si el layout PRESEA no tiene campo para el (Exento y
+        /// No Gravado no se exportan hoy: son neto sin IVA, no afectan el total del comprobante).
+        /// </summary>
+        public static List<(string Concepto, decimal Neto, decimal Iva, string Slot)> DetalleIva(ComprobanteCsv c)
+        {
+            var detalle = new List<(string Concepto, decimal Neto, decimal Iva, string Slot)>();
+            if (c == null) return detalle;
+
+            var slots = new List<(decimal Rate, decimal Neto, decimal Iva)>();
+
+            void AddIva(decimal rate, string netoStr, string ivaStr)
+            {
+                var neto = ParseDecimal(netoStr);
+                var iva  = ParseDecimal(ivaStr);
+                if (neto != 0m || iva != 0m)
+                    slots.Add((rate, neto, iva));
+            }
+
+            AddIva(2.5m,  c.ImpNetoGravadoIVA25,  c.Iva25);
+            AddIva(5m,    c.ImpNetoGravadoIVA5,   c.Iva5);
+            AddIva(10.5m, c.ImpNetoGravadoIVA105, c.Iva105);
+            AddIva(21m,   c.ImpNetoGravadoIVA21,  c.Iva21);
+            AddIva(27m,   c.ImpNetoGravadoIVA27,  c.Iva27);
+            slots.Sort((a, b) => b.Iva.CompareTo(a.Iva));
+
+            for (int k = 0; k < slots.Count; k++)
+            {
+                string slotTxt = k == 0 ? "Cuenta IVA (slot 1)" : "Cuenta IVA 2 (slot 2, combinado)";
+                detalle.Add(($"IVA {slots[k].Rate:0.##}%", slots[k].Neto, slots[k].Iva, slotTxt));
+            }
+
+            decimal exento = ParseDecimal(c.ImpOpExentas);
+            if (exento != 0m)
+                detalle.Add(("Operaciones exentas", exento, 0m, "No exportado (sin campo en PRESEA)"));
+
+            decimal noGravado = ParseDecimal(c.ImpNetoNoGravado);
+            if (noGravado != 0m)
+                detalle.Add(("Neto no gravado", noGravado, 0m, "No exportado (sin campo en PRESEA)"));
+
+            return detalle;
         }
     }
 }

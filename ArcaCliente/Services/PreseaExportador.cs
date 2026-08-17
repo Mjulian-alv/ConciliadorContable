@@ -121,7 +121,8 @@ namespace ArcaCliente.Services
             Set(ws, row, 5,  PreseaCalculos.ParseDecimal(comp.TipoCambio)); // Cotizaci�n       B/-14,8
             Set(ws, row, 6,  ParseInt(_config.Provincia));                 // Provincia         I/3
             Set(ws, row, 7,  ParseInt(_config.Condicion));                 // Condici�n         I/5
-            Set(ws, row, 8,  0m);                                          // Descuento         B/-12,2
+            var provDescuento = AppServices.GetPreseaProveedor(TextParsingUtils.SoloDigitos(comp.NroDocEmisor));
+            Set(ws, row, 8,  provDescuento?.Descuento ?? 0m);              // Descuento         B/-12,2
             Set(ws, row, 9,  sucNum);                                      // Sucursal y n�m.   N/14
             Set(ws, row, 10, _config.Fiscal);                              // Fiscal            C/1
             Set(ws, row, 11, fechaStr);                                    // Fecha             D/8
@@ -138,8 +139,11 @@ namespace ArcaCliente.Services
             Set(ws, row, 22, iva2Neto);                                    // Neto 2            B/-12,2
             Set(ws, row, 23, iva2Iva);                                     // IVA 2             B/-12,2
             Set(ws, row, 24, PreseaCalculos.ParseDecimal(comp.ImpTotal));                 // Importe           B/-12,2
+            // Sin ventana de revision en este camino (exportacion masiva): el 100% de
+            // "Otros Tributos" (ARCA) se vuelca por defecto a Percepcion IB (IIBB), igual
+            // que el default del camino TXT (ver PreseaExportResolver.Resolver).
             Set(ws, row, 25, 0m);                                          // Sobretasa         B/-12,2
-            Set(ws, row, 26, 0m);                                          // Percepci�n IB     B/-12,2
+            Set(ws, row, 26, PreseaCalculos.ParseDecimal(comp.OtrosTributos));            // Percepci�n IB     B/-12,2
             Set(ws, row, 27, 0m);                                          // Percepci�n IM     B/-12,2
             Set(ws, row, 28, 0m);                                          // Percepci�n IV     B/-12,2
             Set(ws, row, 29, 0m);                                          // Percepci�n IN     B/-12,2
@@ -147,11 +151,11 @@ namespace ArcaCliente.Services
             Set(ws, row, 31, 0m);                                          // Percepc. 1 imp.   B/-12,2
             Set(ws, row, 32, 0);                                           // C�d. Percepc. 2   I/3
             Set(ws, row, 33, 0m);                                          // Percepc. 2 imp.   B/-12,2
-            Set(ws, row, 34, PreseaCalculos.ParseDecimal(comp.OtrosTributos));            // Imp. internos     B/-12,2
+            Set(ws, row, 34, 0m);                                          // Imp. internos     B/-12,2
             Set(ws, row, 35, _config.CuentaDebe);                         // Cta. ctble. debe  B/16
             Set(ws, row, 36, Truncate(_config.Centro, 10));               // Centro            C/10
-            Set(ws, row, 37, string.Empty);                                // Lista de precios  C/10
-            Set(ws, row, 38, 0);                                           // Versi�n           I/4
+            Set(ws, row, 37, "BASE");                                // Lista de precios  C/10
+            Set(ws, row, 38, 1);                                           // Versi�n           I/4
             Set(ws, row, 39, _config.Imputa);                             // Imputa            C/1
         }
 

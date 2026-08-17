@@ -12,8 +12,12 @@ namespace ArcaCliente.Services
     /// Acceso SQL unificado para la configuración de ArcaCliente.
     /// Todas las tablas viven en el schema arca de la base común (Conciliador.Comun.SqlDb).
     /// </summary>
-    internal static class ArcaSqlStorage
+    internal class ArcaSqlStorage : ClaseBase
     {
+
+        public static ArcaSqlStorage Instancia { get; } = new ArcaSqlStorage();
+
+
         private static readonly JsonSerializerOptions JsonOpts = new() { WriteIndented = false };
 
         // ── Inicialización ────────────────────────────────────────────────────────
@@ -300,12 +304,15 @@ namespace ArcaCliente.Services
             UpsertPreseaProveedor(cn, null, p);
         }
 
-        public static void UpsertPreseaProveedores(IEnumerable<ConfigPreseaProveedor> proveedores)
+        public void UpsertPreseaProveedores(IEnumerable<ConfigPreseaProveedor> proveedores)
         {
             using var cn = Open();
             using var tx = cn.BeginTransaction();
             foreach (var p in proveedores)
+            {
                 UpsertPreseaProveedor(cn, tx, p);
+                EnvioMensaje(new(true, DateTime.Now, $"Insertando proveedor {p.Nombre}"));
+            }
             tx.Commit();
         }
 

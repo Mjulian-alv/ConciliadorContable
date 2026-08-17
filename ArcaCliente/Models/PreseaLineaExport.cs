@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.ComponentModel;
 
 namespace ArcaCliente.Models
@@ -39,5 +40,15 @@ namespace ArcaCliente.Models
         [Browsable(false)] public string  Fiscal     { get; set; }
         [Browsable(false)] public string  Imputa     { get; set; }
         [Browsable(false)] public decimal Descuento  { get; set; }
+
+        /// <summary>
+        /// Desglose editable de "Otros Tributos" (ARCA) hacia los campos de percepcion/impuesto
+        /// del layout PRESEA. Precargado por <see cref="Services.PreseaExportResolver"/> con el
+        /// 100% en Percepcion IB (IIBB); el usuario puede redistribuirlo en la ventana de revision.
+        /// </summary>
+        [Browsable(false)] public List<PreseaPercepcionLinea> Percepciones { get; set; } = new();
+
+        /// <summary>Total de "Otros Tributos" (ARCA) a repartir entre <see cref="Percepciones"/>.</summary>
+        [Browsable(false)] public decimal OtrosTributosOriginal { get; set; }
     }
 }

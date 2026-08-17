@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -13,154 +12,333 @@ using Telerik.WinControls.UI;
 namespace ArcaCliente
 {
     /// <summary>
-    /// Fase 4 + disparo de Fase 5: muestra los comprobantes seleccionados con sus datos
-    /// resueltos (config general + mapa por proveedor), permite editar lo necesario y genera
-    /// el TXT delimitado por '|' para PRESEA. Al generar, registra los comprobantes en la
-    /// memoria anti-duplicado.
+    /// Fase 4 + disparo de Fase 5: revisa los comprobantes seleccionados uno a uno (mismo
+    /// patron que <see cref="FormProcesarSoloArca"/> para Octosis), permite completar los datos
+    /// de PRESEA y redistribuir "Otros Tributos" (ARCA) entre los campos de percepcion/impuesto
+    /// del layout (por defecto, 100% a Percepcion IIBB). Al confirmar el ultimo comprobante,
+    /// genera el TXT delimitado por '|' para PRESEA y registra los exportados en la memoria
+    /// anti-duplicado.
     /// </summary>
     public partial class FormCompletarPresea : Telerik.WinControls.UI.RadForm
     {
         private readonly ConfigPresea _cfg;
         private readonly string _perfilId;
-        private BindingList<PreseaLineaExport> _lineas;
+        private readonly List<PreseaLineaExport> _lineas;
+        private readonly List<PreseaLineaExport> _confirmadas = new();
 
-        private RadGridView gridLineas;
-        private RadLabel    lblEstado;
+        private int _currentIndex;
+        private int _omitidos;
+        private bool _actualizandoGrid;
 
         public FormCompletarPresea(List<ItemConciliacion> items, PerfilOffline perfil)
         {
             InitializeComponent();
             Icon = AppIcons.Arca;
 
-            _cfg      = perfil?.ConfigPresea ?? new ConfigPresea();
+            _cfg = perfil?.ConfigPresea ?? new ConfigPresea();
             _perfilId = perfil?.Id.ToString() ?? string.Empty;
 
-            BuildUi();
+            ConfigurarColumnasGrid();
+            dgvPercepciones.CellValueChanged += DgvPercepciones_CellValueChanged;
 
-            var lista = PreseaExportResolver.Resolver(items ?? new List<ItemConciliacion>(), _cfg);
-            _lineas = new BindingList<PreseaLineaExport>(lista);
-            gridLineas.DataSource = _lineas;
+            ConfigurarColumnasDetalleIva();
 
-            ActualizarEstado();
+            _lineas = PreseaExportResolver.Resolver(items ?? new List<ItemConciliacion>(), _cfg);
         }
 
-        // ── UI ───────────────────────────────────────────────────────────────────────
-
-        private void BuildUi()
+        protected override void OnLoad(EventArgs e)
         {
-            gridLineas = Build(new RadGridView(), g =>
+            base.OnLoad(e);
+
+            if (_lineas.Count == 0)
             {
-                g.Location = new Point(12, 12);
-                g.Size = new Size(936, 470);
-                g.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-                g.ReadOnly = false;
-                g.MasterTemplate.AllowAddNewRow = false;
-                g.MasterTemplate.AllowDeleteRow = false;
-                g.AutoGenerateColumns = false;
+                MessageBox.Show("No hay comprobantes para completar.", "Sin pendientes",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                DialogResult = DialogResult.Cancel;
+                Close();
+                return;
+            }
+
+            MostrarItem(0);
+        }
+
+        // ── Configuracion de la grilla de percepciones ──────────────────────────────
+
+        private void ConfigurarColumnasGrid()
+        {
+            dgvPercepciones.Columns.Add(new GridViewTextBoxColumn
+            {
+                Name = "Concepto",
+                HeaderText = "Concepto",
+                MinWidth = 150,
+                ReadOnly = true
             });
-            ConfigurarColumnas();
-            gridLineas.RowFormatting  += GridLineas_RowFormatting;
-            gridLineas.CellFormatting += GridLineas_CellFormatting;
-            Controls.Add(gridLineas);
 
-            lblEstado = Build(new RadLabel(), l =>
+            var colCampo = new GridViewComboBoxColumn
             {
-                l.Location = new Point(12, 492);
-                l.Size = new Size(560, 18);
-                l.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+                Name = "CampoDestino",
+                HeaderText = "Campo PRESEA",
+                MinWidth = 180,
+                DisplayMember = "Descripcion",
+                ValueMember = "Codigo",
+                DropDownStyle = RadDropDownStyle.DropDownList,
+                DataSource = PreseaCalculos.CamposPercepcion
+                    .Select(c => new { c.Codigo, c.Descripcion })
+                    .ToList(),
+            };
+            dgvPercepciones.Columns.Add(colCampo);
+
+            dgvPercepciones.Columns.Add(new GridViewDecimalColumn
+            {
+                Name = "Importe",
+                HeaderText = "Importe",
+                MinWidth = 110,
+                FormatString = "{0:N2}",
+                TextAlignment = ContentAlignment.MiddleRight,
+                DataType = typeof(decimal)
             });
-            Controls.Add(lblEstado);
-
-            Controls.Add(Build(new RadButton(), b =>
-            {
-                b.Location = new Point(740, 500); b.Size = new Size(120, 28);
-                b.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
-                b.Text = "Generar TXT";
-                b.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-                b.Click += BtnGenerar_Click;
-            }));
-            Controls.Add(Build(new RadButton(), b =>
-            {
-                b.Location = new Point(866, 500); b.Size = new Size(86, 28);
-                b.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
-                b.Text = "Cancelar";
-                b.Click += (s, e) => { DialogResult = DialogResult.Cancel; Close(); };
-            }));
         }
 
-        private void ConfigurarColumnas()
+        // ── Detalle de IVA / Exento / No Gravado (solo lectura, para comprobacion) ─────
+
+        private void ConfigurarColumnasDetalleIva()
         {
-            gridLineas.Columns.Add(new GridViewTextBoxColumn { FieldName = "Comprobante",     HeaderText = "Comprobante",       Width = 210, ReadOnly = true });
-            gridLineas.Columns.Add(new GridViewTextBoxColumn { FieldName = "Emisor",          HeaderText = "Emisor",            Width = 170, ReadOnly = true });
-            gridLineas.Columns.Add(new GridViewTextBoxColumn { FieldName = "Importe",         HeaderText = "Importe",           Width = 90,  ReadOnly = true, TextAlignment = ContentAlignment.MiddleRight });
-            gridLineas.Columns.Add(new GridViewTextBoxColumn { FieldName = "CodigoProveedor", HeaderText = "Cod. prov.",        Width = 80 });
-            gridLineas.Columns.Add(new GridViewTextBoxColumn { FieldName = "CuentaProveedor", HeaderText = "Cta. proveedor",    Width = 110 });
-            gridLineas.Columns.Add(new GridViewTextBoxColumn { FieldName = "CuentaDebe",      HeaderText = "Cta. debe",         Width = 110 });
-            gridLineas.Columns.Add(new GridViewTextBoxColumn { FieldName = "Centro",          HeaderText = "Centro",            Width = 80 });
-            gridLineas.Columns.Add(new GridViewTextBoxColumn { FieldName = "VencimientoCai",  HeaderText = "Vto. CAI",          Width = 90 });
-            gridLineas.Columns.Add(new GridViewTextBoxColumn { FieldName = "Observacion",     HeaderText = "Observacion",       Width = 140 });
-            gridLineas.Columns.Add(new GridViewTextBoxColumn { FieldName = "Estado",          HeaderText = "Estado",            Width = 120, ReadOnly = true });
+            dgvDetalleIva.Columns.Add(new GridViewTextBoxColumn
+            {
+                Name = "Concepto",
+                HeaderText = "Concepto (segun ARCA)",
+                MinWidth = 150,
+                ReadOnly = true
+            });
+            dgvDetalleIva.Columns.Add(new GridViewDecimalColumn
+            {
+                Name = "Neto",
+                HeaderText = "Neto",
+                MinWidth = 100,
+                ReadOnly = true,
+                FormatString = "{0:N2}",
+                TextAlignment = ContentAlignment.MiddleRight,
+                DataType = typeof(decimal)
+            });
+            dgvDetalleIva.Columns.Add(new GridViewDecimalColumn
+            {
+                Name = "Iva",
+                HeaderText = "IVA",
+                MinWidth = 100,
+                ReadOnly = true,
+                FormatString = "{0:N2}",
+                TextAlignment = ContentAlignment.MiddleRight,
+                DataType = typeof(decimal)
+            });
+            dgvDetalleIva.Columns.Add(new GridViewTextBoxColumn
+            {
+                Name = "Slot",
+                HeaderText = "Mapeo a PRESEA",
+                MinWidth = 220,
+                ReadOnly = true
+            });
         }
 
-        private void GridLineas_RowFormatting(object sender, RowFormattingEventArgs e)
+        private void CargarDetalleIva(PreseaLineaExport l)
         {
-            if (e.RowElement.RowInfo?.DataBoundItem is PreseaLineaExport l && !l.ProveedorEnMapa)
+            dgvDetalleIva.Rows.Clear();
+            var detalle = PreseaCalculos.DetalleIva(l.Csv);
+            if (detalle.Count == 0)
             {
-                e.RowElement.DrawFill = true;
-                e.RowElement.GradientStyle = GradientStyles.Solid;
-                e.RowElement.BackColor = Color.FromArgb(136, 207, 148);
-                e.RowElement.ForeColor = Color.Black;
+                dgvDetalleIva.Rows.Add("Sin IVA / Exento / No Gravado informado por ARCA", 0m, 0m, string.Empty);
+                return;
+            }
+            foreach (var d in detalle)
+                dgvDetalleIva.Rows.Add(d.Concepto, d.Neto, d.Iva, d.Slot);
+        }
+
+        // ── Navegacion ───────────────────────────────────────────────────────────────
+
+        private void MostrarItem(int index)
+        {
+            _currentIndex = index;
+
+            if (index >= _lineas.Count)
+            {
+                MostrarResumen();
+                return;
+            }
+
+            var l = _lineas[index];
+
+            lblProgreso.Text = $"Comprobante {index + 1} de {_lineas.Count}";
+            lblComprobante.Text = $"Comprobante: {l.Comprobante}";
+            lblEmisor.Text = $"Emisor:      {l.Emisor}";
+            lblImporte.Text = $"Importe:     $ {l.Importe}";
+
+            lblAvisoProveedor.Text = l.ProveedorEnMapa ? string.Empty
+                : "Proveedor no encontrado en el mapa de PRESEA - revise los datos abajo.";
+            lblAvisoProveedor.Visible = !l.ProveedorEnMapa;
+
+            if (l.OtrosTributosOriginal != 0m)
+            {
+                lblOtrosTributos.Text = $"Otros tributos informados por ARCA: $ {l.OtrosTributosOriginal:N2}  (a distribuir abajo)";
+                lblOtrosTributos.Visible = true;
+                grpImpuestos.Text = $"Percepciones / Otros Tributos (ARCA)  -  Total a distribuir: $ {l.OtrosTributosOriginal:N2}";
             }
             else
             {
-                e.RowElement.ResetValue(LightVisualElement.DrawFillProperty,  ValueResetFlags.Local);
-                e.RowElement.ResetValue(LightVisualElement.BackColorProperty, ValueResetFlags.Local);
-                e.RowElement.ResetValue(LightVisualElement.ForeColorProperty, ValueResetFlags.Local);
+                lblOtrosTributos.Visible = false;
+                grpImpuestos.Text = "Percepciones / Otros Tributos (ARCA)  -  Sin otros tributos informados por ARCA";
             }
+
+            txtCodigoProveedor.Text = l.CodigoProveedor;
+            txtCuentaProveedor.Text = l.CuentaProveedor;
+            txtCuentaDebe.Text = l.CuentaDebe;
+            txtCentro.Text = l.Centro;
+            txtVencimientoCai.Text = l.VencimientoCai;
+            txtObservacion.Text = l.Observacion;
+
+            CargarDetalleIva(l);
+            CargarGridPercepciones(l);
+
+            SetEstado(string.Empty, Color.Black);
         }
 
-        private void GridLineas_CellFormatting(object sender, CellFormattingEventArgs e)
+        private void CargarGridPercepciones(PreseaLineaExport l)
         {
-            if (e.CellElement.RowInfo?.DataBoundItem is PreseaLineaExport l && !l.ProveedorEnMapa)
-            {
-                e.CellElement.DrawFill = true;
-                e.CellElement.GradientStyle = GradientStyles.Solid;
-                e.CellElement.BackColor = Color.FromArgb(136, 207, 148);
-                e.CellElement.ForeColor = Color.Black;
-            }
-            else
-            {
-                e.CellElement.ResetValue(LightVisualElement.DrawFillProperty, ValueResetFlags.Local);
-                e.CellElement.ResetValue(LightVisualElement.BackColorProperty, ValueResetFlags.Local);
-                e.CellElement.ResetValue(LightVisualElement.ForeColorProperty, ValueResetFlags.Local);
-            }
+            _actualizandoGrid = true;
+            dgvPercepciones.Rows.Clear();
+            foreach (var p in l.Percepciones)
+                dgvPercepciones.Rows.Add(p.Concepto, p.CampoDestino, p.Importe);
+            _actualizandoGrid = false;
         }
 
-        // ── Generar
+        // ── Redistribucion automatica (fila "Diferencia / Restante") ───────────────────
 
-        private void BtnGenerar_Click(object sender, EventArgs e)
+        private void DgvPercepciones_CellValueChanged(object sender, GridViewCellEventArgs e)
         {
-            gridLineas.EndEdit();
+            if (_actualizandoGrid) return;
+            if (e.Column.Name != "Importe" && e.Column.Name != "CampoDestino") return;
+
+            var linea = _lineas[_currentIndex];
+            decimal objetivo = linea.OtrosTributosOriginal;
+
+            decimal suma = 0m;
+            GridViewRowInfo filaDiferencia = null;
+            foreach (var row in dgvPercepciones.Rows)
+            {
+                if (row.Cells["Concepto"].Value?.ToString() == PreseaPercepcionLinea.DiferenciaConcepto)
+                {
+                    filaDiferencia = row;
+                    continue;
+                }
+                suma += Convert.ToDecimal(row.Cells["Importe"].Value ?? 0m);
+            }
+
+            decimal diff = objetivo - suma;
+
+            _actualizandoGrid = true;
+            if (diff != 0m)
+            {
+                if (filaDiferencia != null)
+                    filaDiferencia.Cells["Importe"].Value = diff;
+                else
+                    dgvPercepciones.Rows.Add(PreseaPercepcionLinea.DiferenciaConcepto, string.Empty, diff);
+            }
+            else if (filaDiferencia != null)
+            {
+                dgvPercepciones.Rows.Remove(filaDiferencia);
+            }
+            _actualizandoGrid = false;
+        }
+
+        // ── Confirmar / Omitir / Cancelar ───────────────────────────────────────────
+
+        private void btnConfirmar_Click(object sender, EventArgs e)
+        {
+            dgvPercepciones.EndEdit();
 
             var faltantes = new List<string>();
-            foreach (var l in _lineas)
-            {
-                if (string.IsNullOrWhiteSpace(l.CodigoProveedor)) faltantes.Add($"{l.Comprobante}: falta codigo de proveedor.");
-                if (string.IsNullOrWhiteSpace(l.CuentaProveedor)) faltantes.Add($"{l.Comprobante}: falta cuenta de proveedor.");
-                if (string.IsNullOrWhiteSpace(l.CuentaDebe))      faltantes.Add($"{l.Comprobante}: falta cuenta del debe.");
-            }
+            if (string.IsNullOrWhiteSpace(txtCodigoProveedor.Text)) faltantes.Add("Falta el codigo de proveedor.");
+            if (string.IsNullOrWhiteSpace(txtCuentaProveedor.Text)) faltantes.Add("Falta la cuenta de proveedor.");
+            if (string.IsNullOrWhiteSpace(txtCuentaDebe.Text)) faltantes.Add("Falta la cuenta del debe.");
             if (string.IsNullOrWhiteSpace(_cfg.CuentaIVA))
                 faltantes.Add("Falta la Cuenta IVA en la configuracion general de PRESEA.");
+
+            foreach (var row in dgvPercepciones.Rows)
+            {
+                if (string.IsNullOrWhiteSpace(row.Cells["CampoDestino"].Value?.ToString()))
+                    faltantes.Add($"Falta elegir el campo PRESEA para \"{row.Cells["Concepto"].Value}\".");
+            }
 
             if (faltantes.Count > 0)
             {
                 MessageBox.Show(
-                    "No se puede generar el TXT. Corrija:\n\n  - " + string.Join("\n  - ", faltantes.Take(15)) +
-                    (faltantes.Count > 15 ? $"\n  ... y {faltantes.Count - 15} mas." : string.Empty),
+                    "No se puede confirmar este comprobante. Corrija:\n\n  - " + string.Join("\n  - ", faltantes),
                     "Datos incompletos", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
+            var l = _lineas[_currentIndex];
+            l.CodigoProveedor = txtCodigoProveedor.Text.Trim();
+            l.CuentaProveedor = txtCuentaProveedor.Text.Trim();
+            l.CuentaDebe = txtCuentaDebe.Text.Trim();
+            l.Centro = txtCentro.Text.Trim();
+            l.VencimientoCai = txtVencimientoCai.Text.Trim();
+            l.Observacion = txtObservacion.Text.Trim();
+
+            var percepciones = new List<PreseaPercepcionLinea>();
+            foreach (var row in dgvPercepciones.Rows)
+            {
+                percepciones.Add(new PreseaPercepcionLinea
+                {
+                    Concepto = row.Cells["Concepto"].Value?.ToString() ?? string.Empty,
+                    CampoDestino = row.Cells["CampoDestino"].Value?.ToString() ?? string.Empty,
+                    Importe = Convert.ToDecimal(row.Cells["Importe"].Value ?? 0m),
+                });
+            }
+            l.Percepciones = percepciones;
+
+            _confirmadas.Add(l);
+            MostrarItem(_currentIndex + 1);
+        }
+
+        private void btnOmitir_Click(object sender, EventArgs e)
+        {
+            _omitidos++;
+            MostrarItem(_currentIndex + 1);
+        }
+
+        private void btnCancelarTodo_Click(object sender, EventArgs e)
+        {
+            if (MessageBox.Show(
+                    "Cancelar el proceso? Los comprobantes ya confirmados no se exportan.",
+                    "Confirmar cancelacion",
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+            {
+                DialogResult = DialogResult.Cancel;
+                Close();
+            }
+        }
+
+        // ── Resumen final / generacion del TXT ──────────────────────────────────────
+
+        private void MostrarResumen()
+        {
+            grpInfo.Visible = false;
+            grpDatos.Visible = false;
+            grpDetalleIva.Visible = false;
+            grpImpuestos.Visible = false;
+            pnlBotones.Visible = false;
+            grpResumen.Visible = true;
+            lblProgreso.Text = "Revision finalizada";
+
+            lblResumen.Text = $"Confirmados: {_confirmadas.Count}    Omitidos: {_omitidos}\n" +
+                (_confirmadas.Count > 0
+                    ? "Presione \"Generar TXT\" para exportar los comprobantes confirmados."
+                    : "No hay comprobantes confirmados para exportar.");
+
+            btnGenerarTxt.Enabled = _confirmadas.Count > 0;
+        }
+
+        private void btnGenerarTxt_Click(object sender, EventArgs e)
+        {
             using var dlg = new SaveFileDialog
             {
                 Title = "Guardar archivo de importacion PRESEA",
@@ -173,10 +351,9 @@ namespace ArcaCliente
 
             try
             {
-                int n = PreseaTxtExportador.Exportar(_lineas, dlg.FileName, _cfg, _perfilId);
+                int n = PreseaTxtExportador.Exportar(_confirmadas, dlg.FileName, _cfg, _perfilId);
 
-                lblEstado.Text = $"Generado: {Path.GetFileName(dlg.FileName)}  ({n} comprobante(s))";
-                lblEstado.ForeColor = Color.DarkGreen;
+                SetEstado($"Generado: {Path.GetFileName(dlg.FileName)}  ({n} comprobante(s))", Color.DarkGreen);
 
                 if (MessageBox.Show(
                         $"Se generaron {n} comprobante(s) en:\n{dlg.FileName}\n\nAbrir la carpeta?",
@@ -188,29 +365,25 @@ namespace ArcaCliente
             }
             catch (Exception ex)
             {
-                lblEstado.Text = "Error al generar.";
-                lblEstado.ForeColor = Color.DarkRed;
+                SetEstado("Error al generar.", Color.DarkRed);
                 MessageBox.Show($"Error al generar el TXT:\n\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
+        private void btnCerrarSinGenerar_Click(object sender, EventArgs e)
+        {
+            DialogResult = DialogResult.Cancel;
+            Close();
+        }
+
         // ── Helpers ──────────────────────────────────────────────────────────────────
 
-        private void ActualizarEstado()
+        private void SetEstado(string texto, Color color)
         {
-            int sinProv = _lineas.Count(l => !l.ProveedorEnMapa);
-            lblEstado.Text = sinProv > 0
-                ? $"{_lineas.Count} comprobante(s).  {sinProv} sin proveedor en el mapa (fila resaltada) - complete los datos."
-                : $"{_lineas.Count} comprobante(s) listos para generar.";
-            lblEstado.ForeColor = sinProv > 0 ? Color.DarkOrange : Color.DarkGreen;
+            lblEstado.Text = texto;
+            lblEstado.ForeColor = color;
         }
 
-        private static T Build<T>(T ctrl, Action<T> cfg) where T : Control
-        {
-            if (ctrl is ISupportInitialize si) si.BeginInit();
-            cfg(ctrl);
-            if (ctrl is ISupportInitialize si2) si2.EndInit();
-            return ctrl;
-        }
+
     }
 }

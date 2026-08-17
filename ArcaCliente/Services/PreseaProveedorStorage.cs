@@ -6,8 +6,9 @@ namespace ArcaCliente.Services
     /// <summary>
     /// Acceso al mapa de proveedores PRESEA (por CUIT) persistido en SQLite.
     /// </summary>
-    internal static class PreseaProveedorStorage
+    internal class PreseaProveedorStorage
     {
+        
         public static List<ConfigPreseaProveedor> Load() =>
             ArcaSqlStorage.LoadPreseaProveedores();
 
@@ -21,6 +22,6 @@ namespace ArcaCliente.Services
 
         /// <summary>Inserta o actualiza un lote de proveedores en una sola transaccion.</summary>
         public static void UpsertRange(IEnumerable<ConfigPreseaProveedor> proveedores) =>
-            ArcaSqlStorage.UpsertPreseaProveedores(proveedores);
+            ArcaSqlStorage.Instancia.UpsertPreseaProveedores(proveedores);
     }
 }

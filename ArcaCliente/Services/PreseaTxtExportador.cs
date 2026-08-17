@@ -49,7 +49,7 @@ namespace ArcaCliente.Services
                 campos[2]  = San(descComprobante, 24, sep);          // 3  Comprobante C/24
                 campos[3]  = PreseaCalculos.MapMoneda(csv.Moneda).ToString(CultureInfo.InvariantCulture); // 4 Moneda I/3
                 campos[4]  = Num(ctz, 4, sepDec);                    // 5  Cotizacion B/-14,8
-                campos[5]  = Ent(l.Provincia);                       // 6  Provincia I/3
+                campos[5]  = Ent(l.Provincia) == "0" ? "21" : Ent(l.Provincia);                       // 6  Provincia I/3
                 campos[6]  = Ent(l.Condicion);                       // 7  Condicion I/5
                 campos[7]  = Num(l.Descuento, 2, sepDec);            // 8  Descuento B/-12,2
                 campos[8]  = sucNum;                                 // 9  Sucursal y numero N/14
@@ -68,20 +68,20 @@ namespace ArcaCliente.Services
                 campos[21] = Num(n2 * signo, 2, sepDec);            // 22 Neto 2 B/-12,2
                 campos[22] = Num(i2 * signo, 2, sepDec);            // 23 IVA 2 B/-12,2
                 campos[23] = Num(total * signo, 2, sepDec);         // 24 Importe B/-12,2
-                campos[24] = Num(0m, 2, sepDec);                    // 25 Sobretasa
-                campos[25] = Num(0m, 2, sepDec);                    // 26 Percepcion IB
-                campos[26] = Num(0m, 2, sepDec);                    // 27 Percepcion IM
-                campos[27] = Num(0m, 2, sepDec);                    // 28 Percepcion IV
-                campos[28] = Num(0m, 2, sepDec);                    // 29 Percepcion IN
+                campos[24] = Num(SumaPorCampo(l.Percepciones, "Sobretasa")         * signo, 2, sepDec); // 25 Sobretasa
+                campos[25] = Num(SumaPorCampo(l.Percepciones, "IB")                * signo, 2, sepDec); // 26 Percepcion IB
+                campos[26] = Num(SumaPorCampo(l.Percepciones, "IM")                * signo, 2, sepDec); // 27 Percepcion IM
+                campos[27] = Num(SumaPorCampo(l.Percepciones, "IV")                * signo, 2, sepDec); // 28 Percepcion IV
+                campos[28] = Num(SumaPorCampo(l.Percepciones, "IN")                * signo, 2, sepDec); // 29 Percepcion IN
                 campos[29] = (cfg.CodigoPercepcionConfig1 ?? string.Empty).Trim(); // 30 Cod percep 1 I/3
-                campos[30] = Num(0m, 2, sepDec);                    // 31 Percep 1 importe
+                campos[30] = Num(SumaPorCampo(l.Percepciones, "Config1")           * signo, 2, sepDec); // 31 Percep 1 importe
                 campos[31] = (cfg.CodigoPercepcionConfig2 ?? string.Empty).Trim(); // 32 Cod percep 2 I/3
-                campos[32] = Num(0m, 2, sepDec);                    // 33 Percep 2 importe
-                campos[33] = Num(0m, 2, sepDec);                    // 34 Impuestos internos
+                campos[32] = Num(SumaPorCampo(l.Percepciones, "Config2")           * signo, 2, sepDec); // 33 Percep 2 importe
+                campos[33] = Num(SumaPorCampo(l.Percepciones, "ImpuestosInternos") * signo, 2, sepDec); // 34 Impuestos internos
                 campos[34] = San(l.CuentaDebe, 16, sep);           // 35 Cuenta del debe B/16
                 campos[35] = San(l.Centro, 10, sep);               // 36 Centro C/10
-                campos[36] = string.Empty;                          // 37 Lista de precios (param 459)
-                campos[37] = string.Empty;                          // 38 Version (param 459)
+                campos[36] = "BASE";                          // 37 Lista de precios (param 459)
+                campos[37] = "1";                          // 38 Version (param 459)
                 campos[38] = San1(l.Imputa);                        // 39 Imputa C/1
 
                 filas.Add(string.Join(sep, campos));
@@ -137,6 +137,16 @@ namespace ArcaCliente.Services
 
         private static string San1(string s) =>
             string.IsNullOrWhiteSpace(s) ? string.Empty : s.Trim().Substring(0, 1).ToUpperInvariant();
+
+        /// <summary>Suma el importe de las lineas de percepcion cuyo CampoDestino coincide.</summary>
+        private static decimal SumaPorCampo(List<PreseaPercepcionLinea> percepciones, string campo)
+        {
+            decimal suma = 0m;
+            foreach (var p in percepciones)
+                if (p.CampoDestino == campo)
+                    suma += p.Importe;
+            return suma;
+        }
 
     }
 }

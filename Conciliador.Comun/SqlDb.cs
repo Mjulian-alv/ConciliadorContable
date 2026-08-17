@@ -20,4 +20,34 @@ namespace Conciliador.Comun
 
         public static SqlConnection GetConnection() => new SqlConnection(ConnectionString);
     }
+
+    public delegate void Notify();
+
+    public class ClaseBase
+    {
+
+        public event EventHandler<mensajeEventArgs> Mensajes;
+        public string VBCrLf = Environment.NewLine;
+
+
+        protected virtual void EnvioMensaje(mensajeEventArgs e)
+        {
+            Mensajes?.Invoke(this, e);
+        }
+
+    }
+
+
+    public class mensajeEventArgs : EventArgs
+    {
+        public bool IsSuccessful { get; set; }
+        public DateTime CompletionTime { get; set; }
+        public string mensaje { get; set; }
+        public mensajeEventArgs(bool pIsSuccessful = false, DateTime pCompletionTime = new DateTime(), string pmensaje = "")
+        {
+            IsSuccessful = pIsSuccessful;
+            CompletionTime = pCompletionTime;
+            mensaje = pmensaje;
+        }
+    }
 }

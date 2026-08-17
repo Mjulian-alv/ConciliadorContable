@@ -25,11 +25,6 @@ namespace ArcaCliente
         private BindingList<PreseaExportRow> _rows = new();
         private readonly Dictionary<string, PreseaExportRow> _porClave = new();
 
-        private RadTextBox  txtScan;
-        private RadLabel    lblScanInfo;
-        private RadLabel    lblContadores;
-        private RadGridView gridSeleccion;
-
         /// <summary>Items seleccionados al presionar Continuar (DialogResult.OK).</summary>
         public List<ItemConciliacion> ItemsSeleccionados { get; private set; } = new();
 
@@ -42,7 +37,11 @@ namespace ArcaCliente
                 .Where(x => x.Estado == EstadoConciliacion.SoloARCA)
                 .ToList();
 
-            BuildUi();
+            ConfigurarColumnas();
+            gridSeleccion.CellValueChanged += (s, e) => ActualizarContadores();
+            gridSeleccion.RowFormatting += GridSeleccion_RowFormatting;
+            gridSeleccion.CellFormatting += GridSeleccion_CellFormatting;
+
             ConstruirFilas();
             ActualizarContadores();
         }
@@ -55,80 +54,14 @@ namespace ArcaCliente
 
         // ── UI ───────────────────────────────────────────────────────────────────────
 
-        private void BuildUi()
+        private void btnSeleccionarNuevos_Click(object sender, EventArgs e) => MarcarTodos(soloNuevos: true);
+
+        private void btnQuitarSeleccion_Click(object sender, EventArgs e) => MarcarTodos(soloNuevos: false, marcar: false);
+
+        private void btnCancelar_Click(object sender, EventArgs e)
         {
-            var grpScan = new GroupBox { Text = "Escaneo", Location = new Point(12, 8), Size = new Size(796, 80), TabStop = false };
-            grpScan.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-
-            grpScan.Controls.Add(Build(new RadLabel(), l =>
-            {
-                l.Location = new Point(12, 20);
-                l.Text = "Escanee el QR del comprobante (o tilde manualmente en la grilla):";
-                l.Size = new Size(500, 16);
-            }));
-
-            txtScan = Build(new RadTextBox(), c => { c.Location = new Point(12, 44); c.Size = new Size(480, 22); });
-            txtScan.KeyDown += TxtScan_KeyDown;
-            grpScan.Controls.Add(txtScan);
-
-            lblScanInfo = Build(new RadLabel(), l => { l.Location = new Point(504, 46); l.Size = new Size(280, 18); l.Text = string.Empty; });
-            grpScan.Controls.Add(lblScanInfo);
-
-            Controls.Add(grpScan);
-
-            gridSeleccion = Build(new RadGridView(), g =>
-            {
-                g.Location = new Point(12, 96);
-                g.Size = new Size(796, 360);
-                g.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-                g.ReadOnly = false;
-                g.MasterTemplate.AllowAddNewRow = false;
-                g.MasterTemplate.AllowDeleteRow = false;
-                g.AutoGenerateColumns = false;
-            });
-            ConfigurarColumnas();
-            gridSeleccion.CellValueChanged += (s, e) => ActualizarContadores();
-            gridSeleccion.RowFormatting += GridSeleccion_RowFormatting;
-            gridSeleccion.CellFormatting += GridSeleccion_CellFormatting;
-            Controls.Add(gridSeleccion);
-
-            lblContadores = Build(new RadLabel(), l =>
-            {
-                l.Location = new Point(12, 466);
-                l.Size = new Size(360, 18);
-                l.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            });
-            Controls.Add(lblContadores);
-
-            Controls.Add(Build(new RadButton(), b =>
-            {
-                b.Location = new Point(12, 484); b.Size = new Size(180, 28);
-                b.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-                b.Text = "Seleccionar nuevos";
-                b.Click += (s, e) => { MarcarTodos(soloNuevos: true); };
-            }));
-            Controls.Add(Build(new RadButton(), b =>
-            {
-                b.Location = new Point(200, 484); b.Size = new Size(140, 28);
-                b.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-                b.Text = "Quitar seleccion";
-                b.Click += (s, e) => { MarcarTodos(soloNuevos: false, marcar: false); };
-            }));
-            Controls.Add(Build(new RadButton(), b =>
-            {
-                b.Location = new Point(596, 484); b.Size = new Size(120, 28);
-                b.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
-                b.Text = "Continuar";
-                b.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-                b.Click += BtnContinuar_Click;
-            }));
-            Controls.Add(Build(new RadButton(), b =>
-            {
-                b.Location = new Point(722, 484); b.Size = new Size(86, 28);
-                b.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
-                b.Text = "Cancelar";
-                b.Click += (s, e) => { DialogResult = DialogResult.Cancel; Close(); };
-            }));
+            DialogResult = DialogResult.Cancel;
+            Close();
         }
 
         private void ConfigurarColumnas()
@@ -321,14 +254,6 @@ namespace ArcaCliente
         {
             lblScanInfo.Text = texto;
             lblScanInfo.ForeColor = color;
-        }
-
-        private static T Build<T>(T ctrl, Action<T> cfg) where T : Control
-        {
-            if (ctrl is ISupportInitialize si) si.BeginInit();
-            cfg(ctrl);
-            if (ctrl is ISupportInitialize si2) si2.EndInit();
-            return ctrl;
         }
     }
 }
