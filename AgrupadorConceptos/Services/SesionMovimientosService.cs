@@ -33,27 +33,51 @@ namespace AgrupadorConceptos.Services
         }
 
         /// <summary>
-        /// Devuelve a "Pendiente Homologar" todos los movimientos del archivo que tengan
-        /// ese concepto estándar. Se usa al re-homologar un valor que ya estaba mapeado:
-        /// los movimientos que arrastraban el concepto viejo tienen que volver a resolverse.
+        /// Re-aplica las homologaciones del perfil sobre la lista que ya está en memoria
+        /// (la que tiene bindeada la grilla) y persiste sólo los movimientos que cambiaron.
+        ///
+        /// A diferencia de <see cref="RehomologarPendientes"/> no vuelve a leer de la base:
+        /// el llamador conserva la misma lista y las mismas instancias, así puede refrescar
+        /// la vista sin rebindear la grilla (sin perder el archivo en pantalla ni la fila
+        /// donde está parado el usuario).
         /// </summary>
-        /// <returns>Cantidad de movimientos afectados.</returns>
-        public static int MarcarComoPendiente(int idArchivo, string conceptoEstandar)
+        /// <param name="conceptoADespegar">
+        /// Concepto estándar que hay que devolver a "Pendiente Homologar" antes de re-homologar.
+        /// Se usa cuando el usuario re-homologa un valor que ya estaba mapeado: los movimientos
+        /// que arrastraban el concepto viejo tienen que volver a resolverse. Null si no aplica.
+        /// </param>
+        /// <returns>Los movimientos que quedaron modificados.</returns>
+        public static ISet<MovimientoProcesado> RehomologarEnMemoria(
+            List<MovimientoProcesado> movs, PerfilBanco perfil, string conceptoADespegar = null)
         {
-            var movs = MovimientoStorage.ObtenerPorArchivo(idArchivo);
+            // HashSet por referencia: un movimiento despegado y vuelto a homologar
+            // no tiene que persistirse dos veces.
+            var cambiados = new HashSet<MovimientoProcesado>();
+            if (movs == null || movs.Count == 0) return cambiados;
 
-            var vueltosAPendiente = new List<MovimientoProcesado>();
-            foreach (var mov in movs)
+            if (!string.IsNullOrEmpty(conceptoADespegar))
             {
-                if (mov.ConceptoEstandar != conceptoEstandar) continue;
+                foreach (var mov in movs)
+                {
+                    if (mov.ConceptoEstandar != conceptoADespegar) continue;
 
-                mov.ConceptoEstandar = ConceptosBancarios.PendienteHomologar;
-                mov.ConceptoFinal = ConceptosBancarios.PendienteHomologar;
-                vueltosAPendiente.Add(mov);
+                    mov.ConceptoEstandar = ConceptosBancarios.PendienteHomologar;
+                    mov.ConceptoFinal = ConceptosBancarios.PendienteHomologar;
+                    cambiados.Add(mov);
+                }
             }
 
-            MovimientoStorage.ActualizarConceptos(vueltosAPendiente);
-            return vueltosAPendiente.Count;
+            var dicHomologacion = HomologacionStorage.ObtenerDiccionario(perfil.Id);
+            foreach (var mov in movs)
+            {
+                if (mov.ConceptoEstandar != ConceptosBancarios.PendienteHomologar) continue;
+
+                HomologacionMatcher.AplicarA(mov, perfil.EsCodigo, dicHomologacion);
+                cambiados.Add(mov);
+            }
+
+            MovimientoStorage.ActualizarConceptos(cambiados);
+            return cambiados;
         }
     }
 }

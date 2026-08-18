@@ -13,6 +13,13 @@ namespace AgrupadorConceptos
 {
     public partial class ProcesadorForm : Form
     {
+        // Archivo y perfil que la grilla esta mostrando de verdad. No alcanza con mirar
+        // los combos: despues de importar, cmbArchivos puede quedar apuntando a otro
+        // archivo, y toda operacion sobre "la sesion actual" terminaba yendo contra el
+        // archivo equivocado.
+        private ArchivoImportado _archivoEnGrilla;
+        private PerfilBanco _perfilEnGrilla;
+
         public ProcesadorForm()
         {
             InitializeComponent();
@@ -89,28 +96,32 @@ namespace AgrupadorConceptos
         private void CboPerfiles_SelectedIndexChanged(object sender, EventArgs e)
         {
             CargarArchivosDelPerfil();
-            dgvDatos.DataSource = null; // Limpiamos la grilla al cambiar el perfil
+            LimpiarSesion(); // La sesion cargada era de otro perfil
         }
 
-        private void CargarArchivosDelPerfil()
+        /// <param name="idASeleccionar">
+        /// Archivo que tiene que quedar seleccionado al terminar; si es null se conserva
+        /// el que ya estaba. Al importar hay que pasarlo si o si: de lo contrario el combo
+        /// se queda en el archivo anterior mientras la grilla ya muestra el nuevo.
+        /// </param>
+        private void CargarArchivosDelPerfil(int? idASeleccionar = null)
         {
-            if (cboPerfiles.SelectedItem is PerfilBanco perfil)
-            {
-                var archivos = ArchivoImportadoStorage.ObtenerPorPerfil(perfil.Id);
-
-                var selectedId = cmbArchivos.SelectedValue;
-                cmbArchivos.DataSource = archivos;
-                cmbArchivos.DisplayMember = "DisplayName";
-                cmbArchivos.ValueMember = "Id";
-
-                if (selectedId != null && archivos.Any(a => a.Id == (int)selectedId))
-                {
-                    cmbArchivos.SelectedValue = selectedId;
-                }
-            }
-            else
+            if (cboPerfiles.SelectedItem is not PerfilBanco perfil)
             {
                 cmbArchivos.DataSource = null;
+                return;
+            }
+
+            var archivos = ArchivoImportadoStorage.ObtenerPorPerfil(perfil.Id);
+            int? idDeseado = idASeleccionar ?? cmbArchivos.SelectedValue as int?;
+
+            cmbArchivos.DataSource = archivos;
+            cmbArchivos.DisplayMember = "DisplayName";
+            cmbArchivos.ValueMember = "Id";
+
+            if (idDeseado != null && archivos.Any(a => a.Id == idDeseado.Value))
+            {
+                cmbArchivos.SelectedValue = idDeseado.Value;
             }
         }
 
@@ -141,25 +152,77 @@ namespace AgrupadorConceptos
 
         private void btnCargarSesion_Click(object sender, EventArgs e)
         {
-            if (cmbArchivos.SelectedItem is ArchivoImportado archivo && cboPerfiles.SelectedItem is PerfilBanco perfil)
-            {
-                var movs = SesionMovimientosService.RehomologarPendientes(archivo.Id, perfil);
+            if (cmbArchivos.SelectedItem is not ArchivoImportado archivo ||
+                cboPerfiles.SelectedItem is not PerfilBanco perfil) return;
 
-                dgvDatos.DataSource = null;
-                dgvDatos.DataSource = movs;
-                ConfigurarGrilla();
-
-                ActualizarResumen(movs);
-            }
+            var movs = SesionMovimientosService.RehomologarPendientes(archivo.Id, perfil);
+            MostrarSesion(archivo, perfil, movs);
         }
 
-        private void marcarComoPendiente(string conceptoStandard)
+        /// <summary>
+        /// Bindea la grilla y deja registrado que archivo/perfil es el que se esta trabajando.
+        /// Es el unico lugar que puede rebindear dgvDatos: cualquier otro refresco tiene que
+        /// ir por RefrescarGrillaConservandoPosicion para no mover al usuario de lugar.
+        /// </summary>
+        private void MostrarSesion(ArchivoImportado archivo, PerfilBanco perfil, List<MovimientoProcesado> movs)
         {
-            if (cmbArchivos.SelectedItem is ArchivoImportado archivo && cboPerfiles.SelectedItem is PerfilBanco)
-            {
-                SesionMovimientosService.MarcarComoPendiente(archivo.Id, conceptoStandard);
-            }
+            _archivoEnGrilla = archivo;
+            _perfilEnGrilla = perfil;
+
+            dgvDatos.DataSource = null;
+            dgvDatos.DataSource = movs;
+            ConfigurarGrilla();
+
+            ActualizarResumen(movs);
         }
+
+        private void LimpiarSesion()
+        {
+            _archivoEnGrilla = null;
+            _perfilEnGrilla = null;
+            dgvDatos.DataSource = null;
+            lblTotalRegistros.Text = "Registros leídos: 0";
+        }
+
+        /// <summary>
+        /// Vuelve a leer los valores de la lista ya bindeada sin rebindear: la fila actual,
+        /// la columna y el scroll quedan donde el usuario los dejo. Hace falta el Refresh
+        /// explicito porque MovimientoProcesado no notifica cambios de propiedad.
+        /// </summary>
+        private void RefrescarGrillaConservandoPosicion()
+        {
+            int idFilaActual = (dgvDatos.CurrentRow?.DataBoundItem as MovimientoProcesado)?.Id ?? 0;
+            var columnaActual = dgvDatos.CurrentColumn;
+
+            dgvDatos.MasterTemplate.Refresh();
+
+            if (idFilaActual == 0) return;
+
+            var fila = dgvDatos.Rows.FirstOrDefault(
+                r => r.DataBoundItem is MovimientoProcesado m && m.Id == idFilaActual);
+            if (fila == null) return;
+
+            dgvDatos.CurrentRow = fila;
+            if (columnaActual != null) dgvDatos.CurrentColumn = columnaActual;
+            fila.EnsureVisible();
+        }
+
+        /// <summary>
+        /// Aplica las homologaciones nuevas sobre los movimientos que ya estan en la grilla
+        /// y refresca en el lugar. No relee de la base ni rebindea: la grilla sigue mostrando
+        /// el archivo que se esta trabajando y el cursor no se mueve.
+        /// </summary>
+        private void AplicarHomologacionesEnGrilla(string conceptoADespegar = null)
+        {
+            if (_perfilEnGrilla == null) return;
+            if (dgvDatos.DataSource is not List<MovimientoProcesado> movs) return;
+
+            SesionMovimientosService.RehomologarEnMemoria(movs, _perfilEnGrilla, conceptoADespegar);
+
+            RefrescarGrillaConservandoPosicion();
+            ActualizarResumen(movs);
+        }
+
         private void btnBorrarSesion_Click(object sender, EventArgs e)
         {
             if (cmbArchivos.SelectedItem is ArchivoImportado archivo)
@@ -176,7 +239,7 @@ namespace AgrupadorConceptos
                         return;
                     }
                     CargarArchivosDelPerfil();
-                    dgvDatos.DataSource = null;
+                    if (_archivoEnGrilla?.Id == archivo.Id) LimpiarSesion();
                 }
             }
         }
@@ -190,21 +253,20 @@ namespace AgrupadorConceptos
         private void btnHomologacionMasiva_Click(object sender, EventArgs e)
         {
             var movimientos = dgvDatos.DataSource as List<MovimientoProcesado>;
-            if (movimientos == null || movimientos.Count == 0)
+            if (movimientos == null || movimientos.Count == 0 || _perfilEnGrilla == null)
             {
                 MessageBox.Show("No hay datos cargados en la sesión.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
-            if (cboPerfiles.SelectedItem is PerfilBanco perfil)
-            {
-                var frm = new HomologacionMasivaForm(movimientos, perfil.Id, perfil.EsCodigo);
-                frm.ShowDialog();
+            var frm = new HomologacionMasivaForm(movimientos, _perfilEnGrilla);
+            frm.ShowDialog();
 
-                if (frm.HuboCambios)
-                {
-                    btnCargarSesion_Click(null, null); // Recargar la sesión para aplicar mapeos masivos
-                }
+            if (frm.HuboCambios)
+            {
+                // La ventana masiva aplico y persistio los mapeos sobre esta misma lista.
+                RefrescarGrillaConservandoPosicion();
+                ActualizarResumen(movimientos);
             }
         }
 
@@ -263,7 +325,7 @@ namespace AgrupadorConceptos
                 {
                     try
                     {
-                        string titulo = $"Consolidado Bancario - {DateTime.Now:dd/MM/yyyy HH:mm} - {cmbArchivos.SelectedText}";
+                        string titulo = $"Consolidado Bancario - {DateTime.Now:dd/MM/yyyy HH:mm} - {_archivoEnGrilla?.DisplayName}";
                         ConsolidadoExporter.ExportarAExcel(consolidado, titulo, sfd.FileName);
                         MessageBox.Show("Consolidado exportado a Excel exitosamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
@@ -324,39 +386,36 @@ namespace AgrupadorConceptos
 
         private void btnHomologar_Click(object sender, EventArgs e)
         {
-            if (dgvDatos.CurrentRow == null)
+            if (_perfilEnGrilla == null)
+            {
+                MessageBox.Show("Primero cargue la sesión de un archivo.", "Atención", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            if (dgvDatos.CurrentRow?.DataBoundItem is not MovimientoProcesado movInfo)
             {
                 MessageBox.Show("Por favor seleccione un movimiento de la grilla que desee homologar.", "Atención", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
-            var movInfo = (MovimientoProcesado)dgvDatos.CurrentRow.DataBoundItem;
-            bool reemplazapornuevo = false;
-            string conceptopareemplazar = "";
+            // Si ya estaba homologado, el concepto viejo tiene que volver a pendiente para
+            // que la homologación nueva lo agarre.
+            string conceptoADespegar = null;
             if (movInfo.ConceptoEstandar != ConceptosBancarios.PendienteHomologar)
             {
                 var diag = MessageBox.Show($"El movimiento ya se encuentra homologado como '{movInfo.ConceptoEstandar}'. ¿Desea crear una nueva homologación para la descripción/concepto '{movInfo.ConceptoOriginal}'?", "Aviso", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                 if (diag != DialogResult.Yes) return;
-                reemplazapornuevo = true;
-                conceptopareemplazar = movInfo.ConceptoEstandar;
-
+                conceptoADespegar = movInfo.ConceptoEstandar;
             }
 
-            var perfil = (PerfilBanco)cboPerfiles.SelectedItem;
-            string valorParaHomologar = perfil.EsCodigo ? movInfo.ConceptoOriginal : movInfo.DescripcionOriginal;
+            string valorParaHomologar = _perfilEnGrilla.EsCodigo ? movInfo.ConceptoOriginal : movInfo.DescripcionOriginal;
 
-            HomologarForm frmHomologar = new HomologarForm(perfil.Id, valorParaHomologar);
+            HomologarForm frmHomologar = new HomologarForm(_perfilEnGrilla.Id, valorParaHomologar);
             frmHomologar.ShowDialog();
 
             if (frmHomologar.HomologacionExitosa)
             {
-                if (reemplazapornuevo)
-                {
-                    marcarComoPendiente(conceptopareemplazar);
-                }
-                btnCargarSesion_Click(null, null); // Recargar la sesión desde DB
-                
-
+                AplicarHomologacionesEnGrilla(conceptoADespegar);
             }
         }
 
@@ -381,14 +440,15 @@ namespace AgrupadorConceptos
 
                 // Step 3: Mostrando datos
                 AvanzarStep(3);
+                int idArchivo = movimientos.Count > 0 ? movimientos[0].IdArchivo : 0;
                 this.Invoke(() =>
                 {
                     PB_Importar.Value1 = 90;
-                    CargarArchivosDelPerfil();
-                    dgvDatos.DataSource = null;
-                    dgvDatos.DataSource = movimientos;
-                    ConfigurarGrilla();
-                    ActualizarResumen(movimientos);
+                    // El combo tiene que quedar en el archivo recien importado: es el que va a
+                    // mostrar la grilla y contra el que van a ir las homologaciones.
+                    CargarArchivosDelPerfil(idArchivo);
+                    var archivo = cmbArchivos.SelectedItem as ArchivoImportado;
+                    MostrarSesion(archivo?.Id == idArchivo ? archivo : null, perfil, movimientos);
                     PB_Importar.Value1 = 100;
                     // Completar último step
                     SPB_Importar.Steps[SPB_Importar.Steps.Count - 1].Progress = 100;

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
 using AgrupadorConceptos.Models;
-using AgrupadorConceptos.Data;
 using AgrupadorConceptos.Services;
 using Telerik.WinControls.UI;
 
@@ -12,18 +11,20 @@ namespace AgrupadorConceptos
     public partial class HomologacionMasivaForm : Form
     {
         private readonly List<MovimientoProcesado> _movimientos;
-        private readonly int _idPerfil;
-        private readonly bool _esCodigo;
+        private readonly PerfilBanco _perfil;
 
         public bool HuboCambios { get; private set; } = false;
 
-        public HomologacionMasivaForm(List<MovimientoProcesado> movimientos, int idPerfil, bool esCodigo)
+        /// <param name="movimientos">
+        /// La misma lista que muestra la grilla del llamador. Se modifica in situ: al volver,
+        /// el llamador sólo tiene que refrescar la vista, no recargar de la base.
+        /// </param>
+        public HomologacionMasivaForm(List<MovimientoProcesado> movimientos, PerfilBanco perfil)
         {
             InitializeComponent();
             this.Icon = AppIcon.GetIcon();
             _movimientos = movimientos;
-            _idPerfil = idPerfil;
-            _esCodigo = esCodigo;
+            _perfil = perfil;
 
             this.Load += HomologacionMasivaForm_Load;
             this.dgvPendientes.CellDoubleClick += DgvPendientes_CellDoubleClick;
@@ -67,31 +68,22 @@ namespace AgrupadorConceptos
             if (e.Row?.DataBoundItem != null)
             {
                 dynamic data = e.Row.DataBoundItem;
-                string valorParaHomologar = _esCodigo ? (string)data.ConceptoOriginal : (string)data.DescripcionOriginal;
+                string valorParaHomologar = _perfil.EsCodigo ? (string)data.ConceptoOriginal : (string)data.DescripcionOriginal;
                 if (string.IsNullOrEmpty(valorParaHomologar))
                     valorParaHomologar = (string)data.ConceptoOriginal;
 
-                var frmHomologar = new HomologarForm(_idPerfil, valorParaHomologar);
+                var frmHomologar = new HomologarForm(_perfil.Id, valorParaHomologar);
                 frmHomologar.ShowDialog();
 
                 if (frmHomologar.HomologacionExitosa)
                 {
-                    // Aplicar el cambio a la lista en memoria para poder refrescar la vista
+                    // Aplicamos y persistimos sobre la misma lista del llamador, así los
+                    // pendientes ya resueltos desaparecen de esta ventana y la grilla de
+                    // atrás queda al día sin tener que releerse.
                     HuboCambios = true;
-                    AplicarMapeos();
+                    SesionMovimientosService.RehomologarEnMemoria(_movimientos, _perfil);
                     CargarDatos();
                 }
-            }
-        }
-
-        private void AplicarMapeos()
-        {
-            var dicHomologacion = HomologacionStorage.ObtenerDiccionario(_idPerfil);
-
-            foreach (var mov in _movimientos)
-            {
-                if (mov.ConceptoEstandar == ConceptosBancarios.PendienteHomologar)
-                    HomologacionMatcher.AplicarA(mov, _esCodigo, dicHomologacion);
             }
         }
     }
