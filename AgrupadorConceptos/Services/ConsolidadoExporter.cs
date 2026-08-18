@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using AgrupadorConceptos.Models;
-using ClosedXML.Excel;
 
 namespace AgrupadorConceptos.Services
 {
@@ -45,53 +44,19 @@ namespace AgrupadorConceptos.Services
         public static int ContarPendientes(IEnumerable<MovimientoProcesado> movimientos) =>
             movimientos.Count(m => ConceptosBancarios.EstaPendiente(m.ConceptoFinal));
 
+        /// <summary>
+        /// El consolidado se escribe con el mismo formato que el resto de las
+        /// exportaciones del módulo; lo único propio es el armado de las cuatro columnas.
+        /// </summary>
         public static void ExportarAExcel(List<LineaConsolidado> lineas, string titulo, string rutaDestino)
         {
-            using var wb = new XLWorkbook();
-            var ws = wb.Worksheets.Add("Consolidado");
+            var encabezados = new List<string> { "Concepto Final", "Débitos", "Créditos", "Saldo" };
 
-            ws.Cell(1, 1).Value = titulo;
-            ws.Cell(1, 1).Style.Font.Bold = true;
-            ws.Cell(1, 1).Style.Font.FontSize = 12;
-            ws.Range(1, 1, 1, 4).Merge();
-
-            const int headerRow = 2;
-            ws.Cell(headerRow, 1).Value = "Concepto Final";
-            ws.Cell(headerRow, 2).Value = "Débitos";
-            ws.Cell(headerRow, 3).Value = "Créditos";
-            ws.Cell(headerRow, 4).Value = "Saldo";
-
-            var hr = ws.Range(headerRow, 1, headerRow, 4);
-            hr.Style.Font.Bold = true;
-            hr.Style.Font.FontColor = XLColor.White;
-            hr.Style.Fill.BackgroundColor = XLColor.FromArgb(50, 50, 50);
-            hr.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-            hr.Style.Border.BottomBorder = XLBorderStyleValues.Medium;
-            hr.Style.Border.BottomBorderColor = XLColor.Black;
-
-            int row = headerRow + 1;
+            var filas = new List<object[]>();
             foreach (var item in lineas)
-            {
-                ws.Cell(row, 1).Value = item.Concepto;
-                ws.Cell(row, 2).Value = item.Debitos;
-                ws.Cell(row, 3).Value = item.Creditos;
-                ws.Cell(row, 4).Value = item.Saldo;
+                filas.Add(new object[] { item.Concepto, item.Debitos, item.Creditos, item.Saldo });
 
-                ws.Cell(row, 2).Style.NumberFormat.Format = "#,##0.00";
-                ws.Cell(row, 3).Style.NumberFormat.Format = "#,##0.00";
-                ws.Cell(row, 4).Style.NumberFormat.Format = "#,##0.00";
-
-                row++;
-            }
-
-            ws.Columns().AdjustToContents(1, row);
-            ws.SheetView.Freeze(headerRow, 0);
-
-            var dataRange = ws.Range(1, 1, row - 1, 4);
-            dataRange.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
-            dataRange.Style.Border.OutsideBorderColor = XLColor.Gray;
-
-            wb.SaveAs(rutaDestino);
+            TablaExcelExporter.Exportar(encabezados, filas, titulo, rutaDestino, "Consolidado");
         }
     }
 }

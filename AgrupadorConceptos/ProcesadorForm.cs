@@ -318,21 +318,85 @@ namespace AgrupadorConceptos
             }
 
             var consolidado = ConsolidadoExporter.Calcular(movimientos);
+            string titulo = $"Consolidado Bancario - {DateTime.Now:dd/MM/yyyy HH:mm} - {_archivoEnGrilla?.DisplayName}";
 
-            using (SaveFileDialog sfd = new SaveFileDialog { Filter = "Archivos de Excel (*.xlsx)|*.xlsx", FileName = "Consolidado.xlsx" })
+            // La exportacion a Excel vive en la vista previa: el usuario controla ahi los
+            // totales y recien despues decide si guarda.
+            using var frmPreview = new ConsolidadoPreviewForm(consolidado, titulo);
+            frmPreview.ShowDialog();
+        }
+
+        private void btnExportarDetalle_Click(object sender, EventArgs e)
+        {
+            if (dgvDatos.DataSource is not List<MovimientoProcesado> movimientos || movimientos.Count == 0)
             {
-                if (sfd.ShowDialog() == DialogResult.OK)
+                MessageBox.Show("No hay datos para exportar.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var (encabezados, filas) = LeerLoVisibleDeLaGrilla();
+            if (filas.Count == 0)
+            {
+                MessageBox.Show("El filtro actual no deja ningún movimiento para exportar.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            // Si la grilla está filtrada, que quede dicho en el archivo: quien lo recibe
+            // tiene que saber que no está viendo el extracto completo.
+            string filtrado = filas.Count < movimientos.Count
+                ? $" (filtrado: {filas.Count} de {movimientos.Count} movimientos)"
+                : string.Empty;
+            string titulo = $"Detalle del extracto - {DateTime.Now:dd/MM/yyyy HH:mm} - {_archivoEnGrilla?.DisplayName}{filtrado}";
+
+            using var sfd = new SaveFileDialog { Filter = "Archivos de Excel (*.xlsx)|*.xlsx", FileName = "DetalleExtracto.xlsx" };
+            if (sfd.ShowDialog() != DialogResult.OK) return;
+
+            try
+            {
+                TablaExcelExporter.Exportar(encabezados, filas, titulo, sfd.FileName, "Detalle");
+                MessageBox.Show("Detalle exportado a Excel exitosamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al exportar: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        /// <summary>
+        /// Lo que la grilla está mostrando ahora: columnas visibles en el orden en que
+        /// quedaron, y las filas del view actual, que es lo que ya tiene aplicados el
+        /// filtro y el ordenamiento del usuario.
+        /// </summary>
+        private (List<string> Encabezados, List<object[]> Filas) LeerLoVisibleDeLaGrilla()
+        {
+            var columnas = dgvDatos.Columns.Where(c => c.IsVisible).ToList();
+            var encabezados = columnas
+                .Select(c => string.IsNullOrEmpty(c.HeaderText) ? c.Name : c.HeaderText)
+                .ToList();
+
+            var filas = AplanarFilasDelView(dgvDatos.ChildRows)
+                .Select(f => columnas.Select(c => f.Cells[c.Name].Value).ToArray())
+                .ToList();
+
+            return (encabezados, filas);
+        }
+
+        /// <summary>
+        /// ChildRows devuelve el view tal como se ve, pero si el usuario agrupó lo que trae
+        /// son filas de grupo y los movimientos cuelgan adentro. Por eso hay que bajar.
+        /// </summary>
+        private static IEnumerable<GridViewRowInfo> AplanarFilasDelView(IEnumerable<GridViewRowInfo> filas)
+        {
+            foreach (var fila in filas)
+            {
+                if (fila is GridViewGroupRowInfo grupo)
                 {
-                    try
-                    {
-                        string titulo = $"Consolidado Bancario - {DateTime.Now:dd/MM/yyyy HH:mm} - {_archivoEnGrilla?.DisplayName}";
-                        ConsolidadoExporter.ExportarAExcel(consolidado, titulo, sfd.FileName);
-                        MessageBox.Show("Consolidado exportado a Excel exitosamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show($"Error al exportar: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
+                    foreach (var hija in AplanarFilasDelView(grupo.ChildRows))
+                        yield return hija;
+                }
+                else if (fila is GridViewDataRowInfo)
+                {
+                    yield return fila;
                 }
             }
         }

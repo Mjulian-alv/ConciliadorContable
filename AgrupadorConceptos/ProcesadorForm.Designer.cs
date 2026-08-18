@@ -30,6 +30,7 @@ namespace AgrupadorConceptos
             btnHomologacionMasiva = new System.Windows.Forms.Button();
             lblArchivos = new System.Windows.Forms.Label();
             cmbArchivos = new System.Windows.Forms.ComboBox();
+            btnExportarDetalle = new System.Windows.Forms.Button();
             btnCargarSesion = new System.Windows.Forms.Button();
             btnBorrarSesion = new System.Windows.Forms.Button();
             btnGestionarHomologaciones = new System.Windows.Forms.Button();
@@ -57,6 +58,7 @@ namespace AgrupadorConceptos
             pnlTop.Controls.Add(btnCargarArchivo);
             pnlTop.Controls.Add(btnHomologar);
             pnlTop.Controls.Add(btnExportarConsolidado);
+            pnlTop.Controls.Add(btnExportarDetalle);
             pnlTop.Controls.Add(btnHomologacionMasiva);
             pnlTop.Controls.Add(lblArchivos);
             pnlTop.Controls.Add(cmbArchivos);
@@ -150,6 +152,17 @@ namespace AgrupadorConceptos
             btnExportarConsolidado.UseVisualStyleBackColor = true;
             btnExportarConsolidado.Click += btnExportarConsolidado_Click;
             // 
+            // btnExportarDetalle
+            // 
+            btnExportarDetalle.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            btnExportarDetalle.Location = new System.Drawing.Point(700, 85);
+            btnExportarDetalle.Name = "btnExportarDetalle";
+            btnExportarDetalle.Size = new System.Drawing.Size(200, 30);
+            btnExportarDetalle.TabIndex = 14;
+            btnExportarDetalle.Text = "4. Exportar Detalle...";
+            btnExportarDetalle.UseVisualStyleBackColor = true;
+            btnExportarDetalle.Click += btnExportarDetalle_Click;
+            // 
             // btnHomologacionMasiva
             // 
             btnHomologacionMasiva.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
@@ -201,7 +214,7 @@ namespace AgrupadorConceptos
             // 
             // btnGestionarHomologaciones
             // 
-            btnGestionarHomologaciones.Location = new System.Drawing.Point(700, 85);
+            btnGestionarHomologaciones.Location = new System.Drawing.Point(625, 51);
             btnGestionarHomologaciones.Name = "btnGestionarHomologaciones";
             btnGestionarHomologaciones.Size = new System.Drawing.Size(200, 30);
             btnGestionarHomologaciones.TabIndex = 11;
@@ -295,6 +308,7 @@ namespace AgrupadorConceptos
         private System.Windows.Forms.Button btnCargarArchivo;
         private System.Windows.Forms.Button btnHomologar;
         private System.Windows.Forms.Button btnExportarConsolidado;
+        private System.Windows.Forms.Button btnExportarDetalle;
         private System.Windows.Forms.Button btnHomologacionMasiva;
         private System.Windows.Forms.Label lblArchivos;
         private System.Windows.Forms.ComboBox cmbArchivos;
