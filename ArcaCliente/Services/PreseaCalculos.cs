@@ -105,7 +105,11 @@ namespace ArcaCliente.Services
                 r2 = slots[1].Rate;
                 for (int k = 1; k < slots.Count; k++) { n2 += slots[k].Neto; i2 += slots[k].Iva; }
             }
-
+            //Esto es para los casos que son factura C que no tienen iva
+            if (n1 == 0 && ParseDecimal(c.ImpTotal)>0)
+            {
+                n1 = ParseDecimal(c.ImpTotal);
+            }
             return (r1, n1, i1, r2, n2, i2);
         }
 
