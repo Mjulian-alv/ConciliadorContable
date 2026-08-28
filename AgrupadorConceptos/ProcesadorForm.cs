@@ -246,8 +246,31 @@ namespace AgrupadorConceptos
 
         private void btnGestionarHomologaciones_Click(object sender, EventArgs e)
         {
-            var frm = new GestionHomologacionesForm();
+            // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 4 - Abrir filtrada por el perfil en uso
+            // _perfilEnGrilla es el perfil de lo que se esta trabajando de verdad; si todavia
+            // no se cargo una sesion, alcanza con el del combo.
+            var perfil = _perfilEnGrilla ?? cboPerfiles.SelectedItem as PerfilBanco;
+
+            var frm = new GestionHomologacionesForm(perfil);
             frm.ShowDialog();
+
+            if (frm.HuboCambios) RefrescarSesionDesdeBase();
+        }
+
+        // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 4 - Reflejar lo que cambio la gestion
+        /// <summary>
+        /// Trae de la base los conceptos que quedaron después de gestionar homologaciones y
+        /// refresca la grilla en el lugar. No rebindea: el cursor no se mueve.
+        /// </summary>
+        private void RefrescarSesionDesdeBase()
+        {
+            if (_archivoEnGrilla == null) return;
+            if (dgvDatos.DataSource is not List<MovimientoProcesado> movs) return;
+
+            SesionMovimientosService.RefrescarDesdeBase(movs, _archivoEnGrilla.Id);
+
+            RefrescarGrillaConservandoPosicion();
+            ActualizarResumen(movs);
         }
 
         private void btnHomologacionMasiva_Click(object sender, EventArgs e)

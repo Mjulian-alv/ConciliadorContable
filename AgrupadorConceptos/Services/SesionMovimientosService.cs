@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using AgrupadorConceptos.Data;
 using AgrupadorConceptos.Models;
 
@@ -78,6 +79,31 @@ namespace AgrupadorConceptos.Services
 
             MovimientoStorage.ActualizarConceptos(cambiados);
             return cambiados;
+        }
+
+        // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 4 - Traer lo que cambio la gestion sin rebindear
+        /// <summary>
+        /// Vuelve a leer los conceptos del archivo y los copia sobre las instancias que la
+        /// grilla ya tiene bindeadas, macheando por Id.
+        ///
+        /// No reemplaza la lista a propósito: el llamador refresca la vista sin rebindear y
+        /// el usuario no pierde la fila donde estaba parado. Se usa al volver de la gestión
+        /// de homologaciones, que escribió directo en la base sobre todos los archivos del
+        /// perfil y por lo tanto también sobre el que está en pantalla.
+        /// </summary>
+        public static void RefrescarDesdeBase(List<MovimientoProcesado> movs, int idArchivo)
+        {
+            if (movs == null || movs.Count == 0) return;
+
+            var enBase = MovimientoStorage.ObtenerPorArchivo(idArchivo).ToDictionary(m => m.Id);
+
+            foreach (var mov in movs)
+            {
+                if (!enBase.TryGetValue(mov.Id, out var actualizado)) continue;
+
+                mov.ConceptoEstandar = actualizado.ConceptoEstandar;
+                mov.ConceptoFinal = actualizado.ConceptoFinal;
+            }
         }
     }
 }
