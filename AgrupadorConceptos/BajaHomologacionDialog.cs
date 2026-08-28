@@ -1,4 +1,4 @@
-// Fecha: 28/08/2026 - TAREA: 00003 - Linea: 1 - Que hacer con los movimientos al dar de baja
+﻿// Fecha: 28/08/2026 - TAREA: 00003 - Linea: 1 - Que hacer con los movimientos al dar de baja
 using System;
 using System.Windows.Forms;
 using AgrupadorConceptos.Data;

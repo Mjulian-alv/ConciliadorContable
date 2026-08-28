@@ -1,36 +1,309 @@
-using System;
+﻿using System;
+using System.ComponentModel;
+using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
 using AgrupadorConceptos.Data;
 using AgrupadorConceptos.Models;
+using AgrupadorConceptos.Services;
+using Telerik.WinControls.Data;
 
 namespace AgrupadorConceptos
 {
+    /// <summary>
+    /// Alta, baja y modificación de las homologaciones de un perfil. La baja no es un DELETE
+    /// suelto: el concepto homologado quedó escrito como texto en cada movimiento, así que
+    /// hay que decidir qué pasa con ellos (ver HomologacionAdminService).
+    /// </summary>
     public partial class GestionHomologacionesForm : Form
     {
-        public GestionHomologacionesForm()
+        // Entrada centinela del combo: evita un flag aparte para "no hay perfil elegido".
+        private const int IdTodosLosPerfiles = 0;
+
+        private readonly PerfilBanco _perfilInicial;
+
+        // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 4 - Avisar al llamador que refresque
+        /// <summary>True si se tocó alguna homologación: el llamador tiene que refrescar.</summary>
+        public bool HuboCambios { get; private set; }
+
+        // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 4 - Abrir filtrada por el perfil que la invoca
+        /// <param name="perfilInicial">
+        /// Perfil con el que arranca filtrada. Null abre en "(Todos los perfiles)".
+        /// </param>
+        public GestionHomologacionesForm(PerfilBanco perfilInicial = null)
         {
             InitializeComponent();
             this.Icon = AppIcon.GetIcon();
-            this.Load += (s, e) => CargarDatos();
+            _perfilInicial = perfilInicial;
+
+            this.Load += (s, e) =>
+            {
+                CargarPerfiles();
+                CargarDatos();
+            };
+
+            dgvHomologaciones.CurrentRowChanged += (s, e) => ActualizarBotones();
+        }
+
+        /// <summary>Perfil elegido, o null cuando está en "(Todos los perfiles)".</summary>
+        private PerfilBanco PerfilSeleccionado
+        {
+            get
+            {
+                var perfil = cboPerfil.SelectedItem as PerfilBanco;
+                return perfil != null && perfil.Id != IdTodosLosPerfiles ? perfil : null;
+            }
+        }
+
+        private HomologacionListado FilaSeleccionada =>
+            dgvHomologaciones.CurrentRow?.DataBoundItem as HomologacionListado;
+
+        /// <summary>
+        /// Perfil sobre el que opera una fila. Con "(Todos los perfiles)" el combo no lo sabe,
+        /// pero la fila trae su IdPerfilBanco.
+        /// </summary>
+        private PerfilBanco PerfilDeLaFila(HomologacionListado fila) =>
+            PerfilSeleccionado ?? PerfilBancoStorage.ObtenerPorId(fila.IdPerfilBanco);
+
+        private void CargarPerfiles()
+        {
+            var perfiles = PerfilBancoStorage.ObtenerTodos()
+                .OrderBy(p => p.NombreBanco)
+                .ToList();
+
+            perfiles.Insert(0, new PerfilBanco
+            {
+                Id = IdTodosLosPerfiles,
+                NombreBanco = "(Todos los perfiles)"
+            });
+
+            cboPerfil.DataSource = perfiles;
+            cboPerfil.DisplayMember = "NombreBanco";
+            cboPerfil.ValueMember = "Id";
+            cboPerfil.SelectedValue = _perfilInicial?.Id ?? IdTodosLosPerfiles;
+
+            // El handler se engancha despues de fijar la seleccion inicial: si no,
+            // el Load dispararia CargarDatos dos veces.
+            cboPerfil.SelectedIndexChanged += (s, e) => CargarDatos();
         }
 
         private void CargarDatos()
         {
-            dgvHomologaciones.DataSource = null;
-            dgvHomologaciones.DataSource = HomologacionStorage.ObtenerListado();
+            var perfil = PerfilSeleccionado;
+
+            Cursor = Cursors.WaitCursor;
+            try
+            {
+                var filas = HomologacionStorage.ObtenerListado(perfil?.Id);
+
+                // El conteo de uso no sale del SQL: que regla resuelve cada movimiento lo
+                // decide el matcher, no una FK. Se calcula perfil por perfil.
+                foreach (var grupo in filas.GroupBy(f => f.IdPerfilBanco))
+                {
+                    var perfilDelGrupo = perfil ?? PerfilBancoStorage.ObtenerPorId(grupo.Key);
+                    if (perfilDelGrupo == null) continue;
+
+                    var uso = HomologacionAdminService.ContarUsoPorRegla(perfilDelGrupo);
+                    foreach (var fila in grupo)
+                        fila.Movimientos = uso.TryGetValue(fila.ValorOriginal, out int n) ? n : 0;
+                }
+
+                dgvHomologaciones.DataSource = null;
+                dgvHomologaciones.DataSource = filas;
+
+                ConfigurarGrilla(agrupar: perfil == null);
+            }
+            finally
+            {
+                Cursor = Cursors.Default;
+            }
+
+            ActualizarBotones();
         }
 
+        // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 3 - Agrupar por perfil y ordenar por clave
+        // El orden por ValorOriginal descendente es el mismo del diccionario del matcher:
+        // la grilla tiene que leerse como la directiva de precedencia que efectivamente rige.
+        private void ConfigurarGrilla(bool agrupar)
+        {
+            OcultarColumna("Id");
+            OcultarColumna("IdPerfilBanco");
+            OcultarColumna("IdConceptoEstandar");
+
+            RenombrarColumna("Banco", "Perfil / Banco");
+            RenombrarColumna("ValorOriginal", "Valor del banco");
+            RenombrarColumna("ConceptoEstandar", "Concepto estándar");
+            RenombrarColumna("Movimientos", "Movimientos");
+
+            var colMovimientos = dgvHomologaciones.Columns["Movimientos"];
+            if (colMovimientos != null)
+            {
+                colMovimientos.TextAlignment = ContentAlignment.MiddleRight;
+                colMovimientos.MaxWidth = 120;
+            }
+
+            dgvHomologaciones.SortDescriptors.Clear();
+            dgvHomologaciones.SortDescriptors.Add(
+                new SortDescriptor("ValorOriginal", ListSortDirection.Descending));
+
+            dgvHomologaciones.GroupDescriptors.Clear();
+            if (agrupar)
+            {
+                var porBanco = new GroupDescriptor();
+                porBanco.GroupNames.Add("Banco", ListSortDirection.Ascending);
+                dgvHomologaciones.GroupDescriptors.Add(porBanco);
+            }
+        }
+
+        private void OcultarColumna(string nombre)
+        {
+            var col = dgvHomologaciones.Columns[nombre];
+            if (col != null) col.IsVisible = false;
+        }
+
+        private void RenombrarColumna(string nombre, string titulo)
+        {
+            var col = dgvHomologaciones.Columns[nombre];
+            if (col != null) col.HeaderText = titulo;
+        }
+
+        private void ActualizarBotones()
+        {
+            // El alta necesita un perfil concreto: con "(Todos los perfiles)" no hay
+            // a cual dar de alta.
+            btnNueva.Enabled = PerfilSeleccionado != null;
+
+            bool haySeleccion = FilaSeleccionada != null;
+            btnEditar.Enabled = haySeleccion;
+            btnEliminar.Enabled = haySeleccion;
+        }
+
+        // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 2 - Alta desde la gestion
+        private void btnNueva_Click(object sender, EventArgs e)
+        {
+            var perfil = PerfilSeleccionado;
+            if (perfil == null)
+            {
+                MessageBox.Show("Elija un perfil para dar de alta una homologación.",
+                    "Atención", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var frm = new HomologarForm(perfil.Id, "");
+            frm.ShowDialog(this);
+
+            if (!frm.HomologacionExitosa) return;
+
+            HuboCambios = true;
+            CargarDatos();
+        }
+
+        // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 2 - Edicion: reapuntar y arrastrar
+        private void btnEditar_Click(object sender, EventArgs e)
+        {
+            var fila = FilaSeleccionada;
+            if (fila == null)
+            {
+                MessageBox.Show("Seleccione una homologación para editar.",
+                    "Atención", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var perfil = PerfilDeLaFila(fila);
+            if (perfil == null) return;
+
+            var frm = new HomologarForm(perfil.Id, fila.ValorOriginal)
+            {
+                BloquearValorOriginal = true,
+                SoloSeleccionar = true,
+                Text = "Editar homologación"
+            };
+            frm.ShowDialog(this);
+
+            if (!frm.HomologacionExitosa) return;
+            if (string.Equals(frm.sConcepto, fila.ConceptoEstandar, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            Cursor = Cursors.WaitCursor;
+            try
+            {
+                HomologacionAdminService.Reapuntar(fila, perfil, frm.sConcepto);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al editar la homologación: {ex.Message}",
+                    "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+            finally
+            {
+                Cursor = Cursors.Default;
+            }
+
+            HuboCambios = true;
+            CargarDatos();
+        }
+
+        // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 1 - Baja preguntando por los ya homologados
         private void btnEliminar_Click(object sender, EventArgs e)
         {
-            if (dgvHomologaciones.CurrentRow?.DataBoundItem is HomologacionListado fila)
+            var fila = FilaSeleccionada;
+            if (fila == null)
             {
-                HomologacionStorage.Eliminar(fila.Id);
-                CargarDatos();
+                MessageBox.Show("Seleccione una homologación para eliminar.",
+                    "Atención", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var perfil = PerfilDeLaFila(fila);
+            if (perfil == null) return;
+
+            ImpactoHomologacion impacto;
+            Cursor = Cursors.WaitCursor;
+            try
+            {
+                impacto = HomologacionAdminService.CalcularImpactoBaja(fila, perfil);
+            }
+            finally
+            {
+                Cursor = Cursors.Default;
+            }
+
+            string conceptoDestino = null;
+
+            if (impacto.Total == 0)
+            {
+                // Sin movimientos que dependan de la regla no hay nada que preguntar.
+                var confirma = MessageBox.Show(
+                    $"¿Eliminar la homologación '{fila.ValorOriginal}' → '{fila.ConceptoEstandar}'?",
+                    "Confirmar", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (confirma != DialogResult.Yes) return;
             }
             else
             {
-                MessageBox.Show("Seleccione una homologación para eliminar.");
+                using var dlg = new BajaHomologacionDialog(fila, impacto);
+                if (dlg.ShowDialog(this) != DialogResult.OK) return;
+                conceptoDestino = dlg.ConceptoDestino;
             }
+
+            Cursor = Cursors.WaitCursor;
+            try
+            {
+                HomologacionAdminService.AplicarBaja(fila, impacto, conceptoDestino);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al eliminar la homologación: {ex.Message}",
+                    "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+            finally
+            {
+                Cursor = Cursors.Default;
+            }
+
+            HuboCambios = true;
+            CargarDatos();
         }
     }
 }

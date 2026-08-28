@@ -1,4 +1,4 @@
-namespace AgrupadorConceptos
+﻿namespace AgrupadorConceptos
 {
     partial class BajaHomologacionDialog
     {

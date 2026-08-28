@@ -62,12 +62,6 @@ namespace AgrupadorConceptos.Data
                 new { IdPerfil = idPerfilBanco }).ToList();
         }
 
-        public static void Eliminar(int id)
-        {
-            using var cn = DatabaseHelper.Open();
-            cn.Execute("DELETE FROM bancos.HomologacionConceptos WHERE Id = @Id", new { Id = id });
-        }
-
         // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 1 - Baja con los movimientos ya resueltos
         /// <summary>
         /// Borra la regla y persiste en la misma transacción los movimientos que la baja

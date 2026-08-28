@@ -19,7 +19,7 @@
 - **SQL siempre parametrizado** (`@Param`), nunca interpolado. Operaciones de varias sentencias en transacción explícita.
 - **`ConceptoFinal` editado a mano nunca se pisa.** Sólo se actualiza si estaba pendiente o si venía igual al `ConceptoEstandar` viejo.
 - **Comparaciones de conceptos y claves con `StringComparison.OrdinalIgnoreCase`.** El diccionario del matcher es `OrdinalIgnoreCase`, así que la clave que devuelve puede diferir en mayúsculas de la almacenada.
-- **Encoding:** los archivos nuevos y los `.Designer.cs` que se reescriben van en **UTF-8 con BOM**. Los `.Designer.cs` actuales están en cp1252 sin BOM, así que sus acentos hoy compilan corruptos.
+- **Encoding:** los archivos nuevos y los `.Designer.cs` que se reescriben van en **UTF-8 con BOM**. Los `.Designer.cs` actuales están en cp1252 sin BOM: compilan bien porque Roslyn, ante bytes que no son UTF-8 válido, cae al codepage ANSI del sistema — que acá es cp1252. Funciona por coincidencia, no por diseño, y se rompería en una máquina con otro codepage. Pasarlos a UTF-8 saca esa dependencia.
 - Comando de build único para todas las tareas:
   ```bash
   dotnet build ConciliadorContable.slnx -v q --nologo
@@ -1043,7 +1043,7 @@ git commit -m "feat(agrupador): dialogo de baja con el impacto sobre los movimie
 
 ### Task 7: La pantalla de gestión
 
-Se reescriben los dos archivos. El `.Designer.cs` actual está en cp1252 sin BOM, así que su `Text = "Gestión de Homologaciones"` hoy compila con el acento roto; el archivo nuevo va en UTF-8 con BOM y eso queda arreglado de paso.
+Se reescriben los dos archivos. El `.Designer.cs` actual está en cp1252 sin BOM y compila bien sólo porque el codepage ANSI de esta máquina es cp1252; el archivo nuevo va en UTF-8 con BOM y deja de depender de eso.
 
 **Files:**
 - Modify (reescribir): `AgrupadorConceptos/GestionHomologacionesForm.Designer.cs`
@@ -1676,7 +1676,7 @@ Marcar cada punto:
 6. **Filtro y agrupación.** Abrir la pantalla desde el Procesador con un perfil seleccionado: arranca filtrada en ese perfil. Pasar a `(Todos los perfiles)`: la grilla se agrupa por banco y `Nueva` queda deshabilitado. `Editar` y `Eliminar` siguen funcionando sobre la fila.
 7. **Perfil por código.** En un perfil con `EsCodigo = true`, los conteos de la columna `Movimientos` coinciden con el match exacto.
 8. **Refresco.** Al cerrar la pantalla después de un cambio, la grilla del Procesador muestra los conceptos nuevos **sin moverse** de la fila donde estaba el cursor.
-9. **Acentos.** El título de la ventana dice `Gestión de Homologaciones` (no `Gesti?n`), y los textos del diálogo de baja se ven bien.
+9. **Acentos.** El título de la ventana dice `Gestión de Homologaciones` y los textos del diálogo de baja se ven bien: es la comprobación de que el pasaje a UTF-8 de los Designer no rompió nada.
 
 Si algún punto falla, arreglarlo y volver a correr el checklist desde el 1.
 
@@ -1734,8 +1734,10 @@ Agregar al final de `docs/Historial.md`:
 - `Services/SesionMovimientosService.cs` — `RefrescarDesdeBase` copia los conceptos sobre las
   instancias bindeadas, sin rebindear, para no mover al usuario de fila.
 
-**De paso:** los `.Designer.cs` reescritos pasan a UTF-8 con BOM. Estaban en cp1252 sin BOM,
-así que sus acentos compilaban corruptos (`Gesti?n de Homologaciones` en el título).
+**De paso:** los `.Designer.cs` reescritos pasan a UTF-8 con BOM. Estaban en cp1252 sin BOM y
+compilaban bien sólo porque Roslyn, ante bytes que no son UTF-8 válido, cae al codepage ANSI
+del sistema — que en esta máquina es cp1252. Funcionaba por coincidencia; ahora no depende
+del codepage del equipo que compile.
 
 **Riesgo anotado, no resuelto:** `bancos.ConciliacionSesiones.ConceptosJson` guarda los
 `ConceptoFinal` elegidos al armar una conciliación. Una baja que cambie el `ConceptoFinal` de
