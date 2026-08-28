@@ -29,4 +29,27 @@ namespace AgrupadorConceptos.Models
 
         public int Total => Afectados.Count + CubiertosPorOtraRegla.Count;
     }
+
+    // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 5 - Desglose del impacto por archivo importado
+    /// <summary>
+    /// Cuánto de una baja cae sobre cada archivo importado. El total suelto no alcanza para
+    /// medirla: no es lo mismo tocar 28 movimientos del mes en curso que repartidos sobre
+    /// tres cierres ya conciliados.
+    /// </summary>
+    public class ImpactoPorArchivo
+    {
+        public string Archivo { get; set; }
+
+        /// <summary>Movimientos que quedan sin ninguna regla que los cubra.</summary>
+        public int SinRegla { get; set; }
+
+        /// <summary>Movimientos que otra homologación sigue resolviendo; no se despegan.</summary>
+        public int OtraRegla { get; set; }
+
+        /// <summary>Débitos de los movimientos sin regla: los que efectivamente cambian.</summary>
+        public decimal Debitos { get; set; }
+
+        /// <summary>Créditos de los movimientos sin regla.</summary>
+        public decimal Creditos { get; set; }
+    }
 }

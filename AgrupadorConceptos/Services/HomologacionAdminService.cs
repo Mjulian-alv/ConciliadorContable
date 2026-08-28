@@ -1,6 +1,7 @@
 // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 1 - Gestion de homologaciones: impacto y propagacion
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using AgrupadorConceptos.Data;
 using AgrupadorConceptos.Models;
 
@@ -69,6 +70,56 @@ namespace AgrupadorConceptos.Services
             }
 
             return impacto;
+        }
+
+        // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 5 - Repartir el impacto por archivo importado
+        /// <summary>
+        /// Reparte un impacto ya calculado entre los archivos importados del perfil, para que
+        /// el usuario vea sobre qué extractos cae la baja antes de confirmarla. Los importes
+        /// son los de los movimientos sin regla: los únicos que efectivamente cambian.
+        /// </summary>
+        public static List<ImpactoPorArchivo> DesglosarPorArchivo(ImpactoHomologacion impacto, int idPerfilBanco)
+        {
+            if (impacto == null || impacto.Total == 0) return new List<ImpactoPorArchivo>();
+
+            var nombres = ArchivoImportadoStorage.ObtenerPorPerfil(idPerfilBanco)
+                .ToDictionary(a => a.Id, a => a.DisplayName);
+
+            var porArchivo = new Dictionary<int, ImpactoPorArchivo>();
+
+            ImpactoPorArchivo FilaDe(MovimientoProcesado mov)
+            {
+                if (!porArchivo.TryGetValue(mov.IdArchivo, out var fila))
+                {
+                    fila = new ImpactoPorArchivo
+                    {
+                        // Un archivo borrado no puede tener movimientos (FK con ON DELETE
+                        // CASCADE), pero el fallback evita una fila sin nombre si algun dia
+                        // se toca el schema.
+                        Archivo = nombres.TryGetValue(mov.IdArchivo, out string nombre)
+                            ? nombre
+                            : $"(archivo {mov.IdArchivo})"
+                    };
+                    porArchivo[mov.IdArchivo] = fila;
+                }
+                return fila;
+            }
+
+            foreach (var item in impacto.Afectados)
+            {
+                var fila = FilaDe(item.Movimiento);
+                fila.SinRegla++;
+                fila.Debitos += item.Movimiento.Debitos;
+                fila.Creditos += item.Movimiento.Creditos;
+            }
+
+            foreach (var item in impacto.CubiertosPorOtraRegla)
+                FilaDe(item.Movimiento).OtraRegla++;
+
+            return porArchivo.Values
+                .OrderByDescending(f => f.SinRegla)
+                .ThenBy(f => f.Archivo)
+                .ToList();
         }
 
         /// <summary>

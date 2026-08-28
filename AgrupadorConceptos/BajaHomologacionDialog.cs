@@ -3,6 +3,7 @@ using System;
 using System.Windows.Forms;
 using AgrupadorConceptos.Data;
 using AgrupadorConceptos.Models;
+using AgrupadorConceptos.Services;
 
 namespace AgrupadorConceptos
 {
@@ -31,6 +32,11 @@ namespace AgrupadorConceptos
                 $"Los otros {impacto.CubiertosPorOtraRegla.Count} los sigue resolviendo otra " +
                 $"homologación y no se tocan.";
 
+            // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 5 - Sobre que archivos cae la baja
+            // El total suelto no alcanza para medir el impacto: no es lo mismo tocar 28
+            // movimientos del mes en curso que repartidos sobre tres cierres ya conciliados.
+            CargarDesglosePorArchivo(regla, impacto);
+
             cmbConcepto.DataSource = HomologacionStorage.ObtenerConceptosEstandar();
             cmbConcepto.DisplayMember = "Nombre";
             cmbConcepto.ValueMember = "Id";
@@ -39,6 +45,32 @@ namespace AgrupadorConceptos
 
             rbPendientes.Checked = true;
             rbReasignar.CheckedChanged += (s, e) => cmbConcepto.Enabled = rbReasignar.Checked;
+        }
+
+        // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 5 - Grilla del desglose por archivo
+        private void CargarDesglosePorArchivo(HomologacionListado regla, ImpactoHomologacion impacto)
+        {
+            dgvPorArchivo.DataSource =
+                HomologacionAdminService.DesglosarPorArchivo(impacto, regla.IdPerfilBanco);
+
+            ConfigurarColumna("Archivo", "Archivo importado", null);
+            ConfigurarColumna("SinRegla", "Quedan sin regla", null);
+            ConfigurarColumna("OtraRegla", "Los toma otra regla", null);
+            ConfigurarColumna("Debitos", "Débitos afectados", "{0:N2}");
+            ConfigurarColumna("Creditos", "Créditos afectados", "{0:N2}");
+        }
+
+        private void ConfigurarColumna(string nombre, string titulo, string formato)
+        {
+            var col = dgvPorArchivo.Columns[nombre];
+            if (col == null) return;
+
+            col.HeaderText = titulo;
+
+            if (formato == null) return;
+
+            col.FormatString = formato;
+            col.TextAlignment = System.Drawing.ContentAlignment.MiddleRight;
         }
 
         private void btnAceptar_Click(object sender, EventArgs e)
