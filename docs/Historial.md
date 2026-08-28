@@ -21,6 +21,8 @@ se anota acá y en el registro global. Si no, el correlativo miente.
 > 2. Alta y edición de homologaciones desde la misma pantalla.
 > 3. Que agrupe bien por perfil.
 > 4. Que al invocarla filtre por el perfil desde el cual se la llama.
+> 5. En el diálogo de baja, detallar cómo afecta a los archivos importados para poder medir
+>    el impacto.
 
 Diseño en `docs/superpowers/specs/2026-08-28-gestion-homologaciones-design.md`,
 plan en `docs/superpowers/plans/2026-08-28-gestion-homologaciones.md`.
@@ -92,6 +94,19 @@ vieja. Para eso, eliminar y dar de alta.
 compilaban bien sólo porque Roslyn, ante bytes que no son UTF-8 válido, cae al codepage ANSI
 del sistema — que en esta máquina es cp1252. Funcionaba por coincidencia del equipo; ahora no
 depende de eso.
+
+**Línea 5 · Desglose del impacto por archivo**
+
+- `Models/ImpactoHomologacion.cs` — `ImpactoPorArchivo`: por archivo importado, cuántos quedan
+  sin regla, cuántos toma otra, y los débitos y créditos de los que efectivamente cambian.
+- `Services/HomologacionAdminService.cs` — `DesglosarPorArchivo` reparte un impacto ya
+  calculado entre los archivos del perfil. No vuelve a leer movimientos: agrupa por
+  `IdArchivo` lo que el cálculo del impacto ya trajo.
+- `BajaHomologacionDialog` — grilla con ese desglose arriba de la pregunta.
+
+El total suelto no alcanzaba para decidir: 28 movimientos del mes en curso no es lo mismo que
+28 repartidos sobre tres cierres ya conciliados. Los importes son sólo los de los movimientos
+sin regla, que son los únicos que la baja cambia.
 
 ### Riesgo anotado, no resuelto
 
