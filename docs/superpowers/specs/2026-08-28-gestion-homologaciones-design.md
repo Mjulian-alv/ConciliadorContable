@@ -138,7 +138,7 @@ El servicio no abre conexiones: lee por `MovimientoStorage`/`HomologacionStorage
 - `ObtenerListado(int? idPerfilBanco = null)` — filtro opcional; suma `h.IdPerfilBanco` y `h.IdConceptoEstandar` a la proyección; `ORDER BY p.NombreBanco, h.ValorOriginal DESC`.
 - `EliminarYActualizarMovimientos(int idHomologacion, IReadOnlyCollection<MovimientoProcesado> movimientos)` — `DELETE` de la regla + updates de los movimientos en una transacción.
 - `ReapuntarYActualizarMovimientos(int idHomologacion, string nombreConcepto, IReadOnlyCollection<MovimientoProcesado> movimientos)` — busca o crea el concepto (mismo bloque que ya tiene `Guardar`), `UPDATE bancos.HomologacionConceptos SET IdConceptoEstandar = @Id WHERE Id = @IdHomologacion`, + updates de los movimientos. Una transacción. Conserva el `Id` de la regla.
-- `Eliminar(int id)` queda: la usa el camino sin impacto.
+- `Eliminar(int id)` se borra: con la baja pasando siempre por `EliminarYActualizarMovimientos` (que borra la regla igual cuando la lista de movimientos viene vacía), queda sin llamadores.
 
 El bloque "buscar o crear concepto estándar" se extrae de `Guardar` a un privado `ObtenerOCrearConcepto(cn, tx, nombre)` para que lo usen los dos.
 
