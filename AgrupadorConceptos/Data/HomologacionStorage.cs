@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using AgrupadorConceptos.Models;
 using Dapper;
@@ -67,6 +68,54 @@ namespace AgrupadorConceptos.Data
             cn.Execute("DELETE FROM bancos.HomologacionConceptos WHERE Id = @Id", new { Id = id });
         }
 
+        // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 1 - Baja con los movimientos ya resueltos
+        /// <summary>
+        /// Borra la regla y persiste en la misma transacción los movimientos que la baja
+        /// dejó modificados. Atómico a propósito: media baja aplicada es peor que ninguna.
+        /// </summary>
+        /// <param name="movimientos">Ya vienen con ConceptoEstandar/ConceptoFinal decididos
+        /// por HomologacionAdminService. Puede venir vacío: la regla se borra igual.</param>
+        public static void EliminarYActualizarMovimientos(
+            int idHomologacion, IReadOnlyCollection<MovimientoProcesado> movimientos)
+        {
+            using var cn = DatabaseHelper.Open();
+            using var tx = cn.BeginTransaction();
+
+            cn.Execute("DELETE FROM bancos.HomologacionConceptos WHERE Id = @Id",
+                new { Id = idHomologacion }, tx);
+
+            MovimientoStorage.ActualizarConceptos(movimientos, cn, tx);
+
+            tx.Commit();
+        }
+
+        // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 2 - Edicion: reapuntar la regla y arrastrar
+        /// <summary>
+        /// Reapunta la regla a otro concepto (buscándolo o creándolo) y persiste en la misma
+        /// transacción los movimientos que arrastra. Hace UPDATE en vez del DELETE+INSERT que
+        /// usa <see cref="Guardar"/>, así el Id de la regla sobrevive a la edición.
+        /// </summary>
+        /// <returns>Id del concepto estándar al que quedó apuntando.</returns>
+        public static int ReapuntarYActualizarMovimientos(
+            int idHomologacion, string nombreConcepto, IReadOnlyCollection<MovimientoProcesado> movimientos)
+        {
+            using var cn = DatabaseHelper.Open();
+            using var tx = cn.BeginTransaction();
+
+            int idConcepto = ObtenerOCrearConcepto(cn, tx, nombreConcepto);
+
+            cn.Execute(@"
+                UPDATE bancos.HomologacionConceptos
+                SET IdConceptoEstandar = @IdConcepto
+                WHERE Id = @Id",
+                new { IdConcepto = idConcepto, Id = idHomologacion }, tx);
+
+            MovimientoStorage.ActualizarConceptos(movimientos, cn, tx);
+
+            tx.Commit();
+            return idConcepto;
+        }
+
         public static List<ConceptoEstandar> ObtenerConceptosEstandar()
         {
             using var cn = DatabaseHelper.Open();
@@ -88,14 +137,8 @@ namespace AgrupadorConceptos.Data
             using var cn = DatabaseHelper.Open();
             using var tx = cn.BeginTransaction();
 
-            int? idConcepto = cn.QueryFirstOrDefault<int?>(
-                "SELECT Id FROM bancos.ConceptosEstandar WHERE LOWER(Nombre) = LOWER(@Nombre)",
-                new { Nombre = nombreConcepto }, tx);
-
-            if (idConcepto == null)
-                idConcepto = cn.QuerySingle<int>(
-                    "INSERT INTO bancos.ConceptosEstandar (Nombre) OUTPUT INSERTED.Id VALUES (@Nombre);",
-                    new { Nombre = nombreConcepto }, tx);
+            // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 2 - Extraido para reusarlo en el reapuntado
+            int idConcepto = ObtenerOCrearConcepto(cn, tx, nombreConcepto);
 
             cn.Execute(@"
                 DELETE FROM bancos.HomologacionConceptos
@@ -105,10 +148,27 @@ namespace AgrupadorConceptos.Data
             cn.Execute(@"
                 INSERT INTO bancos.HomologacionConceptos (IdPerfilBanco, ValorOriginal, IdConceptoEstandar)
                 VALUES (@IdPerfilBanco, @ValorOriginal, @IdConceptoEstandar)",
-                new { IdPerfilBanco = idPerfilBanco, ValorOriginal = valorOriginal, IdConceptoEstandar = idConcepto.Value }, tx);
+                new { IdPerfilBanco = idPerfilBanco, ValorOriginal = valorOriginal, IdConceptoEstandar = idConcepto }, tx);
 
             tx.Commit();
-            return idConcepto.Value;
+            return idConcepto;
+        }
+
+        // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 2 - Buscar o crear el concepto estandar
+        /// <summary>
+        /// Id del concepto con ese nombre, creándolo si no existía. Va siempre dentro de la
+        /// transacción del llamador: si se creara suelto y el resto fallara, quedaría un
+        /// ConceptoEstandar huérfano sin ninguna homologación que lo use.
+        /// </summary>
+        private static int ObtenerOCrearConcepto(IDbConnection cn, IDbTransaction tx, string nombreConcepto)
+        {
+            int? id = cn.QueryFirstOrDefault<int?>(
+                "SELECT Id FROM bancos.ConceptosEstandar WHERE LOWER(Nombre) = LOWER(@Nombre)",
+                new { Nombre = nombreConcepto }, tx);
+
+            return id ?? cn.QuerySingle<int>(
+                "INSERT INTO bancos.ConceptosEstandar (Nombre) OUTPUT INSERTED.Id VALUES (@Nombre);",
+                new { Nombre = nombreConcepto }, tx);
         }
     }
 }
