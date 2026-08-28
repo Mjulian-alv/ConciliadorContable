@@ -23,6 +23,8 @@ se anota acá y en el registro global. Si no, el correlativo miente.
 > 4. Que al invocarla filtre por el perfil desde el cual se la llama.
 > 5. En el diálogo de baja, detallar cómo afecta a los archivos importados para poder medir
 >    el impacto.
+> 6. Analizar el `HomologarForm` que se abre con el doble click: si también afecta a todo,
+>    debe tener un tratamiento similar al de la gestión.
 
 Diseño en `docs/superpowers/specs/2026-08-28-gestion-homologaciones-design.md`,
 plan en `docs/superpowers/plans/2026-08-28-gestion-homologaciones.md`.
@@ -107,6 +109,33 @@ depende de eso.
 El total suelto no alcanzaba para decidir: 28 movimientos del mes en curso no es lo mismo que
 28 repartidos sobre tres cierres ya conciliados. Los importes son sólo los de los movimientos
 sin regla, que son los únicos que la baja cambia.
+
+**Línea 6 · La re-homologación desde la grilla**
+
+El análisis mostró que el doble click **no** afectaba a todo: la regla que guarda es del
+perfil, pero la propagación tocaba sólo el archivo abierto. Se decidió **dejar ese alcance
+como estaba** — es la intención buscada, "reclasificar de acá en adelante y arreglar el
+archivo que tengo abierto" — y corregir dos bugs que ocurrían dentro de ese archivo:
+
+- El despegue hacía `ConceptoFinal = Pendiente Homologar` sin mirar, y después el matcher lo
+  reescribía: una corrección hecha a mano en la grilla se perdía en silencio.
+- El despegue filtraba por texto del concepto (`mov.ConceptoEstandar != conceptoADespegar`),
+  así que alcanzaba también a movimientos de otras reglas que apuntan al mismo concepto.
+
+Qué se tocó:
+
+- `Services/HomologacionMatcher.cs` — `EscribirConcepto`: la regla de "cómo se escribe un
+  concepto en un movimiento" pasa a estar en un solo lugar. Estaba duplicada en `AplicarA` y
+  en el despegue, con criterios distintos. `AplicarA` y `HomologacionAdminService` la usan.
+- `Services/SesionMovimientosService.cs` — se elimina el parámetro `conceptoADespegar` y su
+  bloque. En su lugar, `MovimientosDeLaMismaRegla` (atribución por regla ganadora) y
+  `ReaplicarHomologacion`, que escribe el concepto directo sin pasar por un estado pendiente
+  intermedio donde la edición manual se perdería.
+- `ProcesadorForm.cs` — el conjunto a re-resolver se calcula **después** de guardar, con el
+  diccionario ya actualizado. Así entran también los movimientos que arrastraban un concepto
+  huérfano de una regla borrada, que el despegue por texto sí recuperaba. Sólo corre en el
+  caso re-homologación, el que el usuario confirma: en el alta sobre un pendiente alcanza con
+  el barrido de pendientes, para no tocar por sorpresa movimientos ya resueltos.
 
 ### Riesgo anotado, no resuelto
 
