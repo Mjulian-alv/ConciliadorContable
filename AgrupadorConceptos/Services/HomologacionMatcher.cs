@@ -44,7 +44,7 @@ namespace AgrupadorConceptos.Services
         /// </summary>
         public static void AplicarA(MovimientoProcesado mov, bool esCodigo, IDictionary<string, string> dicHomologacion)
         {
-            string valorABuscar = esCodigo ? mov.ConceptoOriginal : mov.DescripcionOriginal;
+            string valorABuscar = mov.ConceptoOriginal;
 
             string homologado = Resolver(dicHomologacion, valorABuscar, esCodigo);
             if (homologado == null) return;

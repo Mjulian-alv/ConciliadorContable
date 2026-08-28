@@ -29,7 +29,7 @@ namespace AgrupadorConceptos.Data
                 FROM bancos.HomologacionConceptos h
                 INNER JOIN bancos.ConceptosEstandar c ON h.IdConceptoEstandar = c.Id
                 WHERE h.IdPerfilBanco = @IdPerfil
-                ORDER BY c.Nombre DESC",
+                ORDER BY h.ValorOriginal DESC",
                 new { IdPerfil = idPerfilBanco })
                 .ToDictionary(x => (string)x.ValorOriginal, x => (string)x.ConceptoEstandar,
                               StringComparer.OrdinalIgnoreCase);

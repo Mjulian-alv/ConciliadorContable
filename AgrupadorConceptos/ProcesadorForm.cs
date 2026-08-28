@@ -472,7 +472,7 @@ namespace AgrupadorConceptos
                 conceptoADespegar = movInfo.ConceptoEstandar;
             }
 
-            string valorParaHomologar = _perfilEnGrilla.EsCodigo ? movInfo.ConceptoOriginal : movInfo.DescripcionOriginal;
+            string valorParaHomologar = movInfo.ConceptoOriginal;
 
             HomologarForm frmHomologar = new HomologarForm(_perfilEnGrilla.Id, valorParaHomologar);
             frmHomologar.ShowDialog();
