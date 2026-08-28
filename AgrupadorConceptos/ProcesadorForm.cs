@@ -212,12 +212,12 @@ namespace AgrupadorConceptos
         /// y refresca en el lugar. No relee de la base ni rebindea: la grilla sigue mostrando
         /// el archivo que se esta trabajando y el cursor no se mueve.
         /// </summary>
-        private void AplicarHomologacionesEnGrilla(string conceptoADespegar = null)
+        private void AplicarHomologacionesEnGrilla()
         {
             if (_perfilEnGrilla == null) return;
             if (dgvDatos.DataSource is not List<MovimientoProcesado> movs) return;
 
-            SesionMovimientosService.RehomologarEnMemoria(movs, _perfilEnGrilla, conceptoADespegar);
+            SesionMovimientosService.RehomologarEnMemoria(movs, _perfilEnGrilla);
 
             RefrescarGrillaConservandoPosicion();
             ActualizarResumen(movs);
@@ -485,14 +485,13 @@ namespace AgrupadorConceptos
                 return;
             }
 
-            // Si ya estaba homologado, el concepto viejo tiene que volver a pendiente para
-            // que la homologación nueva lo agarre.
-            string conceptoADespegar = null;
-            if (movInfo.ConceptoEstandar != ConceptosBancarios.PendienteHomologar)
+            // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 6 - Re-homologar por regla, no por concepto
+            bool yaEstabaHomologado = movInfo.ConceptoEstandar != ConceptosBancarios.PendienteHomologar;
+
+            if (yaEstabaHomologado)
             {
                 var diag = MessageBox.Show($"El movimiento ya se encuentra homologado como '{movInfo.ConceptoEstandar}'. ¿Desea crear una nueva homologación para la descripción/concepto '{movInfo.ConceptoOriginal}'?", "Aviso", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                 if (diag != DialogResult.Yes) return;
-                conceptoADespegar = movInfo.ConceptoEstandar;
             }
 
             string valorParaHomologar = movInfo.ConceptoOriginal;
@@ -500,10 +499,29 @@ namespace AgrupadorConceptos
             HomologarForm frmHomologar = new HomologarForm(_perfilEnGrilla.Id, valorParaHomologar);
             frmHomologar.ShowDialog();
 
-            if (frmHomologar.HomologacionExitosa)
+            if (!frmHomologar.HomologacionExitosa) return;
+
+            // Re-resolver los movimientos que ahora cubre la regla recien guardada. Se calcula
+            // DESPUES de guardar, con el diccionario ya actualizado: asi entran tanto los que
+            // arrastraba la regla vieja como los que tenian un concepto huerfano de una regla
+            // que ya no existe, que con el despegue por texto tambien se recuperaban.
+            //
+            // Solo en el caso re-homologacion, que es el que el usuario confirmo. En el alta
+            // sobre un pendiente alcanza con el barrido de pendientes: no hay que tocar por
+            // sorpresa movimientos que ya estaban resueltos.
+            //
+            // El alcance sigue siendo el archivo abierto: la regla rige para las importaciones
+            // futuras, y lo que haya que corregir en archivos viejos va por la gestion de
+            // homologaciones, que muestra el impacto antes de aplicarlo.
+            if (yaEstabaHomologado && dgvDatos.DataSource is List<MovimientoProcesado> movsEnGrilla)
             {
-                AplicarHomologacionesEnGrilla(conceptoADespegar);
+                var aReaplicar = SesionMovimientosService.MovimientosDeLaMismaRegla(
+                    movsEnGrilla, _perfilEnGrilla, frmHomologar.sValorOriginal);
+
+                SesionMovimientosService.ReaplicarHomologacion(aReaplicar, _perfilEnGrilla);
             }
+
+            AplicarHomologacionesEnGrilla();
         }
 
         private void AvanzarStep(int stepIndex)

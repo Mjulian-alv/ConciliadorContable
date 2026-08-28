@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using AgrupadorConceptos.Data;
@@ -42,31 +43,12 @@ namespace AgrupadorConceptos.Services
         /// la vista sin rebindear la grilla (sin perder el archivo en pantalla ni la fila
         /// donde está parado el usuario).
         /// </summary>
-        /// <param name="conceptoADespegar">
-        /// Concepto estándar que hay que devolver a "Pendiente Homologar" antes de re-homologar.
-        /// Se usa cuando el usuario re-homologa un valor que ya estaba mapeado: los movimientos
-        /// que arrastraban el concepto viejo tienen que volver a resolverse. Null si no aplica.
-        /// </param>
         /// <returns>Los movimientos que quedaron modificados.</returns>
         public static ISet<MovimientoProcesado> RehomologarEnMemoria(
-            List<MovimientoProcesado> movs, PerfilBanco perfil, string conceptoADespegar = null)
+            List<MovimientoProcesado> movs, PerfilBanco perfil)
         {
-            // HashSet por referencia: un movimiento despegado y vuelto a homologar
-            // no tiene que persistirse dos veces.
             var cambiados = new HashSet<MovimientoProcesado>();
             if (movs == null || movs.Count == 0) return cambiados;
-
-            if (!string.IsNullOrEmpty(conceptoADespegar))
-            {
-                foreach (var mov in movs)
-                {
-                    if (mov.ConceptoEstandar != conceptoADespegar) continue;
-
-                    mov.ConceptoEstandar = ConceptosBancarios.PendienteHomologar;
-                    mov.ConceptoFinal = ConceptosBancarios.PendienteHomologar;
-                    cambiados.Add(mov);
-                }
-            }
 
             var dicHomologacion = HomologacionStorage.ObtenerDiccionario(perfil.Id);
             foreach (var mov in movs)
@@ -75,6 +57,70 @@ namespace AgrupadorConceptos.Services
 
                 HomologacionMatcher.AplicarA(mov, perfil.EsCodigo, dicHomologacion);
                 cambiados.Add(mov);
+            }
+
+            MovimientoStorage.ActualizarConceptos(cambiados);
+            return cambiados;
+        }
+
+        // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 6 - Atribuir por regla, no por texto de concepto
+        // Reemplaza al viejo "conceptoADespegar", que devolvia a pendiente todos los
+        // movimientos con ese texto de concepto: despegaba tambien los que venian de OTRAS
+        // reglas que apuntan al mismo concepto. Se recuperaban solos al re-resolver, pero en
+        // esa ida y vuelta se perdian las ediciones manuales de ConceptoFinal.
+        /// <summary>
+        /// Movimientos de la lista que resuelve la misma homologación que
+        /// <paramref name="valorOriginal"/>, según las reglas vigentes.
+        ///
+        /// Se llama **después** de guardar la homologación, pasándole el valor con el que se
+        /// guardó: el conjunto que devuelve son los que esa regla cubre ahora, que es
+        /// exactamente lo que hay que re-resolver con <see cref="ReaplicarHomologacion"/>.
+        /// Entran también los que tenían un concepto huérfano de una regla ya borrada.
+        /// </summary>
+        public static List<MovimientoProcesado> MovimientosDeLaMismaRegla(
+            List<MovimientoProcesado> movs, PerfilBanco perfil, string valorOriginal)
+        {
+            var resultado = new List<MovimientoProcesado>();
+            if (movs == null || movs.Count == 0) return resultado;
+
+            var dic = HomologacionStorage.ObtenerDiccionario(perfil.Id);
+
+            string clave = HomologacionMatcher.ResolverClave(dic, valorOriginal, perfil.EsCodigo);
+            if (clave == null) return resultado;
+
+            foreach (var mov in movs)
+            {
+                string claveDelMov = HomologacionMatcher.ResolverClave(dic, mov.ConceptoOriginal, perfil.EsCodigo);
+                if (string.Equals(claveDelMov, clave, StringComparison.OrdinalIgnoreCase))
+                    resultado.Add(mov);
+            }
+
+            return resultado;
+        }
+
+        // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 6 - Re-resolver despues de cambiar la regla
+        /// <summary>
+        /// Vuelve a resolver estos movimientos con las homologaciones vigentes y persiste los
+        /// que cambiaron. Si ninguna regla los toma, quedan pendientes.
+        ///
+        /// A diferencia del despegue viejo, no los manda a pendiente para volver a levantarlos:
+        /// escribe directo el concepto que corresponde, así <see cref="MovimientoProcesado.ConceptoFinal"/>
+        /// editado a mano nunca pasa por un estado intermedio en el que se pierda.
+        /// </summary>
+        public static ISet<MovimientoProcesado> ReaplicarHomologacion(
+            IEnumerable<MovimientoProcesado> movs, PerfilBanco perfil)
+        {
+            var cambiados = new HashSet<MovimientoProcesado>();
+            if (movs == null) return cambiados;
+
+            var dic = HomologacionStorage.ObtenerDiccionario(perfil.Id);
+
+            foreach (var mov in movs)
+            {
+                string concepto = HomologacionMatcher.Resolver(dic, mov.ConceptoOriginal, perfil.EsCodigo)
+                                  ?? ConceptosBancarios.PendienteHomologar;
+
+                if (HomologacionMatcher.EscribirConcepto(mov, concepto)) cambiados.Add(mov);
             }
 
             MovimientoStorage.ActualizarConceptos(cambiados);

@@ -165,39 +165,13 @@ namespace AgrupadorConceptos.Services
             HomologacionStorage.ReapuntarYActualizarMovimientos(regla.Id, nombreConcepto, cambiados);
         }
 
+        // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 6 - La regla de escritura se unifico en el matcher
         /// <summary>
-        /// Escribe el concepto en el movimiento. ConceptoEstandar siempre; ConceptoFinal sólo
-        /// si estaba pendiente o venía igual al ConceptoEstandar viejo: lo que el usuario
-        /// editó a mano en la grilla del Procesador no se pisa. Es el mismo criterio que ya
-        /// aplica HomologacionMatcher.AplicarA en la importación.
+        /// Escribe el concepto respetando lo editado a mano. Ver
+        /// <see cref="HomologacionMatcher.EscribirConcepto"/>: la regla es una sola y vive ahí,
+        /// para que la gestión y la re-homologación desde la grilla no puedan divergir.
         /// </summary>
-        /// <returns>True si algo cambió, para no mandar UPDATEs que no hacen nada.</returns>
-        private static bool AplicarConcepto(MovimientoProcesado mov, string conceptoNuevo)
-        {
-            string estandarViejo = mov.ConceptoEstandar;
-
-            // Se evalúa ANTES de pisar ConceptoEstandar: después ya no se sabría si el
-            // ConceptoFinal venía siguiendo al estándar o lo había escrito el usuario.
-            bool finalSeguiaAlEstandar =
-                ConceptosBancarios.EstaPendiente(mov.ConceptoFinal) ||
-                string.Equals(mov.ConceptoFinal, estandarViejo, StringComparison.OrdinalIgnoreCase);
-
-            bool cambio = false;
-
-            if (!string.Equals(estandarViejo, conceptoNuevo, StringComparison.OrdinalIgnoreCase))
-            {
-                mov.ConceptoEstandar = conceptoNuevo;
-                cambio = true;
-            }
-
-            if (finalSeguiaAlEstandar &&
-                !string.Equals(mov.ConceptoFinal, conceptoNuevo, StringComparison.OrdinalIgnoreCase))
-            {
-                mov.ConceptoFinal = conceptoNuevo;
-                cambio = true;
-            }
-
-            return cambio;
-        }
+        private static bool AplicarConcepto(MovimientoProcesado mov, string conceptoNuevo) =>
+            HomologacionMatcher.EscribirConcepto(mov, conceptoNuevo);
     }
 }

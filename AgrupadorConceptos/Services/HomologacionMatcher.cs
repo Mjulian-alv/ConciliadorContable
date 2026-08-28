@@ -71,10 +71,45 @@ namespace AgrupadorConceptos.Services
             string homologado = Resolver(dicHomologacion, valorABuscar, esCodigo);
             if (homologado == null) return;
 
-            mov.ConceptoEstandar = homologado;
+            EscribirConcepto(mov, homologado);
+        }
 
-            if (ConceptosBancarios.EstaPendiente(mov.ConceptoFinal))
-                mov.ConceptoFinal = homologado;
+        // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 6 - Unica regla de escritura del concepto
+        // Estaba duplicada con criterios distintos: AplicarA solo miraba EstaPendiente, y el
+        // despegue de la re-homologacion pisaba ConceptoFinal sin mirar nada, borrando en
+        // silencio lo que el usuario habia corregido a mano en la grilla.
+        /// <summary>
+        /// Escribe el concepto en el movimiento. <see cref="MovimientoProcesado.ConceptoEstandar"/>
+        /// siempre; <see cref="MovimientoProcesado.ConceptoFinal"/> sólo si estaba pendiente o
+        /// si venía siguiendo al ConceptoEstandar viejo — una edición manual no se pisa.
+        /// </summary>
+        /// <returns>True si algo cambió, para no persistir movimientos que quedaron iguales.</returns>
+        public static bool EscribirConcepto(MovimientoProcesado mov, string conceptoNuevo)
+        {
+            string estandarViejo = mov.ConceptoEstandar;
+
+            // Se evalúa ANTES de pisar ConceptoEstandar: después ya no se sabría si el
+            // ConceptoFinal venía siguiendo al estándar o lo había escrito el usuario.
+            bool finalSeguiaAlEstandar =
+                ConceptosBancarios.EstaPendiente(mov.ConceptoFinal) ||
+                string.Equals(mov.ConceptoFinal, estandarViejo, StringComparison.OrdinalIgnoreCase);
+
+            bool cambio = false;
+
+            if (!string.Equals(estandarViejo, conceptoNuevo, StringComparison.OrdinalIgnoreCase))
+            {
+                mov.ConceptoEstandar = conceptoNuevo;
+                cambio = true;
+            }
+
+            if (finalSeguiaAlEstandar &&
+                !string.Equals(mov.ConceptoFinal, conceptoNuevo, StringComparison.OrdinalIgnoreCase))
+            {
+                mov.ConceptoFinal = conceptoNuevo;
+                cambio = true;
+            }
+
+            return cambio;
         }
     }
 }
