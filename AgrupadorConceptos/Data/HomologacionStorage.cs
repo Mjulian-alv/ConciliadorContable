@@ -21,7 +21,13 @@ namespace AgrupadorConceptos.Data
         /// descripción; gana la primera del diccionario. Sin un orden fijo, dos
         /// pantallas resolvían el mismo movimiento de forma distinta.
         /// </summary>
-        public static Dictionary<string, string> ObtenerDiccionario(int idPerfilBanco)
+        /// <param name="idHomologacionAExcluir">
+        /// Regla que hay que dejar afuera. Sirve para preguntar "¿qué pasaría si esta
+        /// regla no existiera?" antes de borrarla. Se excluye en el SQL y no sacando la
+        /// clave después, porque quitarla del diccionario ya armado no garantiza que el
+        /// resto conserve el orden del ORDER BY, y ese orden es la precedencia.
+        /// </param>
+        public static Dictionary<string, string> ObtenerDiccionario(int idPerfilBanco, int? idHomologacionAExcluir = null)
         {
             using var cn = DatabaseHelper.Open();
             return cn.Query(@"
@@ -29,22 +35,30 @@ namespace AgrupadorConceptos.Data
                 FROM bancos.HomologacionConceptos h
                 INNER JOIN bancos.ConceptosEstandar c ON h.IdConceptoEstandar = c.Id
                 WHERE h.IdPerfilBanco = @IdPerfil
+                  AND (@IdExcluir IS NULL OR h.Id <> @IdExcluir)
                 ORDER BY h.ValorOriginal DESC",
-                new { IdPerfil = idPerfilBanco })
+                new { IdPerfil = idPerfilBanco, IdExcluir = idHomologacionAExcluir })
                 .ToDictionary(x => (string)x.ValorOriginal, x => (string)x.ConceptoEstandar,
                               StringComparer.OrdinalIgnoreCase);
         }
 
-        /// <summary>Listado completo para la pantalla de gestión, con el banco resuelto.</summary>
-        public static List<HomologacionListado> ObtenerListado()
+        /// <summary>Listado para la pantalla de gestión, con el banco resuelto.</summary>
+        /// <param name="idPerfilBanco">Perfil a listar, o null para todos.</param>
+        public static List<HomologacionListado> ObtenerListado(int? idPerfilBanco = null)
         {
             using var cn = DatabaseHelper.Open();
+            // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 3 - Filtro por perfil y orden por clave
+            // El ORDER BY replica el del diccionario (ValorOriginal DESC): la grilla tiene
+            // que leerse en el mismo orden de precedencia con el que resuelve el matcher.
             return cn.Query<HomologacionListado>(@"
-                SELECT h.Id, p.NombreBanco AS Banco, h.ValorOriginal, c.Nombre AS ConceptoEstandar
+                SELECT h.Id, h.IdPerfilBanco, h.IdConceptoEstandar,
+                       p.NombreBanco AS Banco, h.ValorOriginal, c.Nombre AS ConceptoEstandar
                 FROM bancos.HomologacionConceptos h
                 JOIN bancos.PerfilesBanco     p ON h.IdPerfilBanco      = p.Id
                 JOIN bancos.ConceptosEstandar c ON h.IdConceptoEstandar = c.Id
-                ORDER BY p.NombreBanco, c.Nombre").ToList();
+                WHERE (@IdPerfil IS NULL OR h.IdPerfilBanco = @IdPerfil)
+                ORDER BY p.NombreBanco, h.ValorOriginal DESC",
+                new { IdPerfil = idPerfilBanco }).ToList();
         }
 
         public static void Eliminar(int id)

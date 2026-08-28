@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using AgrupadorConceptos.Models;
 using Dapper;
@@ -36,6 +37,20 @@ namespace AgrupadorConceptos.Data
             return cn.Query<MovimientoProcesado>(
                 "SELECT * FROM bancos.MovimientosArchivo WHERE IdArchivo IN @Ids",
                 new { Ids = ids }).ToList();
+        }
+
+        // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 1 - Movimientos de todos los archivos del perfil
+        // La homologacion es del perfil, no del archivo: una baja tiene que alcanzar
+        // tambien a las sesiones historicas, no solo a la que este abierta.
+        /// <summary>Movimientos de todos los archivos importados de un perfil.</summary>
+        public static List<MovimientoProcesado> ObtenerPorPerfil(int idPerfilBanco)
+        {
+            using var cn = DatabaseHelper.Open();
+            return cn.Query<MovimientoProcesado>(@"
+                SELECT m.* FROM bancos.MovimientosArchivo m
+                JOIN bancos.ArchivosImportados a ON m.IdArchivo = a.Id
+                WHERE a.IdPerfilBanco = @IdPerfil",
+                new { IdPerfil = idPerfilBanco }).ToList();
         }
 
         /// <summary>Conceptos finales distintos ya homologados, para elegir qué conciliar.</summary>
@@ -98,10 +113,27 @@ namespace AgrupadorConceptos.Data
             using var cn = DatabaseHelper.Open();
             using var tx = cn.BeginTransaction();
 
-            foreach (var mov in lista)
-                cn.Execute(UpdateConceptos, mov, tx);
+            ActualizarConceptos(lista, cn, tx);
 
             tx.Commit();
+        }
+
+        // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 1 - Escribir dentro de una transaccion ajena
+        // La baja tiene que borrar la regla y reescribir los movimientos de forma atomica.
+        // Si fueran dos transacciones y fallara la segunda, la regla quedaria borrada y los
+        // movimientos apuntando a un concepto que ya no tiene quien lo respalde.
+        /// <summary>
+        /// Igual que <see cref="ActualizarConceptos(IEnumerable{MovimientoProcesado})"/> pero
+        /// dentro de la conexión y transacción que abrió el llamador. No commitea.
+        /// </summary>
+        public static void ActualizarConceptos(
+            IEnumerable<MovimientoProcesado> movimientos, IDbConnection cn, IDbTransaction tx)
+        {
+            var lista = movimientos?.ToList() ?? new List<MovimientoProcesado>();
+            if (lista.Count == 0) return;
+
+            foreach (var mov in lista)
+                cn.Execute(UpdateConceptos, mov, tx);
         }
 
         /// <summary>Edición puntual del ConceptoFinal desde la grilla.</summary>
