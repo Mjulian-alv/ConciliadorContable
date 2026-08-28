@@ -16,6 +16,30 @@ namespace AgrupadorConceptos.Services
     /// </summary>
     public static class HomologacionMatcher
     {
+        // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 1 - Devolver la clave que gana, no solo el concepto
+        // Saber QUE regla resuelve un movimiento (y no solo con que concepto quedo) es lo
+        // que permite calcular el impacto real de una baja. Atribuir por texto de concepto
+        // no sirve: dos reglas distintas pueden apuntar al mismo ConceptoEstandar, y al
+        // borrar una despegariamos movimientos que la otra sigue cubriendo.
+        /// <summary>
+        /// Devuelve la clave del diccionario que resuelve el valor, o null si no hay match.
+        /// La clave devuelta es igual a la almacenada ignorando mayusculas (el diccionario
+        /// es OrdinalIgnoreCase), asi que quien la compare tiene que usar OrdinalIgnoreCase.
+        /// </summary>
+        public static string ResolverClave(IDictionary<string, string> dicHomologacion, string valorABuscar, bool esCodigo)
+        {
+            if (dicHomologacion == null || string.IsNullOrEmpty(valorABuscar))
+                return null;
+
+            if (esCodigo)
+                return dicHomologacion.ContainsKey(valorABuscar) ? valorABuscar : null;
+
+            var match = dicHomologacion.FirstOrDefault(
+                d => valorABuscar.IndexOf(d.Key, StringComparison.OrdinalIgnoreCase) >= 0);
+
+            return match.Key;
+        }
+
         /// <summary>
         /// Devuelve el concepto estándar homologado, o null si no hay match.
         /// </summary>
@@ -24,16 +48,14 @@ namespace AgrupadorConceptos.Services
         /// (ver HomologacionStorage), porque con varias claves candidatas gana la primera.</param>
         public static string Resolver(IDictionary<string, string> dicHomologacion, string valorABuscar, bool esCodigo)
         {
-            if (dicHomologacion == null || string.IsNullOrEmpty(valorABuscar))
-                return null;
+            // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 1 - Reimplementado sobre ResolverClave
+            // Una sola definicion de "cual gana": si las dos rutinas resolvieran por su
+            // cuenta, el impacto calculado podria no coincidir con lo que hizo la importacion.
+            string clave = ResolverClave(dicHomologacion, valorABuscar, esCodigo);
 
-            if (esCodigo)
-                return dicHomologacion.TryGetValue(valorABuscar, out string homologado) ? homologado : null;
-
-            var match = dicHomologacion.FirstOrDefault(
-                d => valorABuscar.IndexOf(d.Key, StringComparison.OrdinalIgnoreCase) >= 0);
-
-            return match.Key != null ? match.Value : null;
+            return clave != null && dicHomologacion.TryGetValue(clave, out string homologado)
+                ? homologado
+                : null;
         }
 
         /// <summary>
