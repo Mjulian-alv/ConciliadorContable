@@ -1,5 +1,20 @@
 # Gestión de homologaciones: baja con impacto, alta/edición y filtro por perfil (diseño)
 
+**TAREA 00003** — el pedido, numerado por ítem (de ahí sale el `Linea:` de cada comentario):
+
+> 1. Al dar de baja una homologación, preguntar qué hacer con los ítems ya homologados:
+>    dejarlos pendientes o cambiarlos a otro concepto.
+> 2. Alta y edición de homologaciones desde la misma pantalla.
+> 3. Que agrupe bien por perfil.
+> 4. Que al invocarla filtre por el perfil desde el cual se la llama.
+
+| Ítem | Secciones de este diseño |
+|---|---|
+| 1 | El problema de la atribución · El diálogo de baja · Qué se toca de cada movimiento |
+| 2 | La pantalla (botones `Nueva` / `Editar`) |
+| 3 | La pantalla (orden y agrupación) |
+| 4 | La pantalla (combo de perfil) · `ProcesadorForm.cs` |
+
 ## Contexto
 
 `AgrupadorConceptos/GestionHomologacionesForm.cs` es hoy una pantalla de consulta: una grilla plana con todas las homologaciones de todos los perfiles y un botón "Eliminar Seleccionada" que llama a `HomologacionStorage.Eliminar(id)` — un `DELETE` seco de la fila de `bancos.HomologacionConceptos`.
