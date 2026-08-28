@@ -12,34 +12,11 @@ forms sin pasos de inicialización especiales.
 
 ## Versionado de cambios
 
-Todo cambio acordado queda trazable hasta el pedido que lo originó. Tres reglas:
+Rige la convención general de `~/.claude/CLAUDE.md`: pedidos numerados por ítem, comentario
+`Fecha: dd/MM/yyyy - TAREA: NNNNN - Linea: N - Descripción` en cada bloque tocado, y anotación
+en `~/.claude/TAREAS.md` (correlativo global) y en `docs/Historial.md` (bitácora de este repo).
 
-**1. Los pedidos vienen numerados por ítem.** Si el usuario manda un pedido sin numerar, hay
-que pedírselo antes de planificar: el número de ítem es parte del comentario y no se puede
-inventar después.
-
-**2. Cada bloque agregado o modificado lleva su comentario.**
-
-```
-Fecha: dd/MM/yyyy - TAREA: NNNNN - Linea: N - Descripción
-```
-
-- `TAREA`: correlativo de 5 dígitos **compartido por todos los proyectos**, no sólo por éste.
-- `Linea`: el número de ítem del pedido que originó ese bloque.
-- Si el cambio es complejo, debajo va una descripción técnica en el mismo comentario.
-
-`//` en C#, `--` en SQL. En un archivo nuevo el comentario va arriba de todo; en una edición,
-inmediatamente encima del bloque que cambia.
-
-**3. Se anota en los dos registros.**
-
-| Dónde | Qué |
-|---|---|
-| `~/.claude/TAREAS.md` | Fuera de git, compartido entre proyectos. Es la **fuente de verdad del correlativo**: se lee antes de empezar y se escribe al terminar. |
-| `docs/Historial.md` | Versionado en este repo. El pedido textual y los cambios ejecutados, tarea por tarea. |
-
-El compromiso es de las dos partes: un cambio hecho a mano, sin pasar por Claude, también se
-anota en los dos lados. Si no, el correlativo miente y el historial deja de servir.
+En este repo: `//` para C#, `--` para el SQL de `Data/SqlSchema.cs`.
 
 ## Diseños y planes
 
