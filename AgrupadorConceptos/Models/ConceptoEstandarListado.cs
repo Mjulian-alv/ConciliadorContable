@@ -1,4 +1,4 @@
-// Fecha: 05/09/2026 - TAREA: 00021 - Linea: 3 - Fila de Gestion de Conceptos Estandar
+﻿// Fecha: 05/09/2026 - TAREA: 00021 - Linea: 3 - Fila de Gestion de Conceptos Estandar
 namespace AgrupadorConceptos.Models
 {
     /// <summary>Fila de la pantalla de mantenimiento de conceptos estándar.</summary>

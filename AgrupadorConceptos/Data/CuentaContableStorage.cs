@@ -1,4 +1,4 @@
-// Fecha: 05/09/2026 - TAREA: 00021 - Linea: 1 - Acceso a bancos.CuentasContables
+﻿// Fecha: 05/09/2026 - TAREA: 00021 - Linea: 1 - Acceso a bancos.CuentasContables
 using System.Collections.Generic;
 using System.Linq;
 using AgrupadorConceptos.Models;

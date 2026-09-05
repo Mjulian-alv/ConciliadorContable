@@ -1,4 +1,4 @@
-// Fecha: 05/09/2026 - TAREA: 00021 - Linea: 1 - Cuenta contable importada del sistema legacy
+﻿// Fecha: 05/09/2026 - TAREA: 00021 - Linea: 1 - Cuenta contable importada del sistema legacy
 namespace AgrupadorConceptos.Models
 {
     public class CuentaContable
