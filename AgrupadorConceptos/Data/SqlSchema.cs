@@ -53,6 +53,11 @@ CREATE TABLE bancos.ConceptosEstandar (
     Nombre NVARCHAR(200) NOT NULL CONSTRAINT UQ_ConceptosEstandar_Nombre UNIQUE
 );
 
+-- Fecha: 05/09/2026 - TAREA: 00021 - Linea: 3 - Cuenta contable del concepto estandar
+IF COL_LENGTH(N'bancos.ConceptosEstandar', N'IdCuentaContable') IS NULL
+    ALTER TABLE bancos.ConceptosEstandar ADD IdCuentaContable INT NULL
+        CONSTRAINT FK_Concepto_CuentaContable REFERENCES bancos.CuentasContables(Id);
+
 IF OBJECT_ID(N'bancos.HomologacionConceptos', N'U') IS NULL
 CREATE TABLE bancos.HomologacionConceptos (
     Id                 INT IDENTITY(1,1) CONSTRAINT PK_HomologacionConceptos PRIMARY KEY,

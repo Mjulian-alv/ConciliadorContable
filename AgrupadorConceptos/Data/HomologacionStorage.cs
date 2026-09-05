@@ -117,6 +117,52 @@ namespace AgrupadorConceptos.Data
                 "SELECT * FROM bancos.ConceptosEstandar ORDER BY Nombre").ToList();
         }
 
+        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 3 - Listado para Gestion de Conceptos Estandar
+        /// <summary>
+        /// Un concepto por fila, con su cuenta (si tiene) y cuántos movimientos la usan hoy.
+        /// </summary>
+        public static List<ConceptoEstandarListado> ObtenerListadoConceptosEstandar()
+        {
+            using var cn = DatabaseHelper.Open();
+            return cn.Query<ConceptoEstandarListado>(@"
+                SELECT c.Id, c.Nombre, c.IdCuentaContable,
+                       cc.Cuenta, cc.Descripcion AS DescripcionCuenta,
+                       ISNULL(m.Movimientos, 0) AS Movimientos
+                FROM bancos.ConceptosEstandar c
+                LEFT JOIN bancos.CuentasContables cc ON c.IdCuentaContable = cc.Id
+                LEFT JOIN (
+                    SELECT ConceptoEstandar, COUNT(*) AS Movimientos
+                    FROM bancos.MovimientosArchivo
+                    GROUP BY ConceptoEstandar
+                ) m ON m.ConceptoEstandar = c.Nombre
+                ORDER BY c.Nombre").ToList();
+        }
+
+        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 3 - Asignar/quitar la cuenta de un concepto
+        public static void ActualizarCuentaConcepto(int idConcepto, int? idCuentaContable)
+        {
+            using var cn = DatabaseHelper.Open();
+            cn.Execute("UPDATE bancos.ConceptosEstandar SET IdCuentaContable = @IdCuenta WHERE Id = @Id",
+                new { IdCuenta = idCuentaContable, Id = idConcepto });
+        }
+
+        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Cuenta de cada concepto, para completar CuentaFinal
+        /// <summary>
+        /// Nombre del concepto (case-insensitive) → código de cuenta, o "" si no tiene
+        /// asignada. Es lo que necesita HomologacionMatcher.EscribirCuenta para autocompletar
+        /// CuentaFinal en el mismo momento en que se resuelve el concepto.
+        /// </summary>
+        public static Dictionary<string, string> ObtenerCuentasPorConcepto()
+        {
+            using var cn = DatabaseHelper.Open();
+            return cn.Query(@"
+                SELECT c.Nombre, cc.Cuenta
+                FROM bancos.ConceptosEstandar c
+                LEFT JOIN bancos.CuentasContables cc ON c.IdCuentaContable = cc.Id")
+                .ToDictionary(x => (string)x.Nombre, x => (string)(x.Cuenta ?? ""),
+                              StringComparer.OrdinalIgnoreCase);
+        }
+
         /// <summary>
         /// Da de alta la homologación del valor para el perfil: busca o crea el concepto
         /// estándar, pisa la homologación previa de ese mismo valor y guarda la nueva.
