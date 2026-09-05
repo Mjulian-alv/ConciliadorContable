@@ -146,4 +146,129 @@ sesión guardada puede dejar esa sesión filtrando por un concepto que ya no exi
 ### Verificación
 
 Sin proyecto de tests (decisión explícita): se verificó con `dotnet build` limpio en cada paso.
+
+---
+
+## TAREA 00022 — 05/09/2026
+
+**Nota de numeración**: todos los comentarios de versionado en el código de esta tarea dicen
+`TAREA: 00021` — es el número que indicaba `~/.claude/TAREAS.md` al arrancar, pero una sesión
+concurrente en otro repo (ConsultasGenericas) ya lo había tomado antes de que se registrara acá.
+Mismo criterio que ya usó este registro para la misma situación en las TAREA 00015/00019: se
+documenta con el número real de esta fila (00022) sin reescribir los ~30 commits ya hechos con
+`00021`. Si buscás esta tarea en el código, buscá `TAREA: 00021`, no `00022`.
+
+### Lo que se pidió
+
+> 1. Importar cuentas contables de sistema legacy, sería cuenta y descripción y centro de costo.
+> 2. Asignar cuenta contable a perfil.
+> 3. Asignar cuenta contable a concepto standard. Acá vamos a tener que crear una ventana para
+>    esto ya que no hay un mantenimiento del concepto standard. Al momento de homologar ahora
+>    solo pide una descripción y ahora tiene que pedir la cuenta. La misma puede estar vacía.
+> 4. Crear una columna de cuenta final así como está la de concepto final. Por defecto lleva
+>    la del concepto standard.
+> 5. Creación de ventana para conciliación interna de un concepto entre extractos, las
+>    mediciones son por fecha + importe automáticos y manual. Copiar el formato de
+>    conciliación con archivo externo.
+
+Diseño en
+`docs/superpowers/specs/2026-09-05-cuentas-contables-perfil-concepto-conciliacion-interna-design.md`,
+con mockups previos evaluados con el usuario antes de planificar. Dos planes de implementación,
+ejecutados en orden porque el segundo depende de piezas del primero:
+`docs/superpowers/plans/2026-09-05-cuentas-contables.md` (ítems 1-4, 9 tareas) y
+`docs/superpowers/plans/2026-09-05-conciliacion-interna.md` (ítem 5, 7 tareas). Ejecutados con
+`superpowers:subagent-driven-development`: un subagente implementador por tarea, review de spec
++ calidad por tarea, y fix cuando el review encontraba algo — el detalle de cada hallazgo está
+en el historial de revisión de cada tarea, acá va el resumen que le sirve a alguien que lea esto
+después.
+
+**Líneas 1-2 · Catálogo de cuentas contables y cuenta en el perfil**
+
+- `bancos.CuentasContables` (Cuenta, Descripción, CentroCosto), con upsert por la clave natural
+  `(Cuenta, CentroCosto)` para poder reimportar el export del legacy sin duplicar.
+- Pantalla nueva `CuentasContablesForm`: listado + panel de import inline (Excel/CSV con mapeo
+  de columnas), mismo patrón que ya usa el importador de extractos.
+- `PerfilesBanco.IdCuentaContable`: **solo informativo**. Decisión explícita del usuario: no
+  alimenta ningún cálculo de `CuentaFinal` — esa cuenta sale únicamente del concepto estándar
+  (ítem 4). El combo vive en `MainForm` (alta/edición de perfil).
+
+**Línea 3 · Cuenta en el concepto estándar, con ventana de mantenimiento nueva**
+
+`bancos.ConceptosEstandar` no tenía pantalla propia — se creaba al vuelo tipeando un nombre
+nuevo en `HomologarForm`. Se agregó `IdCuentaContable` a la tabla y dos entradas para asignarla:
+
+- Ventana nueva `GestionConceptosEstandarForm` (accesible desde "Gestión de Homologaciones"):
+  grid de conceptos con su cuenta asignada (o vacía) y un diálogo chico para cambiarla. Es el
+  mantenimiento masivo que no existía; renombrar/borrar un concepto sigue fuera de alcance,
+  como ya estaba decidido en la TAREA 00003.
+- `HomologarForm` suma un combo de cuenta junto al de concepto estándar, opcional.
+
+**Línea 4 · Columna "Cuenta Final"**
+
+Mismo mecanismo que `ConceptoFinal`: columna física (`MovimientosArchivo.CuentaFinal`),
+editable inline en la grilla del Procesador, autocompletada desde la cuenta del concepto
+estándar en los mismos puntos donde ya se resuelve el concepto (import, re-homologación, baja y
+reapuntado de una regla). La regla de "no pisar lo editado a mano" es más simple que la de
+`ConceptoFinal`: como no hay una `CuentaEstandar` que trackee el último valor resuelto por el
+sistema, `CuentaFinal` se autocompleta **solo mientras está vacía** — una vez que tiene
+contenido, sólo cambia si el usuario la edita.
+
+**Línea 5 · Conciliación interna entre extractos propios**
+
+Ventana nueva `ConciliacionInternaForm` para el caso de una transferencia entre cuentas propias
+(débito en un extracto, crédito en el otro, mismo importe). Copia el formato de la conciliación
+con archivo externo (sesiones, pestañas Pendientes/Conciliados, resaltado de candidatos,
+auto-conciliar en dos pasadas), en tablas nuevas y paralelas
+(`ConciliacionInternaSesiones`/`ConciliacionInternaPares`) que no tocan el código de la
+conciliación externa ya en producción. Dos decisiones que surgieron después de armar el primer
+plan, agregadas antes de implementar:
+
+- Cada lado de la sesión se elige por **perfil + rango de fechas**, no tildando archivos
+  importados puntuales.
+- Al **finalizar** una sesión, cada movimiento conciliado recibe como `CuentaFinal` la cuenta
+  contable del **perfil del otro lado** (la contrapartida de la transferencia), pisando incluso
+  una edición manual — es la única excepción a la regla de la Línea 4, porque acá el disparador
+  es una acción explícita de cierre, no un autocompletado pasivo. Si algún perfil no tiene
+  cuenta asignada, se bloquea el cierre completo. Mientras un movimiento está conciliado en una
+  sesión todavía en proceso, su `CuentaFinal` no se puede editar a mano en el Procesador (se
+  avisa y se cancela la edición) — se libera al desconciliar o al finalizar.
+
+### Bugs reales encontrados en el proceso de revisión
+
+Ninguno llegó a la rama sin corregir, pero quedan anotados porque son la clase de error que
+`dotnet build` no detecta:
+
+- **`//` como comentario dentro de SQL**: el DDL de `SqlSchema.cs` es texto T-SQL embebido en un
+  string de C#; `//` no es un comentario válido ahí (T-SQL usa `--`) y como `DatabaseHelper`
+  ejecuta todo `SqlSchema.Ddl` como un solo batch, un error de sintaxis ahí rompía la
+  inicialización de **todo** el schema `bancos` en una base nueva, no solo la tabla nueva.
+  Corregido apenas apareció (Tarea 1 del primer plan) y evitado en el resto de las tareas.
+- **Índice único sobre una expresión inválida**: `CREATE UNIQUE INDEX ... (Cuenta,
+  ISNULL(CentroCosto, N''))` no es sintaxis válida de SQL Server (la lista de columnas de un
+  índice no acepta expresiones). Mismo riesgo que el bug anterior (rompía todo el batch).
+  Corregido a un índice compuesto simple `(Cuenta, CentroCosto)` — SQL Server ya trata dos
+  `CentroCosto` NULL como iguales a los fines de unicidad, así que el efecto práctico es el
+  mismo.
+- **La cuenta se descartaba en silencio al editar sin renombrar el concepto**: en
+  `GestionHomologacionesForm.btnEditar_Click`, un early-return pre-existente cortaba antes de
+  persistir la cuenta cuando el usuario dejaba el mismo nombre de concepto — exactamente el
+  caso de uso principal ("solo quiero fijar la cuenta"). Corregido para persistir la cuenta
+  siempre, reapuntando la regla solo si el nombre del concepto realmente cambió.
+- **`RefrescarDesdeBase` no sincronizaba `CuentaFinal`**: después de una baja/reapuntado desde
+  la gestión de homologaciones, una grilla ya abierta en el Procesador no reflejaba la cuenta
+  recién resuelta hasta reabrir el archivo (el dato en la base sí quedaba correcto). Encontrado
+  por el propio implementador antes de que llegara a review. Fix de una línea.
+- **Botones de la ventana de conciliación interna clippeables al achicar la ventana**: un primer
+  intento de arreglo infló `MinimumSize`, pero el cálculo olvidaba el chrome no-cliente de la
+  ventana (barra de título + bordes) y seguía clippeando ~19px. Solución definitiva: anclar los
+  botones al borde inferior real del panel (`Anchor = Bottom | Right`) en vez de calcular a ojo
+  un tamaño mínimo que los evite.
+
+### Verificación
+
+Sin proyecto de tests (decisión explícita): cada tarea se verificó con `dotnet build` limpio y
+un review de spec + calidad; esta entrada resume los hallazgos reales, no repite el detalle
+tarea por tarea. **Pendiente del usuario, contra un servidor real**: probar el flujo completo
+(importar cuentas → asignar a perfil y concepto → ver `Cuenta Final` autocompletarse → crear y
+cerrar una conciliación interna) antes de mergear.
 El checklist funcional contra base real está en la Tarea 9 del plan.
