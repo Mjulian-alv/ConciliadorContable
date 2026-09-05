@@ -192,12 +192,16 @@
             clbConceptos.Size = new System.Drawing.Size(748, 320);
 
             btnConfirmarNueva.Location = new System.Drawing.Point(636, 500);
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Los botones siguen el borde inferior del panel en vez de una posicion fija, para que no se corten si la ventana se achica
+            btnConfirmarNueva.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right;
             btnConfirmarNueva.Size = new System.Drawing.Size(124, 30);
             btnConfirmarNueva.Text = "Confirmar";
             btnConfirmarNueva.UseVisualStyleBackColor = true;
             btnConfirmarNueva.Click += btnConfirmarNueva_Click;
 
             btnCancelarNueva.Location = new System.Drawing.Point(504, 500);
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Los botones siguen el borde inferior del panel en vez de una posicion fija, para que no se corten si la ventana se achica
+            btnCancelarNueva.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right;
             btnCancelarNueva.Size = new System.Drawing.Size(124, 30);
             btnCancelarNueva.Text = "Cancelar";
             btnCancelarNueva.UseVisualStyleBackColor = true;
@@ -293,12 +297,11 @@
             Controls.Add(btnDesconciliar);
             Controls.Add(btnFinalizar);
             Controls.Add(btnExportar);
-            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Alto minimo ajustado para no recortar pnlConfigNueva
-            // pnlConfigNueva esta anclado a los 4 bordes y sus hijos usan Location fijo (no Anchor):
-            // con MinimumSize.Height = 500 el panel se achica a menos de lo que sus controles
-            // necesitan (el boton Confirmar/Cancelar termina en Y=530 dentro del panel) y quedan
-            // recortados fuera del area visible. 650 deja margen (igual que ConciliacionExternForm).
-            MinimumSize = new System.Drawing.Size(1000, 650);
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Alto minimo vuelto a 1000x500 (el original del brief):
+            // btnConfirmarNueva/btnCancelarNueva ahora estan anclados al pie de pnlConfigNueva
+            // (ver arriba), asi que ya no dependen de un MinimumSize inflado a mano para no
+            // recortarse cuando el panel se achica.
+            MinimumSize = new System.Drawing.Size(1000, 500);
             Name = "ConciliacionInternaForm";
             StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             Text = "Conciliación Interna — Transferencias entre cuentas propias";
