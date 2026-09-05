@@ -184,8 +184,20 @@ namespace AgrupadorConceptos.Services
                 new { Id = idSesion }).ToList();
         }
 
-        public static void ConciliarPar(int idSesion, int idMovimientoA, int idMovimientoB, TipoMatch tipoMatch)
+        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Bloquear un movimiento ya conciliado en OTRA sesion EnProceso
+        /// <summary>
+        /// Antes de insertar el par, chequea que ninguno de los dos movimientos esté ya conciliado
+        /// en otra sesión todavía "EnProceso". Sin este chequeo, el mismo movimiento puede quedar
+        /// enrolado en dos sesiones independientes (perfil+rango+concepto superpuestos) y, al
+        /// finalizar ambas, la segunda pisa en silencio la CuentaFinal que dejó la primera.
+        /// Devuelve null si conciliό sin problema, o el nombre de la sesión que lo está bloqueando.
+        /// </summary>
+        public static string ConciliarPar(int idSesion, int idMovimientoA, int idMovimientoB, TipoMatch tipoMatch)
         {
+            string sesionConflicto = ObtenerSesionEnProcesoDelMovimiento(idMovimientoA, idSesion)
+                                   ?? ObtenerSesionEnProcesoDelMovimiento(idMovimientoB, idSesion);
+            if (sesionConflicto != null) return sesionConflicto;
+
             using var cn = DatabaseHelper.GetConnection();
             cn.Open();
             cn.Execute(@"
@@ -193,6 +205,8 @@ namespace AgrupadorConceptos.Services
                 VALUES (@IdSesion, @IdMovimientoA, @IdMovimientoB, @TipoMatch, @Fecha)",
                 new { IdSesion = idSesion, IdMovimientoA = idMovimientoA, IdMovimientoB = idMovimientoB,
                       TipoMatch = tipoMatch.ToString(), Fecha = DateTime.Now });
+
+            return null;
         }
 
         public static void DesconciliarPar(int idPar)
@@ -226,12 +240,15 @@ namespace AgrupadorConceptos.Services
                              && ComparadorConciliacionInterna.ImportesOpuestos(a, b))
                     .ToList();
 
+                // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Si el candidato ya esta tomado por otra sesion EnProceso, se deja pendiente
                 if (candidatos.Count == 1)
                 {
-                    ConciliarPar(idSesion, a.Id, candidatos[0].Id, TipoMatch.FechaImporte);
-                    conciliadosB.Add(candidatos[0].Id);
-                    pendienteA.Remove(a);
-                    total++;
+                    if (ConciliarPar(idSesion, a.Id, candidatos[0].Id, TipoMatch.FechaImporte) == null)
+                    {
+                        conciliadosB.Add(candidatos[0].Id);
+                        pendienteA.Remove(a);
+                        total++;
+                    }
                 }
                 else if (candidatos.Count > 1)
                 {
@@ -250,11 +267,14 @@ namespace AgrupadorConceptos.Services
                     .Where(b => !conciliadosB.Contains(b.Id) && ComparadorConciliacionInterna.ImportesOpuestos(a, b))
                     .ToList();
 
+                // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Idem pasada 1: no forzar un par bloqueado por otra sesion
                 if (candidatos.Count == 1)
                 {
-                    ConciliarPar(idSesion, a.Id, candidatos[0].Id, TipoMatch.SoloImporte);
-                    conciliadosB.Add(candidatos[0].Id);
-                    total++;
+                    if (ConciliarPar(idSesion, a.Id, candidatos[0].Id, TipoMatch.SoloImporte) == null)
+                    {
+                        conciliadosB.Add(candidatos[0].Id);
+                        total++;
+                    }
                 }
                 else if (candidatos.Count > 1)
                 {
@@ -270,8 +290,13 @@ namespace AgrupadorConceptos.Services
         /// Nombre de la sesión de conciliación interna, todavía "EnProceso", que tiene a este
         /// movimiento conciliado — o null si no hay ninguna. Lo usa la grilla del Procesador
         /// para impedir editar CuentaFinal a mano: se va a pisar sola cuando esa sesión cierre.
+        ///
+        /// Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - idSesionExcluir para el chequeo multi-sesion de ConciliarPar
+        /// También la reutiliza <see cref="ConciliarPar"/>, una vez por cada lado del par, pasando
+        /// la sesión actual en <paramref name="idSesionExcluir"/>: lo que importa ahí es si el
+        /// movimiento ya está enrolado en OTRA sesión EnProceso, no en la propia.
         /// </summary>
-        public static string ObtenerSesionEnProcesoDelMovimiento(int idMovimiento)
+        public static string ObtenerSesionEnProcesoDelMovimiento(int idMovimiento, int? idSesionExcluir = null)
         {
             using var cn = DatabaseHelper.GetConnection();
             cn.Open();
@@ -280,8 +305,9 @@ namespace AgrupadorConceptos.Services
                 FROM bancos.ConciliacionInternaPares p
                 JOIN bancos.ConciliacionInternaSesiones s ON p.IdSesion = s.Id
                 WHERE (p.IdMovimientoA = @Id OR p.IdMovimientoB = @Id)
-                  AND s.Estado = 'EnProceso'",
-                new { Id = idMovimiento });
+                  AND s.Estado = 'EnProceso'
+                  AND (@IdSesionExcluir IS NULL OR s.Id <> @IdSesionExcluir)",
+                new { Id = idMovimiento, IdSesionExcluir = idSesionExcluir });
         }
     }
 }

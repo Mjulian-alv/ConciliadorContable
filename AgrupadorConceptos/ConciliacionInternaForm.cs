@@ -186,9 +186,15 @@ namespace AgrupadorConceptos
                 using var dlg = new SeleccionCandidatoInternoDialog(a, candidatos);
                 if (dlg.ShowDialog(this) == DialogResult.OK && dlg.MovimientoSeleccionado != null)
                 {
-                    ConciliacionInternaService.ConciliarPar(
+                    // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - El elegido puede estar tomado por otra sesion EnProceso
+                    string conflicto = ConciliacionInternaService.ConciliarPar(
                         _sesionActiva.Id, a.Id, dlg.MovimientoSeleccionado.Id, TipoMatch.SoloImporte);
-                    conciliados++;
+                    if (conflicto != null)
+                        MessageBox.Show(
+                            $"No se concilió: uno de los dos movimientos ya está conciliado en la sesión '{conflicto}', todavía en proceso.",
+                            "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    else
+                        conciliados++;
                 }
             }
 
@@ -240,7 +246,16 @@ namespace AgrupadorConceptos
             if (_movimientoASeleccionado.Id == b.Id)
             { MessageBox.Show("No se puede conciliar un movimiento consigo mismo.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
 
-            ConciliacionInternaService.ConciliarPar(_sesionActiva.Id, _movimientoASeleccionado.Id, b.Id, TipoMatch.Manual);
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Bloquear si alguno ya esta conciliado en otra sesion EnProceso
+            string conflicto = ConciliacionInternaService.ConciliarPar(_sesionActiva.Id, _movimientoASeleccionado.Id, b.Id, TipoMatch.Manual);
+            if (conflicto != null)
+            {
+                MessageBox.Show(
+                    $"Uno de los dos movimientos ya está conciliado en la sesión '{conflicto}', todavía en proceso. " +
+                    "Cerrala o desconcilialo ahí antes de continuar.",
+                    "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
 
             _movimientoASeleccionado = null;
             RefrescarGrillas();
@@ -341,14 +356,21 @@ namespace AgrupadorConceptos
             dgvConciliados.DataSource = null;
         }
 
+        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Una sesion Finalizada se retoma de solo lectura
+        // Antes esto habilitaba los botones con sólo mirar si había sesión activa: una sesión ya
+        // Finalizada se podía re-tocar (ganar pares nuevos, volver a Finalizar) y pisar en silencio
+        // una CuentaFinal que el usuario ya había corregido a mano después del cierre. Ahora todo
+        // lo que muta queda deshabilitado si el Estado es "Finalizada"; Exportar sigue disponible
+        // porque revisar/exportar una sesión ya cerrada sigue siendo útil.
         private void ActualizarEstadoSesion()
         {
             bool activa = _sesionActiva != null;
+            bool editable = activa && _sesionActiva.Estado != "Finalizada";
             lblSesionActiva.Text = activa ? $"Sesión: {_sesionActiva.Nombre} [{_sesionActiva.Estado}]" : "Sin sesión activa";
-            btnAutoConciliar.Enabled   = activa;
-            btnConciliarManual.Enabled = activa;
-            btnDesconciliar.Enabled    = activa;
-            btnFinalizar.Enabled       = activa;
+            btnAutoConciliar.Enabled   = editable;
+            btnConciliarManual.Enabled = editable;
+            btnDesconciliar.Enabled    = editable;
+            btnFinalizar.Enabled       = editable;
             btnExportar.Enabled        = activa;
         }
     }
