@@ -130,6 +130,33 @@ CREATE TABLE bancos.ConciliacionPares (
     FechaConciliacion     DATETIME2(0) NOT NULL
 );
 
+-- Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Conciliacion interna entre extractos propios
+IF OBJECT_ID(N'bancos.ConciliacionInternaSesiones', N'U') IS NULL
+CREATE TABLE bancos.ConciliacionInternaSesiones (
+    Id            INT IDENTITY(1,1) CONSTRAINT PK_ConciliacionInternaSesiones PRIMARY KEY,
+    Nombre        NVARCHAR(200) NOT NULL,
+    FechaCreacion DATETIME2(0) NOT NULL,
+    IdPerfilA     INT NOT NULL CONSTRAINT FK_SesionInterna_PerfilA REFERENCES bancos.PerfilesBanco(Id),
+    FechaDesdeA   DATE NOT NULL,
+    FechaHastaA   DATE NOT NULL,
+    IdPerfilB     INT NOT NULL CONSTRAINT FK_SesionInterna_PerfilB REFERENCES bancos.PerfilesBanco(Id),
+    FechaDesdeB   DATE NOT NULL,
+    FechaHastaB   DATE NOT NULL,
+    ConceptosJson NVARCHAR(MAX) NOT NULL CONSTRAINT DF_SesionesInternas_Conceptos DEFAULT N'[]',
+    Estado        NVARCHAR(50) NOT NULL CONSTRAINT DF_SesionesInternas_Estado DEFAULT N'EnProceso'
+);
+
+IF OBJECT_ID(N'bancos.ConciliacionInternaPares', N'U') IS NULL
+CREATE TABLE bancos.ConciliacionInternaPares (
+    Id                INT IDENTITY(1,1) CONSTRAINT PK_ConciliacionInternaPares PRIMARY KEY,
+    IdSesion          INT NOT NULL CONSTRAINT FK_ParesInternos_Sesion
+                          REFERENCES bancos.ConciliacionInternaSesiones(Id),
+    IdMovimientoA     INT NOT NULL,
+    IdMovimientoB     INT NOT NULL,
+    TipoMatch         NVARCHAR(50) NOT NULL,
+    FechaConciliacion DATETIME2(0) NOT NULL
+);
+
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_MovimientosArchivo_IdArchivo')
     CREATE INDEX IX_MovimientosArchivo_IdArchivo   ON bancos.MovimientosArchivo(IdArchivo);
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_HomologacionConceptos_IdPerfil')
@@ -140,6 +167,8 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_ConciliacionItemsExt_
     CREATE INDEX IX_ConciliacionItemsExt_IdSesion  ON bancos.ConciliacionItemsExternos(IdSesion);
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_ConciliacionPares_IdSesion')
     CREATE INDEX IX_ConciliacionPares_IdSesion     ON bancos.ConciliacionPares(IdSesion);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_ConciliacionInternaPares_IdSesion')
+    CREATE INDEX IX_ConciliacionInternaPares_IdSesion ON bancos.ConciliacionInternaPares(IdSesion);
 ";
     }
 }
