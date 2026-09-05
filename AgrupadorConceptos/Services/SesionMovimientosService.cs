@@ -159,6 +159,8 @@ namespace AgrupadorConceptos.Services
 
                 mov.ConceptoEstandar = actualizado.ConceptoEstandar;
                 mov.ConceptoFinal = actualizado.ConceptoFinal;
+                // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Sincronizar tambien CuentaFinal al refrescar desde la base
+                mov.CuentaFinal = actualizado.CuentaFinal;
             }
         }
     }
