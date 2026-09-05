@@ -42,6 +42,11 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_CuentasContables_Cuen
     CREATE UNIQUE INDEX UX_CuentasContables_CuentaCentro
         ON bancos.CuentasContables(Cuenta, CentroCosto);
 
+-- Fecha: 05/09/2026 - TAREA: 00021 - Linea: 2 - Cuenta contable de referencia del perfil
+IF COL_LENGTH(N'bancos.PerfilesBanco', N'IdCuentaContable') IS NULL
+    ALTER TABLE bancos.PerfilesBanco ADD IdCuentaContable INT NULL
+        CONSTRAINT FK_Perfil_CuentaContable REFERENCES bancos.CuentasContables(Id);
+
 IF OBJECT_ID(N'bancos.ConceptosEstandar', N'U') IS NULL
 CREATE TABLE bancos.ConceptosEstandar (
     Id     INT IDENTITY(1,1) CONSTRAINT PK_ConceptosEstandar PRIMARY KEY,

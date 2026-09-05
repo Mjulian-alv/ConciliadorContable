@@ -42,6 +42,8 @@ namespace AgrupadorConceptos
             btnGuardar = new System.Windows.Forms.Button();
             lblFilaEncabezado = new System.Windows.Forms.Label();
             numFilaEncabezado = new System.Windows.Forms.NumericUpDown();
+            lblCuentaContable = new System.Windows.Forms.Label();
+            cmbCuentaContable = new System.Windows.Forms.ComboBox();
             grpMapeo.SuspendLayout();
             grpImporte.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)numFilaEncabezado).BeginInit();
@@ -55,7 +57,7 @@ namespace AgrupadorConceptos
             lblTitulo.Name = "lblTitulo";
             lblTitulo.Size = new System.Drawing.Size(228, 25);
             lblTitulo.TabIndex = 8;
-            lblTitulo.Text = "Creación Perfil de Banco";
+            lblTitulo.Text = "Creaciï¿½n Perfil de Banco";
             // 
             // lblBanco
             // 
@@ -90,7 +92,7 @@ namespace AgrupadorConceptos
             lblArchivoExcel.Name = "lblArchivoExcel";
             lblArchivoExcel.Size = new System.Drawing.Size(161, 15);
             lblArchivoExcel.TabIndex = 4;
-            lblArchivoExcel.Text = "Ningún archivo seleccionado";
+            lblArchivoExcel.Text = "Ningï¿½n archivo seleccionado";
             // 
             // grpMapeo
             // 
@@ -118,7 +120,7 @@ namespace AgrupadorConceptos
             chkEsCodigo.Name = "chkEsCodigo";
             chkEsCodigo.Size = new System.Drawing.Size(256, 19);
             chkEsCodigo.TabIndex = 0;
-            chkEsCodigo.Text = "¿Es Código Exacto? (Si no, es un texto largo)";
+            chkEsCodigo.Text = "ï¿½Es Cï¿½digo Exacto? (Si no, es un texto largo)";
             chkEsCodigo.UseVisualStyleBackColor = true;
             // 
             // cmbColumnaDescripcion
@@ -137,7 +139,7 @@ namespace AgrupadorConceptos
             lblColumnaDescripcion.Name = "lblColumnaDescripcion";
             lblColumnaDescripcion.Size = new System.Drawing.Size(124, 15);
             lblColumnaDescripcion.TabIndex = 2;
-            lblColumnaDescripcion.Text = "Columna Descripción:";
+            lblColumnaDescripcion.Text = "Columna Descripciï¿½n:";
             // 
             // cmbColumnaConcepto
             // 
@@ -199,7 +201,7 @@ namespace AgrupadorConceptos
             radImporteUnico.Name = "radImporteUnico";
             radImporteUnico.Size = new System.Drawing.Size(101, 19);
             radImporteUnico.TabIndex = 0;
-            radImporteUnico.Text = "Importe Único";
+            radImporteUnico.Text = "Importe ï¿½nico";
             radImporteUnico.UseVisualStyleBackColor = true;
             // 
             // radDebeHaber
@@ -265,17 +267,32 @@ namespace AgrupadorConceptos
             cmbColumnaHaber.Name = "cmbColumnaHaber";
             cmbColumnaHaber.Size = new System.Drawing.Size(200, 23);
             cmbColumnaHaber.TabIndex = 7;
-            // 
+            //
             // btnGuardar
-            // 
-            btnGuardar.Location = new System.Drawing.Point(17, 460);
+            //
+            btnGuardar.Location = new System.Drawing.Point(17, 500);
             btnGuardar.Name = "btnGuardar";
             btnGuardar.Size = new System.Drawing.Size(120, 40);
             btnGuardar.TabIndex = 2;
             btnGuardar.Text = "Guardar Perfil";
             btnGuardar.UseVisualStyleBackColor = true;
             btnGuardar.Click += btnGuardar_Click;
-            // 
+            //
+            // lblCuentaContable
+            //
+            lblCuentaContable.AutoSize = true;
+            lblCuentaContable.Location = new System.Drawing.Point(20, 464);
+            lblCuentaContable.Name = "lblCuentaContable";
+            lblCuentaContable.Text = "Cuenta Contable (opcional):";
+            //
+            // cmbCuentaContable
+            //
+            cmbCuentaContable.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            cmbCuentaContable.FormattingEnabled = true;
+            cmbCuentaContable.Location = new System.Drawing.Point(190, 461);
+            cmbCuentaContable.Name = "cmbCuentaContable";
+            cmbCuentaContable.Size = new System.Drawing.Size(340, 23);
+            //
             // lblFilaEncabezado
             // 
             lblFilaEncabezado.AutoSize = true;
@@ -293,10 +310,12 @@ namespace AgrupadorConceptos
             numFilaEncabezado.Size = new System.Drawing.Size(50, 23);
             numFilaEncabezado.TabIndex = 0;
             numFilaEncabezado.Value = new decimal(new int[] { 1, 0, 0, 0 });
-            // 
+            //
             // MainForm
-            // 
-            ClientSize = new System.Drawing.Size(550, 520);
+            //
+            ClientSize = new System.Drawing.Size(550, 560);
+            Controls.Add(cmbCuentaContable);
+            Controls.Add(lblCuentaContable);
             Controls.Add(numFilaEncabezado);
             Controls.Add(lblFilaEncabezado);
             Controls.Add(btnGuardar);
@@ -345,5 +364,7 @@ namespace AgrupadorConceptos
         private System.Windows.Forms.NumericUpDown numFilaEncabezado;
         private System.Windows.Forms.Label lblColumnaFecha;
         private System.Windows.Forms.ComboBox cmbColumnaFecha;
+        private System.Windows.Forms.Label lblCuentaContable;
+        private System.Windows.Forms.ComboBox cmbCuentaContable;
     }
 }

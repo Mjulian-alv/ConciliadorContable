@@ -13,5 +13,13 @@ namespace AgrupadorConceptos.Models
         public string ColumnaDebe { get; set; }
         public string ColumnaHaber { get; set; }
         public string ColumnaFecha { get; set; }
+
+        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 2 - Cuenta contable de referencia (informativa)
+        /// <summary>
+        /// Sólo dato de referencia del perfil. No alimenta el default de CuentaFinal de los
+        /// movimientos (decisión del usuario): esa cuenta sale únicamente del concepto
+        /// estándar homologado.
+        /// </summary>
+        public int? IdCuentaContable { get; set; }
     }
 }

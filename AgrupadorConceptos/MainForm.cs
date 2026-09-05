@@ -18,7 +18,24 @@ namespace AgrupadorConceptos
             this.Icon = AppIcon.GetIcon();
             _idPerfilEditar = idPerfil;
             ConfigurarUI_Inicial();
+            CargarCuentasContables();
             this.Load += MainForm_Load;
+        }
+
+        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 2 - Combo de cuenta contable del perfil
+        private void CargarCuentasContables()
+        {
+            var cuentas = Data.CuentaContableStorage.ObtenerTodas();
+            cmbCuentaContable.DataSource = null;
+            cmbCuentaContable.DisplayMember = "DisplayName";
+            cmbCuentaContable.ValueMember = "Id";
+
+            var conBlanco = new System.Collections.Generic.List<Models.CuentaContable>
+            {
+                new Models.CuentaContable { Id = 0, Descripcion = "(sin asignar)" }
+            };
+            conBlanco.AddRange(cuentas);
+            cmbCuentaContable.DataSource = conBlanco;
         }
 
         private void MainForm_Load(object sender, EventArgs e)
@@ -74,6 +91,8 @@ namespace AgrupadorConceptos
                         cmbColumnaFecha.Items.Add(perfil.ColumnaFecha);
                         cmbColumnaFecha.SelectedItem = perfil.ColumnaFecha;
                     }
+
+                    cmbCuentaContable.SelectedValue = perfil.IdCuentaContable ?? 0;
 
                     lblArchivoExcel.Text = "Cargue un excel para ver todas las columnas.";
                 }
@@ -189,7 +208,11 @@ namespace AgrupadorConceptos
                 ColumnaImporteUnico = radImporteUnico.Checked ? (cmbImporteUnico.SelectedItem?.ToString() ?? "") : null,
                 ColumnaDebe = radDebeHaber.Checked ? (cmbColumnaDebe.SelectedItem?.ToString() ?? "") : null,
                 ColumnaHaber = radDebeHaber.Checked ? (cmbColumnaHaber.SelectedItem?.ToString() ?? "") : null,
-                ColumnaFecha = cmbColumnaFecha.SelectedItem?.ToString() ?? ""
+                ColumnaFecha = cmbColumnaFecha.SelectedItem?.ToString() ?? "",
+                // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 2 - 0 es el centinela "(sin asignar)"
+                IdCuentaContable = (int)(cmbCuentaContable.SelectedValue ?? 0) == 0
+                    ? (int?)null
+                    : (int)cmbCuentaContable.SelectedValue
             };
 
             try

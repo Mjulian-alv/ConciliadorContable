@@ -24,16 +24,17 @@ namespace AgrupadorConceptos.Data
                 "SELECT * FROM bancos.PerfilesBanco WHERE Id = @Id", new { Id = id });
         }
 
+        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 2 - IdCuentaContable en Insertar/Actualizar
         public static void Insertar(PerfilBanco perfil)
         {
             using var cn = DatabaseHelper.Open();
             cn.Execute(@"
                 INSERT INTO bancos.PerfilesBanco
                     (NombreBanco, ColumnaConcepto, ColumnaDescripcion, EsCodigo, FilaEncabezado,
-                     TipoImporte, ColumnaImporteUnico, ColumnaDebe, ColumnaHaber, ColumnaFecha)
+                     TipoImporte, ColumnaImporteUnico, ColumnaDebe, ColumnaHaber, ColumnaFecha, IdCuentaContable)
                 VALUES
                     (@NombreBanco, @ColumnaConcepto, @ColumnaDescripcion, @EsCodigo, @FilaEncabezado,
-                     @TipoImporte, @ColumnaImporteUnico, @ColumnaDebe, @ColumnaHaber, @ColumnaFecha)",
+                     @TipoImporte, @ColumnaImporteUnico, @ColumnaDebe, @ColumnaHaber, @ColumnaFecha, @IdCuentaContable)",
                 perfil);
         }
 
@@ -51,7 +52,8 @@ namespace AgrupadorConceptos.Data
                     ColumnaImporteUnico = @ColumnaImporteUnico,
                     ColumnaDebe         = @ColumnaDebe,
                     ColumnaHaber        = @ColumnaHaber,
-                    ColumnaFecha        = @ColumnaFecha
+                    ColumnaFecha        = @ColumnaFecha,
+                    IdCuentaContable    = @IdCuentaContable
                 WHERE Id = @Id",
                 perfil);
         }
