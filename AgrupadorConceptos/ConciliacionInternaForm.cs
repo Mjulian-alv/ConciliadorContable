@@ -114,6 +114,14 @@ namespace AgrupadorConceptos
             if (cmbPerfilA.SelectedValue is not int idPerfilA || cmbPerfilB.SelectedValue is not int idPerfilB)
             { MessageBox.Show("Elija el perfil de cada extracto.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
 
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Evitar conciliar un perfil contra si mismo
+            // Con el mismo perfil de los dos lados, un mismo movimiento puede aparecer pendiente
+            // en A y en B: la manual lo dejaria emparejar consigo mismo y Finalizar terminaria
+            // pisando la cuenta del movimiento con la cuenta del propio perfil, en vez de la del
+            // contrario.
+            if (idPerfilA == idPerfilB)
+            { MessageBox.Show("Elija dos perfiles distintos para conciliar.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+
             if (dtpDesdeA.Value.Date > dtpHastaA.Value.Date || dtpDesdeB.Value.Date > dtpHastaB.Value.Date)
             { MessageBox.Show("La fecha 'Desde' no puede ser posterior a 'Hasta'.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
 
@@ -223,6 +231,14 @@ namespace AgrupadorConceptos
 
             if (dgvPendienteB.CurrentRow?.DataBoundItem is not MovimientoProcesado b)
             { MessageBox.Show("Seleccione un movimiento del extracto B.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - No permitir emparejar un movimiento consigo mismo
+            // Con perfiles A y B iguales y rangos de fecha superpuestos, el mismo movimiento
+            // aparece pendiente en las dos grillas: dejarlo conciliar consigo mismo hace que
+            // Finalizar dispare los dos UPDATE sobre la misma fila, pisando la cuenta con la del
+            // propio perfil en vez de la del contrario.
+            if (_movimientoASeleccionado.Id == b.Id)
+            { MessageBox.Show("No se puede conciliar un movimiento consigo mismo.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
 
             ConciliacionInternaService.ConciliarPar(_sesionActiva.Id, _movimientoASeleccionado.Id, b.Id, TipoMatch.Manual);
 

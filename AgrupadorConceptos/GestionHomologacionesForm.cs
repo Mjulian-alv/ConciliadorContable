@@ -212,10 +212,16 @@ namespace AgrupadorConceptos
             var perfil = PerfilDeLaFila(fila);
             if (perfil == null) return;
 
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 3 - Preseleccionar el concepto de la fila
+            // Sin ConceptoInicial, cmbEstandar arrancaba en el primero de la lista (no en el
+            // concepto de esta regla): el usuario podia ver la cuenta de otro concepto y, al
+            // aceptar, ActualizarCuentaConcepto (mas abajo) pisaba en silencio la cuenta de un
+            // concepto que no tenia nada que ver.
             var frm = new HomologarForm(perfil.Id, fila.ValorOriginal)
             {
                 BloquearValorOriginal = true,
                 SoloSeleccionar = true,
+                ConceptoInicial = fila.ConceptoEstandar,
                 Text = "Editar homologación"
             };
             frm.ShowDialog(this);

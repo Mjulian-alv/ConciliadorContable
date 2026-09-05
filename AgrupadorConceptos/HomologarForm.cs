@@ -50,6 +50,30 @@ namespace AgrupadorConceptos
         /// </summary>
         public bool SoloSeleccionar { get; set; }
 
+        private string _conceptoInicial;
+
+        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 3 - Preseleccionar el concepto al editar
+        /// <summary>
+        /// Concepto estándar que este form debe mostrar seleccionado al abrir (lo usa
+        /// GestionHomologacionesForm al editar una fila). Se fija por object initializer,
+        /// es decir después de que el constructor ya corrió: para el momento en que este
+        /// setter se ejecuta, cmbEstandar ya tiene su DataSource y ya está suscripto el
+        /// TextChanged, así que basta con tipear el texto para que PrecargarCuentaDelConcepto
+        /// traiga la cuenta del concepto correcto (y no la del primero de la lista).
+        /// </summary>
+        public string ConceptoInicial
+        {
+            get => _conceptoInicial;
+            set
+            {
+                _conceptoInicial = value;
+                if (!string.IsNullOrEmpty(value))
+                {
+                    cmbEstandar.Text = value;
+                }
+            }
+        }
+
         public HomologarForm(int idPerfilBanco, string valorOriginal)
         {
             InitializeComponent();
@@ -63,8 +87,13 @@ namespace AgrupadorConceptos
 
             // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 3 - Precargar la cuenta si el concepto ya existe
             // Sin esto, tipear/seleccionar un concepto ya homologado en otro perfil y guardar
-            // borraria en silencio la cuenta que ya tenia asignada.
+            // borraria en silencio la cuenta que ya tenia asignada. La llamada inmediata (y no
+            // solo la suscripcion) es necesaria porque CargarConceptosEstandar() puede haber
+            // disparado el TextChanged de forma sincronica durante el binding, antes de que este
+            // handler quedara enganchado: sin este seed determinista, cmbCuenta podia quedar en
+            // "(sin asignar)" para un concepto que ya tenia cuenta, y Guardar la borraba en silencio.
             cmbEstandar.TextChanged += (s, e) => PrecargarCuentaDelConcepto();
+            PrecargarCuentaDelConcepto();
         }
 
         // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 3 - Cache de conceptos para precargar la cuenta
