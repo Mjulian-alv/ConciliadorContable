@@ -36,6 +36,20 @@ namespace AgrupadorConceptos.Services
             return string.Equals(fechaExterno.Trim(), fechaExtracto.Trim(), StringComparison.OrdinalIgnoreCase);
         }
 
+        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Parseo reutilizable para filtrar por rango
+        /// <summary>
+        /// Parsea la fecha de un movimiento con los mismos formatos que <see cref="FechasIguales"/>,
+        /// o null si no matchea ninguno. La usa la conciliación interna para filtrar por rango.
+        /// </summary>
+        public static DateTime? ParsearFecha(string fecha)
+        {
+            if (string.IsNullOrWhiteSpace(fecha)) return null;
+
+            return DateTime.TryParseExact(fecha.Trim(), FormatosFecha, CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)
+                ? d.Date
+                : (DateTime?)null;
+        }
+
         /// <summary>
         /// El movimiento trae el importe en Debitos o en Creditos según el signo;
         /// para comparar contra el externo se usa el valor absoluto del que esté cargado.
