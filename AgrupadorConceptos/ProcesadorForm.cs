@@ -28,6 +28,8 @@ namespace AgrupadorConceptos
             this.dgvDatos.CellFormatting += DgvDatos_CellFormatting;
             this.dgvDatos.CellDoubleClick += DgvDatos_CellDoubleClick;
             this.dgvDatos.CellValueChanged += DgvDatos_CellValueChanged;
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - No dejar editar si esta conciliada en proceso
+            this.dgvDatos.CellBeginEdit += DgvDatos_CellBeginEdit;
             this.cboPerfiles.SelectedIndexChanged += CboPerfiles_SelectedIndexChanged;
         }
 
@@ -307,6 +309,24 @@ namespace AgrupadorConceptos
             // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Persistir la edicion inline de CuentaFinal
             else if (e.Column.Name == "CuentaFinal")
                 MovimientoStorage.ActualizarCuentaFinal(mov.Id, mov.CuentaFinal);
+        }
+
+        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Cuenta final conciliada: no se edita a mano
+        // Se pisaria igual cuando la conciliacion interna cierre (ver ConciliacionInternaService.Finalizar
+        // en el plan de conciliacion interna) — mejor avisar antes que dejar editar algo que se va a perder.
+        private void DgvDatos_CellBeginEdit(object sender, GridViewCellCancelEventArgs e)
+        {
+            if (e.Column.Name != "CuentaFinal") return;
+            if (e.Row.DataBoundItem is not MovimientoProcesado mov) return;
+
+            string sesion = ConciliacionInternaService.ObtenerSesionEnProcesoDelMovimiento(mov.Id);
+            if (sesion == null) return;
+
+            e.Cancel = true;
+            MessageBox.Show(
+                $"Este movimiento está conciliado en la sesión interna '{sesion}', todavía en proceso.\n" +
+                "La Cuenta Final se va a fijar sola cuando esa conciliación se cierre, así que no se puede editar a mano ahora.",
+                "No se puede editar", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
 
         private void ConfigurarGrilla()

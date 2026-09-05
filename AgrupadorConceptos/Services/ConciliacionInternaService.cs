@@ -264,5 +264,24 @@ namespace AgrupadorConceptos.Services
 
             return (total, duplicados);
         }
+
+        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Bloquear edicion manual mientras este conciliado
+        /// <summary>
+        /// Nombre de la sesión de conciliación interna, todavía "EnProceso", que tiene a este
+        /// movimiento conciliado — o null si no hay ninguna. Lo usa la grilla del Procesador
+        /// para impedir editar CuentaFinal a mano: se va a pisar sola cuando esa sesión cierre.
+        /// </summary>
+        public static string ObtenerSesionEnProcesoDelMovimiento(int idMovimiento)
+        {
+            using var cn = DatabaseHelper.GetConnection();
+            cn.Open();
+            return cn.QueryFirstOrDefault<string>(@"
+                SELECT TOP 1 s.Nombre
+                FROM bancos.ConciliacionInternaPares p
+                JOIN bancos.ConciliacionInternaSesiones s ON p.IdSesion = s.Id
+                WHERE (p.IdMovimientoA = @Id OR p.IdMovimientoB = @Id)
+                  AND s.Estado = 'EnProceso'",
+                new { Id = idMovimiento });
+        }
     }
 }
