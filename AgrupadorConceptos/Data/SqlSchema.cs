@@ -24,7 +24,7 @@ CREATE TABLE bancos.PerfilesBanco (
     ColumnaFecha        NVARCHAR(100) NULL
 );
 
-// Fecha: 05/09/2026 - TAREA: 00021 - Linea: 1 - Catalogo de cuentas contables del legacy
+-- Fecha: 05/09/2026 - TAREA: 00021 - Linea: 1 - Catalogo de cuentas contables del legacy
 IF OBJECT_ID(N'bancos.CuentasContables', N'U') IS NULL
 CREATE TABLE bancos.CuentasContables (
     Id          INT IDENTITY(1,1) CONSTRAINT PK_CuentasContables PRIMARY KEY,
