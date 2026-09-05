@@ -278,6 +278,8 @@ namespace AgrupadorConceptos
             btnGuardar.UseVisualStyleBackColor = true;
             btnGuardar.Click += btnGuardar_Click;
             //
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 2 - Combo de cuenta contable (opcional) del perfil,
+            // y btnGuardar reubicado para dejarle lugar.
             // lblCuentaContable
             //
             lblCuentaContable.AutoSize = true;

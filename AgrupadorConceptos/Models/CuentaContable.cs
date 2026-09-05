@@ -8,8 +8,16 @@ namespace AgrupadorConceptos.Models
         public string Descripcion { get; set; }
         public string CentroCosto { get; set; }
 
-        public string DisplayName => string.IsNullOrEmpty(CentroCosto)
-            ? $"{Cuenta} — {Descripcion}"
-            : $"{Cuenta} — {Descripcion} ({CentroCosto})";
+        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 1 - Sin Cuenta (sentinel "sin asignar") no debe llevar guion
+        public string DisplayName
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(Cuenta)) return Descripcion;
+                return string.IsNullOrEmpty(CentroCosto)
+                    ? $"{Cuenta} — {Descripcion}"
+                    : $"{Cuenta} — {Descripcion} ({CentroCosto})";
+            }
+        }
     }
 }
