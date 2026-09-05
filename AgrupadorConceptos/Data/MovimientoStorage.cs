@@ -15,8 +15,9 @@ namespace AgrupadorConceptos.Data
         private const string SelectPorArchivo =
             "SELECT * FROM bancos.MovimientosArchivo WHERE IdArchivo = @IdArchivo";
 
+        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Persistir tambien CuentaFinal
         private const string UpdateConceptos =
-            "UPDATE bancos.MovimientosArchivo SET ConceptoEstandar = @ConceptoEstandar, ConceptoFinal = @ConceptoFinal WHERE Id = @Id";
+            "UPDATE bancos.MovimientosArchivo SET ConceptoEstandar = @ConceptoEstandar, ConceptoFinal = @ConceptoFinal, CuentaFinal = @CuentaFinal WHERE Id = @Id";
 
         public static List<MovimientoProcesado> ObtenerPorArchivo(int idArchivo)
         {
@@ -89,9 +90,9 @@ namespace AgrupadorConceptos.Data
             {
                 mov.Id = cn.QuerySingle<int>(@"
                     INSERT INTO bancos.MovimientosArchivo
-                        (IdArchivo, Fecha, ConceptoOriginal, DescripcionOriginal, Debitos, Creditos, ConceptoEstandar, ConceptoFinal)
+                        (IdArchivo, Fecha, ConceptoOriginal, DescripcionOriginal, Debitos, Creditos, ConceptoEstandar, ConceptoFinal, CuentaFinal)
                     OUTPUT INSERTED.Id
-                    VALUES (@IdArchivo, @Fecha, @ConceptoOriginal, @DescripcionOriginal, @Debitos, @Creditos, @ConceptoEstandar, @ConceptoFinal);",
+                    VALUES (@IdArchivo, @Fecha, @ConceptoOriginal, @DescripcionOriginal, @Debitos, @Creditos, @ConceptoEstandar, @ConceptoFinal, @CuentaFinal);",
                     mov, tx);
 
                 guardados++;
@@ -142,6 +143,15 @@ namespace AgrupadorConceptos.Data
             using var cn = DatabaseHelper.Open();
             cn.Execute("UPDATE bancos.MovimientosArchivo SET ConceptoFinal = @ConceptoFinal WHERE Id = @Id",
                 new { ConceptoFinal = conceptoFinal, Id = id });
+        }
+
+        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Edicion puntual de CuentaFinal desde la grilla
+        /// <summary>Edición puntual de la CuentaFinal desde la grilla.</summary>
+        public static void ActualizarCuentaFinal(int id, string cuentaFinal)
+        {
+            using var cn = DatabaseHelper.Open();
+            cn.Execute("UPDATE bancos.MovimientosArchivo SET CuentaFinal = @CuentaFinal WHERE Id = @Id",
+                new { CuentaFinal = cuentaFinal, Id = id });
         }
     }
 }

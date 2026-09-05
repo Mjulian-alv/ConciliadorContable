@@ -300,17 +300,21 @@ namespace AgrupadorConceptos
 
         private void DgvDatos_CellValueChanged(object sender, GridViewCellEventArgs e)
         {
-            if (e.Column.Name == "ConceptoFinal" && e.Row.DataBoundItem is MovimientoProcesado mov)
-            {
+            if (e.Row.DataBoundItem is not MovimientoProcesado mov) return;
+
+            if (e.Column.Name == "ConceptoFinal")
                 MovimientoStorage.ActualizarConceptoFinal(mov.Id, mov.ConceptoFinal);
-            }
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Persistir la edicion inline de CuentaFinal
+            else if (e.Column.Name == "CuentaFinal")
+                MovimientoStorage.ActualizarCuentaFinal(mov.Id, mov.CuentaFinal);
         }
 
         private void ConfigurarGrilla()
         {
             foreach (var col in dgvDatos.Columns)
             {
-                col.ReadOnly = col.Name != "ConceptoFinal";
+                // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - CuentaFinal tambien editable inline
+                col.ReadOnly = col.Name != "ConceptoFinal" && col.Name != "CuentaFinal";
                 col.IsVisible = col.Name != "Id" && col.Name !="IdArchivo";
             }
         }

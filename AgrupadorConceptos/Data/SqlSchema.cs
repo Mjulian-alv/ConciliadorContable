@@ -91,6 +91,10 @@ CREATE TABLE bancos.MovimientosArchivo (
     ConceptoFinal       NVARCHAR(400) NULL
 );
 
+-- Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Cuenta final del movimiento
+IF COL_LENGTH(N'bancos.MovimientosArchivo', N'CuentaFinal') IS NULL
+    ALTER TABLE bancos.MovimientosArchivo ADD CuentaFinal NVARCHAR(50) NULL;
+
 IF OBJECT_ID(N'bancos.ConciliacionSesiones', N'U') IS NULL
 CREATE TABLE bancos.ConciliacionSesiones (
     Id                 INT IDENTITY(1,1) CONSTRAINT PK_ConciliacionSesiones PRIMARY KEY,

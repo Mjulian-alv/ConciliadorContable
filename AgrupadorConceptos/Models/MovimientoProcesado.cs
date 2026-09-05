@@ -11,5 +11,7 @@ namespace AgrupadorConceptos.Models
         public decimal Debitos { get; set; }
         public decimal Creditos { get; set; }
         public string ConceptoFinal { get; set; }
+        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Cuenta final, mismo patron que ConceptoFinal
+        public string CuentaFinal { get; set; }
     }
 }
