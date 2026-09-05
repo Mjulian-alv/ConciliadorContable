@@ -30,6 +30,8 @@ namespace ConciliadorContable.Forms
             btnAgrConciliacion.Enabled     = u.TienePermiso("AgrConciliacion");
             // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 1 - Permiso del catalogo de cuentas contables
             btnAgrCuentasContables.Enabled = u.TienePermiso("AgrCuentasContables");
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Permiso de la conciliacion interna
+            btnAgrConciliacionInterna.Enabled = u.TienePermiso("AgrConciliacionInterna");
         }
 
         // ── ARCA Cliente ──────────────────────────────────────────────────
@@ -75,6 +77,14 @@ namespace ConciliadorContable.Forms
         {
             AgrupadorConceptos.Data.DatabaseHelper.InitializeDatabase();
             AbrirVentana(new AgrupadorConceptos.CuentasContablesForm());
+        }
+
+        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Abrir la conciliacion interna
+        private void BtnAgrupadorConciliacionInterna_Click(object sender, EventArgs e)
+        {
+            System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+            AgrupadorConceptos.Data.DatabaseHelper.InitializeDatabase();
+            AbrirVentana(new AgrupadorConceptos.ConciliacionInternaForm());
         }
 
         // ── Salir

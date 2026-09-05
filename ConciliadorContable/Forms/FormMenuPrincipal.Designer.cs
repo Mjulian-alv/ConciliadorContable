@@ -42,6 +42,8 @@ namespace ConciliadorContable.Forms
             btnAgrConciliacion   = new RadButton();
             // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 1 - Boton nuevo: catalogo de cuentas contables
             btnAgrCuentasContables = new RadButton();
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Boton nuevo: conciliacion interna
+            btnAgrConciliacionInterna = new RadButton();
 
             // Admin
             btnAdminUsuarios = new RadButton();
@@ -65,6 +67,7 @@ namespace ConciliadorContable.Forms
             ((System.ComponentModel.ISupportInitialize)btnAgrHomologaciones).BeginInit();
             ((System.ComponentModel.ISupportInitialize)btnAgrConciliacion).BeginInit();
             ((System.ComponentModel.ISupportInitialize)btnAgrCuentasContables).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)btnAgrConciliacionInterna).BeginInit();
             ((System.ComponentModel.ISupportInitialize)btnAdminUsuarios).BeginInit();
             ((System.ComponentModel.ISupportInitialize)this).BeginInit();
             SuspendLayout();
@@ -72,8 +75,9 @@ namespace ConciliadorContable.Forms
             // ── FormMenuPrincipal ────────────────────────────────────────
             Text        = "Conciliador Contable";
             // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 1 - Ventana mas alta para la 4ta fila de botones del Agrupador
-            ClientSize  = new Size(780, 560);
-            MinimumSize = new Size(780, 560);
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Ventana mas alta para la 5ta fila de botones del Agrupador
+            ClientSize  = new Size(780, 620);
+            MinimumSize = new Size(780, 620);
             StartPosition = FormStartPosition.CenterScreen;
 
             // ── pnlHeader ─────────────────────────────────────────────────
@@ -119,7 +123,8 @@ namespace ConciliadorContable.Forms
             pnlArca.BorderStyle = BorderStyle.FixedSingle;
             pnlArca.Location    = new System.Drawing.Point(24, 24);
             // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 1 - Mas alto para que las dos tarjetas queden parejas con la de Agrupador
-            pnlArca.Size        = new Size(340, 430);
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Mas alto de nuevo para seguir parejas con la de Agrupador
+            pnlArca.Size        = new Size(340, 490);
             pnlArca.Controls.AddRange(new System.Windows.Forms.Control[]
             {
                 lblArcaTitulo, lblArcaDesc,
@@ -147,10 +152,11 @@ namespace ConciliadorContable.Forms
             pnlAgrupador.BorderStyle = BorderStyle.FixedSingle;
             pnlAgrupador.Location    = new System.Drawing.Point(392, 24);
             // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 1 - Mas alto para la 4ta fila de botones (Cuentas Contables)
-            pnlAgrupador.Size        = new Size(340, 430);
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Mas alto para la 5ta fila de botones (Conciliacion Interna)
+            pnlAgrupador.Size        = new Size(340, 490);
             pnlAgrupador.Controls.AddRange(new System.Windows.Forms.Control[]
             {
-                lblAgrTitulo, lblAgrDesc, btnAgrProcesador, btnAgrHomologaciones, btnAgrConciliacion, btnAgrCuentasContables
+                lblAgrTitulo, lblAgrDesc, btnAgrProcesador, btnAgrHomologaciones, btnAgrConciliacion, btnAgrCuentasContables, btnAgrConciliacionInterna
             });
 
             lblAgrTitulo.Text      = "🔗  Agrupador de Conceptos";
@@ -170,6 +176,8 @@ namespace ConciliadorContable.Forms
             ConfigurarBotonModulo(btnAgrConciliacion,   "Conciliación con Externo",   new System.Drawing.Point(16, 220), BtnAgrupadorConciliacion_Click);
             // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 1 - Fila nueva del boton de Cuentas Contables
             ConfigurarBotonModulo(btnAgrCuentasContables, "Cuentas Contables",        new System.Drawing.Point(16, 280), BtnAgrupadorCuentasContables_Click);
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Fila nueva del boton de Conciliacion Interna
+            ConfigurarBotonModulo(btnAgrConciliacionInterna, "Conciliación Interna",  new System.Drawing.Point(16, 340), BtnAgrupadorConciliacionInterna_Click);
 
             // ── Ensamblar ────────────────────────────────────────────────
             Controls.Add(pnlContenido);
@@ -194,6 +202,7 @@ namespace ConciliadorContable.Forms
             ((System.ComponentModel.ISupportInitialize)btnAgrHomologaciones).EndInit();
             ((System.ComponentModel.ISupportInitialize)btnAgrConciliacion).EndInit();
             ((System.ComponentModel.ISupportInitialize)btnAgrCuentasContables).EndInit();
+            ((System.ComponentModel.ISupportInitialize)btnAgrConciliacionInterna).EndInit();
             ((System.ComponentModel.ISupportInitialize)btnAdminUsuarios).EndInit();
             ((System.ComponentModel.ISupportInitialize)this).EndInit();
             ResumeLayout(false);
@@ -229,6 +238,7 @@ namespace ConciliadorContable.Forms
         private RadButton btnAgrHomologaciones;
         private RadButton btnAgrConciliacion;
         private RadButton btnAgrCuentasContables;
+        private RadButton btnAgrConciliacionInterna;
         private RadButton btnAdminUsuarios;
     }
 }

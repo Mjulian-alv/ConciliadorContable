@@ -29,10 +29,12 @@ namespace ConciliadorContable.Models
         public string DisplayName => $"{Nombre} ({Username}){(Activo ? "" : " [Inactivo]")}{(Rol == "Admin" ? " ⭐" : "")}";
 
         // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 1 - Modulo nuevo: catalogo de cuentas contables
+        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Modulo nuevo: conciliacion interna
         public static readonly string[] TodosLosModulos =
         {
             "ArcaOffline", "ArcaPerfiles", "ArcaEquivalencias",
-            "AgrProcesador", "AgrHomologaciones", "AgrConciliacion", "AgrCuentasContables"
+            "AgrProcesador", "AgrHomologaciones", "AgrConciliacion", "AgrCuentasContables",
+            "AgrConciliacionInterna"
         };
 
         public static readonly Dictionary<string, string> NombresModulos = new()
@@ -44,6 +46,7 @@ namespace ConciliadorContable.Models
             ["AgrHomologaciones"]   = "Agrupador - Homologaciones",
             ["AgrConciliacion"]     = "Agrupador - Conciliación Externa",
             ["AgrCuentasContables"] = "Agrupador - Cuentas Contables",
+            ["AgrConciliacionInterna"] = "Agrupador - Conciliación Interna",
         };
     }
 }
