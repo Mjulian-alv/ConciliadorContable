@@ -24,6 +24,19 @@ CREATE TABLE bancos.PerfilesBanco (
     ColumnaFecha        NVARCHAR(100) NULL
 );
 
+// Fecha: 05/09/2026 - TAREA: 00021 - Linea: 1 - Catalogo de cuentas contables del legacy
+IF OBJECT_ID(N'bancos.CuentasContables', N'U') IS NULL
+CREATE TABLE bancos.CuentasContables (
+    Id          INT IDENTITY(1,1) CONSTRAINT PK_CuentasContables PRIMARY KEY,
+    Cuenta      NVARCHAR(50) NOT NULL,
+    Descripcion NVARCHAR(300) NOT NULL,
+    CentroCosto NVARCHAR(50) NULL
+);
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_CuentasContables_CuentaCentro')
+    CREATE UNIQUE INDEX UX_CuentasContables_CuentaCentro
+        ON bancos.CuentasContables(Cuenta, ISNULL(CentroCosto, N''));
+
 IF OBJECT_ID(N'bancos.ConceptosEstandar', N'U') IS NULL
 CREATE TABLE bancos.ConceptosEstandar (
     Id     INT IDENTITY(1,1) CONSTRAINT PK_ConceptosEstandar PRIMARY KEY,
