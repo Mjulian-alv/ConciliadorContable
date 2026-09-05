@@ -56,9 +56,11 @@ namespace AgrupadorConceptos.Services
 
             progreso?.Invoke(new ProgresoImportacion(ProgresoImportacion.PasoHomologando));
             var dicHomologacion = HomologacionStorage.ObtenerDiccionario(perfil.Id);
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Cuenta de cada concepto, para CuentaFinal
+            var cuentasPorConcepto = HomologacionStorage.ObtenerCuentasPorConcepto();
 
             swParseo.Start();
-            var movimientos = Parsear(filePath, perfil, dicHomologacion);
+            var movimientos = Parsear(filePath, perfil, dicHomologacion, cuentasPorConcepto);
             swParseo.Stop();
 
             // La cabecera del archivo se inserta recién acá, con el parseo ya resuelto:
@@ -85,7 +87,8 @@ namespace AgrupadorConceptos.Services
         /// El archivo no tiene, en la fila de encabezado del perfil, la columna del concepto.
         /// </exception>
         private static List<MovimientoProcesado> Parsear(
-            string filePath, PerfilBanco perfil, IDictionary<string, string> dicHomologacion)
+            string filePath, PerfilBanco perfil, IDictionary<string, string> dicHomologacion,
+            IDictionary<string, string> cuentasPorConcepto)
         {
             var movimientos = new List<MovimientoProcesado>();
 
@@ -144,6 +147,11 @@ namespace AgrupadorConceptos.Services
                     HomologacionMatcher.Resolver(dicHomologacion, valorABuscar, perfil.EsCodigo)
                     ?? ConceptosBancarios.PendienteHomologar;
 
+                // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Cuenta final por defecto del concepto
+                string cuentaFinal = conceptoEstandar != ConceptosBancarios.PendienteHomologar &&
+                                     cuentasPorConcepto.TryGetValue(conceptoEstandar, out string cta)
+                    ? cta : "";
+
                 movimientos.Add(new MovimientoProcesado
                 {
                     ConceptoOriginal    = concepto,
@@ -152,7 +160,8 @@ namespace AgrupadorConceptos.Services
                     Debitos             = debitos,
                     Creditos            = creditos,
                     ConceptoEstandar    = conceptoEstandar,
-                    ConceptoFinal       = conceptoEstandar == ConceptosBancarios.PendienteHomologar ? "" : conceptoEstandar
+                    ConceptoFinal       = conceptoEstandar == ConceptosBancarios.PendienteHomologar ? "" : conceptoEstandar,
+                    CuentaFinal         = cuentaFinal
                 });
             }
 

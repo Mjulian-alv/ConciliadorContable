@@ -64,7 +64,13 @@ namespace AgrupadorConceptos.Services
         /// solo lo sobrescribe si seguía pendiente.
         /// No hace nada si no hubo match.
         /// </summary>
-        public static void AplicarA(MovimientoProcesado mov, bool esCodigo, IDictionary<string, string> dicHomologacion)
+        /// <param name="cuentasPorConcepto">
+        /// Nombre del concepto → cuenta, para completar CuentaFinal en el mismo paso
+        /// (HomologacionStorage.ObtenerCuentasPorConcepto). Null si el llamador no la tiene
+        /// a mano: en ese caso CuentaFinal no se toca.
+        /// </param>
+        public static void AplicarA(MovimientoProcesado mov, bool esCodigo,
+            IDictionary<string, string> dicHomologacion, IDictionary<string, string> cuentasPorConcepto = null)
         {
             string valorABuscar = mov.ConceptoOriginal;
 
@@ -72,6 +78,10 @@ namespace AgrupadorConceptos.Services
             if (homologado == null) return;
 
             EscribirConcepto(mov, homologado);
+
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Completar CuentaFinal junto con el concepto
+            if (cuentasPorConcepto != null && cuentasPorConcepto.TryGetValue(homologado, out string cuenta))
+                EscribirCuenta(mov, cuenta);
         }
 
         // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 6 - Unica regla de escritura del concepto
@@ -110,6 +120,26 @@ namespace AgrupadorConceptos.Services
             }
 
             return cambio;
+        }
+
+        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Autocompletar CuentaFinal sin pisar lo editado
+        /// <summary>
+        /// Escribe CuentaFinal sólo mientras está vacía. A diferencia de EscribirConcepto,
+        /// no hay una "CuentaEstandar" que trackee el último valor resuelto por el sistema
+        /// (el diseño no agrega esa columna), así que no se puede distinguir "el usuario la
+        /// vació a propósito" de "nunca se tocó". La regla es más simple pero segura: una vez
+        /// que tiene contenido, sólo cambia si el usuario la edita a mano en la grilla.
+        /// </summary>
+        /// <returns>True si se completó (estaba vacía y cambió).</returns>
+        public static bool EscribirCuenta(MovimientoProcesado mov, string cuentaNueva)
+        {
+            if (!string.IsNullOrWhiteSpace(mov.CuentaFinal)) return false;
+
+            string valor = cuentaNueva ?? "";
+            if (mov.CuentaFinal == valor) return false;
+
+            mov.CuentaFinal = valor;
+            return true;
         }
     }
 }

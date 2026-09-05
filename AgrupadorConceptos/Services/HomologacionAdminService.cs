@@ -132,16 +132,18 @@ namespace AgrupadorConceptos.Services
         public static void AplicarBaja(HomologacionListado regla, ImpactoHomologacion impacto, string conceptoDestino)
         {
             var cambiados = new List<MovimientoProcesado>();
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Completar CuentaFinal al propagar la baja
+            var cuentasPorConcepto = HomologacionStorage.ObtenerCuentasPorConcepto();
 
             string paraAfectados = string.IsNullOrWhiteSpace(conceptoDestino)
                 ? ConceptosBancarios.PendienteHomologar
                 : conceptoDestino.Trim();
 
             foreach (var item in impacto.Afectados)
-                if (AplicarConcepto(item.Movimiento, paraAfectados)) cambiados.Add(item.Movimiento);
+                if (AplicarConcepto(item.Movimiento, paraAfectados, cuentasPorConcepto)) cambiados.Add(item.Movimiento);
 
             foreach (var item in impacto.CubiertosPorOtraRegla)
-                if (AplicarConcepto(item.Movimiento, item.ConceptoSinLaRegla)) cambiados.Add(item.Movimiento);
+                if (AplicarConcepto(item.Movimiento, item.ConceptoSinLaRegla, cuentasPorConcepto)) cambiados.Add(item.Movimiento);
 
             HomologacionStorage.EliminarYActualizarMovimientos(regla.Id, cambiados);
         }
@@ -154,6 +156,8 @@ namespace AgrupadorConceptos.Services
         public static int Reapuntar(HomologacionListado regla, PerfilBanco perfil, string nombreConcepto)
         {
             var dic = HomologacionStorage.ObtenerDiccionario(perfil.Id);
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Completar CuentaFinal al reapuntar
+            var cuentasPorConcepto = HomologacionStorage.ObtenerCuentasPorConcepto();
             var cambiados = new List<MovimientoProcesado>();
 
             foreach (var mov in MovimientoStorage.ObtenerPorPerfil(perfil.Id))
@@ -161,19 +165,25 @@ namespace AgrupadorConceptos.Services
                 string clave = HomologacionMatcher.ResolverClave(dic, mov.ConceptoOriginal, perfil.EsCodigo);
                 if (!string.Equals(clave, regla.ValorOriginal, StringComparison.OrdinalIgnoreCase)) continue;
 
-                if (AplicarConcepto(mov, nombreConcepto)) cambiados.Add(mov);
+                if (AplicarConcepto(mov, nombreConcepto, cuentasPorConcepto)) cambiados.Add(mov);
             }
 
             return HomologacionStorage.ReapuntarYActualizarMovimientos(regla.Id, nombreConcepto, cambiados);
         }
 
-        // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 6 - La regla de escritura se unifico en el matcher
+        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Tambien completa CuentaFinal, sin pisar lo editado
         /// <summary>
-        /// Escribe el concepto respetando lo editado a mano. Ver
-        /// <see cref="HomologacionMatcher.EscribirConcepto"/>: la regla es una sola y vive ahí,
-        /// para que la gestión y la re-homologación desde la grilla no puedan divergir.
+        /// Escribe el concepto y, si corresponde, la cuenta — respetando lo editado a mano.
+        /// Ver <see cref="HomologacionMatcher.EscribirConcepto"/> y
+        /// <see cref="HomologacionMatcher.EscribirCuenta"/>.
         /// </summary>
-        private static bool AplicarConcepto(MovimientoProcesado mov, string conceptoNuevo) =>
-            HomologacionMatcher.EscribirConcepto(mov, conceptoNuevo);
+        private static bool AplicarConcepto(
+            MovimientoProcesado mov, string conceptoNuevo, IDictionary<string, string> cuentasPorConcepto)
+        {
+            bool cambioConcepto = HomologacionMatcher.EscribirConcepto(mov, conceptoNuevo);
+            bool cambioCuenta = cuentasPorConcepto.TryGetValue(conceptoNuevo, out string cuenta) &&
+                                HomologacionMatcher.EscribirCuenta(mov, cuenta);
+            return cambioConcepto || cambioCuenta;
+        }
     }
 }

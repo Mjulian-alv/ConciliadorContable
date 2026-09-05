@@ -20,13 +20,15 @@ namespace AgrupadorConceptos.Services
         {
             var movs = MovimientoStorage.ObtenerPorArchivo(idArchivo);
             var dicHomologacion = HomologacionStorage.ObtenerDiccionario(perfil.Id);
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Completar CuentaFinal al rehomologar
+            var cuentasPorConcepto = HomologacionStorage.ObtenerCuentasPorConcepto();
 
             var rehomologados = new List<MovimientoProcesado>();
             foreach (var mov in movs)
             {
                 if (mov.ConceptoEstandar != ConceptosBancarios.PendienteHomologar) continue;
 
-                HomologacionMatcher.AplicarA(mov, perfil.EsCodigo, dicHomologacion);
+                HomologacionMatcher.AplicarA(mov, perfil.EsCodigo, dicHomologacion, cuentasPorConcepto);
                 rehomologados.Add(mov);
             }
 
@@ -51,11 +53,13 @@ namespace AgrupadorConceptos.Services
             if (movs == null || movs.Count == 0) return cambiados;
 
             var dicHomologacion = HomologacionStorage.ObtenerDiccionario(perfil.Id);
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Completar CuentaFinal al rehomologar
+            var cuentasPorConcepto = HomologacionStorage.ObtenerCuentasPorConcepto();
             foreach (var mov in movs)
             {
                 if (mov.ConceptoEstandar != ConceptosBancarios.PendienteHomologar) continue;
 
-                HomologacionMatcher.AplicarA(mov, perfil.EsCodigo, dicHomologacion);
+                HomologacionMatcher.AplicarA(mov, perfil.EsCodigo, dicHomologacion, cuentasPorConcepto);
                 cambiados.Add(mov);
             }
 
@@ -114,13 +118,19 @@ namespace AgrupadorConceptos.Services
             if (movs == null) return cambiados;
 
             var dic = HomologacionStorage.ObtenerDiccionario(perfil.Id);
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Completar CuentaFinal al reaplicar
+            var cuentasPorConcepto = HomologacionStorage.ObtenerCuentasPorConcepto();
 
             foreach (var mov in movs)
             {
                 string concepto = HomologacionMatcher.Resolver(dic, mov.ConceptoOriginal, perfil.EsCodigo)
                                   ?? ConceptosBancarios.PendienteHomologar;
 
-                if (HomologacionMatcher.EscribirConcepto(mov, concepto)) cambiados.Add(mov);
+                bool cambioConcepto = HomologacionMatcher.EscribirConcepto(mov, concepto);
+                bool cambioCuenta = cuentasPorConcepto.TryGetValue(concepto, out string cuenta) &&
+                                     HomologacionMatcher.EscribirCuenta(mov, cuenta);
+
+                if (cambioConcepto || cambioCuenta) cambiados.Add(mov);
             }
 
             MovimientoStorage.ActualizarConceptos(cambiados);
