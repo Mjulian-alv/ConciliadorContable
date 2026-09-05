@@ -221,14 +221,22 @@ namespace AgrupadorConceptos
             frm.ShowDialog(this);
 
             if (!frm.HomologacionExitosa) return;
-            if (string.Equals(frm.sConcepto, fila.ConceptoEstandar, StringComparison.OrdinalIgnoreCase))
-                return;
+
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 3 - La cuenta se persiste aunque el
+            // concepto no cambie. Antes, si el usuario solo queria corregir la cuenta contable
+            // (el caso mas comun al editar), el return de abajo por "concepto sin cambios" hacia
+            // que ActualizarCuentaConcepto nunca se llamara y la cuenta elegida en el combo se
+            // perdiera en silencio. Si el concepto no cambio no hace falta Reapuntar (no hay
+            // movimientos que arrastrar): se usa directamente el id de concepto de la fila.
+            bool conceptoCambio = !string.Equals(frm.sConcepto, fila.ConceptoEstandar, StringComparison.OrdinalIgnoreCase);
 
             Cursor = Cursors.WaitCursor;
             try
             {
-                int idConcepto = HomologacionAdminService.Reapuntar(fila, perfil, frm.sConcepto);
-                // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 3 - Propagar la cuenta elegida en la edicion
+                int idConcepto = conceptoCambio
+                    ? HomologacionAdminService.Reapuntar(fila, perfil, frm.sConcepto)
+                    : fila.IdConceptoEstandar;
+
                 HomologacionStorage.ActualizarCuentaConcepto(idConcepto, frm.sIdCuentaContable);
             }
             catch (Exception ex)

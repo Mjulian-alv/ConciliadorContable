@@ -67,6 +67,7 @@ namespace AgrupadorConceptos
             this.cmbCuenta.Name = "cmbCuenta";
             this.cmbCuenta.Size = new System.Drawing.Size(300, 23);
 
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 3 - Baja el boton para dejar lugar al combo de cuenta
             // btnGuardar
             this.btnGuardar.Location = new System.Drawing.Point(160, 180);
             this.btnGuardar.Name = "btnGuardar";
@@ -84,6 +85,7 @@ namespace AgrupadorConceptos
             this.lblAyuda.ForeColor = System.Drawing.Color.Gray;
             
             // HomologarForm
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 3 - El form crece para que entre el combo de cuenta
             this.ClientSize = new System.Drawing.Size(584, 231);
             this.Controls.Add(this.lblAyuda);
             this.Controls.Add(this.btnGuardar);

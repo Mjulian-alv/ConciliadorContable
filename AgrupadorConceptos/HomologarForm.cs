@@ -67,6 +67,9 @@ namespace AgrupadorConceptos
             cmbEstandar.TextChanged += (s, e) => PrecargarCuentaDelConcepto();
         }
 
+        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 3 - Cache de conceptos para precargar la cuenta
+        // PrecargarCuentaDelConcepto necesita buscar el concepto tipeado/elegido sin ir a la base
+        // en cada tecla: se guarda la lista ya cargada por CargarConceptosEstandar.
         private System.Collections.Generic.List<ConceptoEstandar> _conceptosCache = new();
 
         private void CargarConceptosEstandar()
@@ -77,8 +80,10 @@ namespace AgrupadorConceptos
             cmbEstandar.ValueMember = "Id";
         }
 
+        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 3 - Opcion "sin asignar" en el combo de cuentas
         private const int SinCuenta = 0;
 
+        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 3 - Carga el combo de cuentas contables
         private void CargarCuentasContables()
         {
             var opciones = new System.Collections.Generic.List<Models.CuentaContable>
@@ -92,6 +97,7 @@ namespace AgrupadorConceptos
             cmbCuenta.ValueMember = "Id";
         }
 
+        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 3 - Precarga la cuenta del concepto ya existente
         private void PrecargarCuentaDelConcepto()
         {
             var existente = _conceptosCache.Find(c =>
@@ -127,6 +133,7 @@ namespace AgrupadorConceptos
                 if (!SoloSeleccionar)
                 {
                     int idConcepto = HomologacionStorage.Guardar(_idPerfilBanco, valorClave, conceptoEstandarTexto);
+                    // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 3 - Persiste la cuenta elegida junto con el alta
                     HomologacionStorage.ActualizarCuentaConcepto(idConcepto, sIdCuentaContable);
                 }
 
