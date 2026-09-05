@@ -68,7 +68,7 @@ CREATE TABLE bancos.CuentasContables (
     CentroCosto NVARCHAR(50) NULL
 );
 CREATE UNIQUE INDEX UX_CuentasContables_CuentaCentro
-    ON bancos.CuentasContables(Cuenta, ISNULL(CentroCosto, N''));
+    ON bancos.CuentasContables(Cuenta, CentroCosto);
 ```
 
 **Clave natural de import/upsert: `(Cuenta, CentroCosto)`**, no `Cuenta` sola — se asume que una

@@ -33,9 +33,14 @@ CREATE TABLE bancos.CuentasContables (
     CentroCosto NVARCHAR(50) NULL
 );
 
+-- Fecha: 05/09/2026 - TAREA: 00021 - Linea: 1 - Indice compuesto simple, sin expresion en la clave
+-- SQL Server no acepta CREATE INDEX sobre una expresion (ISNULL(...)) en la lista de columnas;
+-- alcanza con indexar las columnas tal cual, porque SQL Server ya trata dos NULL de CentroCosto
+-- como iguales a los fines de la unicidad (a diferencia del estandar ANSI), asi que el efecto
+-- practico -no duplicar (Cuenta, CentroCosto), incluido CentroCosto NULL- es el mismo.
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_CuentasContables_CuentaCentro')
     CREATE UNIQUE INDEX UX_CuentasContables_CuentaCentro
-        ON bancos.CuentasContables(Cuenta, ISNULL(CentroCosto, N''));
+        ON bancos.CuentasContables(Cuenta, CentroCosto);
 
 IF OBJECT_ID(N'bancos.ConceptosEstandar', N'U') IS NULL
 CREATE TABLE bancos.ConceptosEstandar (
