@@ -40,6 +40,8 @@ namespace ConciliadorContable.Forms
             btnAgrProcesador    = new RadButton();
             btnAgrHomologaciones = new RadButton();
             btnAgrConciliacion   = new RadButton();
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 1 - Boton nuevo: catalogo de cuentas contables
+            btnAgrCuentasContables = new RadButton();
 
             // Admin
             btnAdminUsuarios = new RadButton();
@@ -62,14 +64,16 @@ namespace ConciliadorContable.Forms
             ((System.ComponentModel.ISupportInitialize)btnAgrProcesador).BeginInit();
             ((System.ComponentModel.ISupportInitialize)btnAgrHomologaciones).BeginInit();
             ((System.ComponentModel.ISupportInitialize)btnAgrConciliacion).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)btnAgrCuentasContables).BeginInit();
             ((System.ComponentModel.ISupportInitialize)btnAdminUsuarios).BeginInit();
             ((System.ComponentModel.ISupportInitialize)this).BeginInit();
             SuspendLayout();
 
             // ── FormMenuPrincipal ────────────────────────────────────────
             Text        = "Conciliador Contable";
-            ClientSize  = new Size(780, 500);
-            MinimumSize = new Size(780, 500);
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 1 - Ventana mas alta para la 4ta fila de botones del Agrupador
+            ClientSize  = new Size(780, 560);
+            MinimumSize = new Size(780, 560);
             StartPosition = FormStartPosition.CenterScreen;
 
             // ── pnlHeader ─────────────────────────────────────────────────
@@ -114,7 +118,8 @@ namespace ConciliadorContable.Forms
             pnlArca.BackColor   = Color.White;
             pnlArca.BorderStyle = BorderStyle.FixedSingle;
             pnlArca.Location    = new System.Drawing.Point(24, 24);
-            pnlArca.Size        = new Size(340, 370);
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 1 - Mas alto para que las dos tarjetas queden parejas con la de Agrupador
+            pnlArca.Size        = new Size(340, 430);
             pnlArca.Controls.AddRange(new System.Windows.Forms.Control[]
             {
                 lblArcaTitulo, lblArcaDesc,
@@ -141,10 +146,11 @@ namespace ConciliadorContable.Forms
             pnlAgrupador.BackColor   = Color.White;
             pnlAgrupador.BorderStyle = BorderStyle.FixedSingle;
             pnlAgrupador.Location    = new System.Drawing.Point(392, 24);
-            pnlAgrupador.Size        = new Size(340, 370);
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 1 - Mas alto para la 4ta fila de botones (Cuentas Contables)
+            pnlAgrupador.Size        = new Size(340, 430);
             pnlAgrupador.Controls.AddRange(new System.Windows.Forms.Control[]
             {
-                lblAgrTitulo, lblAgrDesc, btnAgrProcesador, btnAgrHomologaciones, btnAgrConciliacion
+                lblAgrTitulo, lblAgrDesc, btnAgrProcesador, btnAgrHomologaciones, btnAgrConciliacion, btnAgrCuentasContables
             });
 
             lblAgrTitulo.Text      = "🔗  Agrupador de Conceptos";
@@ -162,6 +168,8 @@ namespace ConciliadorContable.Forms
             ConfigurarBotonModulo(btnAgrProcesador,     "Procesador de Archivos",     new System.Drawing.Point(16, 100), BtnAgrupadorProcesador_Click);
             ConfigurarBotonModulo(btnAgrHomologaciones, "Gestión de Homologaciones",  new System.Drawing.Point(16, 160), BtnAgrupadorHomologaciones_Click);
             ConfigurarBotonModulo(btnAgrConciliacion,   "Conciliación con Externo",   new System.Drawing.Point(16, 220), BtnAgrupadorConciliacion_Click);
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 1 - Fila nueva del boton de Cuentas Contables
+            ConfigurarBotonModulo(btnAgrCuentasContables, "Cuentas Contables",        new System.Drawing.Point(16, 280), BtnAgrupadorCuentasContables_Click);
 
             // ── Ensamblar ────────────────────────────────────────────────
             Controls.Add(pnlContenido);
@@ -185,6 +193,7 @@ namespace ConciliadorContable.Forms
             ((System.ComponentModel.ISupportInitialize)btnAgrProcesador).EndInit();
             ((System.ComponentModel.ISupportInitialize)btnAgrHomologaciones).EndInit();
             ((System.ComponentModel.ISupportInitialize)btnAgrConciliacion).EndInit();
+            ((System.ComponentModel.ISupportInitialize)btnAgrCuentasContables).EndInit();
             ((System.ComponentModel.ISupportInitialize)btnAdminUsuarios).EndInit();
             ((System.ComponentModel.ISupportInitialize)this).EndInit();
             ResumeLayout(false);
@@ -219,6 +228,7 @@ namespace ConciliadorContable.Forms
         private RadButton btnAgrProcesador;
         private RadButton btnAgrHomologaciones;
         private RadButton btnAgrConciliacion;
+        private RadButton btnAgrCuentasContables;
         private RadButton btnAdminUsuarios;
     }
 }
