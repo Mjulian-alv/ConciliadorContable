@@ -227,7 +227,9 @@ namespace AgrupadorConceptos
             Cursor = Cursors.WaitCursor;
             try
             {
-                HomologacionAdminService.Reapuntar(fila, perfil, frm.sConcepto);
+                int idConcepto = HomologacionAdminService.Reapuntar(fila, perfil, frm.sConcepto);
+                // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 3 - Propagar la cuenta elegida en la edicion
+                HomologacionStorage.ActualizarCuentaConcepto(idConcepto, frm.sIdCuentaContable);
             }
             catch (Exception ex)
             {

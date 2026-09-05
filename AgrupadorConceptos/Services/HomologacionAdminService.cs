@@ -146,10 +146,12 @@ namespace AgrupadorConceptos.Services
             HomologacionStorage.EliminarYActualizarMovimientos(regla.Id, cambiados);
         }
 
+        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 3 - Devuelve el Id para que el llamador persista la cuenta
         /// <summary>
         /// Reapunta la regla a otro concepto y arrastra los movimientos que hoy resuelve.
         /// </summary>
-        public static void Reapuntar(HomologacionListado regla, PerfilBanco perfil, string nombreConcepto)
+        /// <returns>Id del concepto estándar al que quedó apuntando.</returns>
+        public static int Reapuntar(HomologacionListado regla, PerfilBanco perfil, string nombreConcepto)
         {
             var dic = HomologacionStorage.ObtenerDiccionario(perfil.Id);
             var cambiados = new List<MovimientoProcesado>();
@@ -162,7 +164,7 @@ namespace AgrupadorConceptos.Services
                 if (AplicarConcepto(mov, nombreConcepto)) cambiados.Add(mov);
             }
 
-            HomologacionStorage.ReapuntarYActualizarMovimientos(regla.Id, nombreConcepto, cambiados);
+            return HomologacionStorage.ReapuntarYActualizarMovimientos(regla.Id, nombreConcepto, cambiados);
         }
 
         // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 6 - La regla de escritura se unifico en el matcher

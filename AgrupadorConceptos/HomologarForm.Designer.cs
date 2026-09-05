@@ -21,6 +21,8 @@ namespace AgrupadorConceptos
             this.txtOriginal = new System.Windows.Forms.TextBox();
             this.lblEstandar = new System.Windows.Forms.Label();
             this.cmbEstandar = new System.Windows.Forms.ComboBox();
+            this.lblCuenta = new System.Windows.Forms.Label();
+            this.cmbCuenta = new System.Windows.Forms.ComboBox();
             this.btnGuardar = new System.Windows.Forms.Button();
             this.lblAyuda = new System.Windows.Forms.Label();
             this.SuspendLayout();
@@ -42,7 +44,7 @@ namespace AgrupadorConceptos
             this.lblEstandar.Location = new System.Drawing.Point(20, 100);
             this.lblEstandar.Name = "lblEstandar";
             this.lblEstandar.Size = new System.Drawing.Size(126, 15);
-            this.lblEstandar.Text = "Concepto Estándar:";
+            this.lblEstandar.Text = "Concepto Estï¿½ndar:";
             
             // cmbEstandar
             this.cmbEstandar.FormattingEnabled = true;
@@ -50,11 +52,26 @@ namespace AgrupadorConceptos
             this.cmbEstandar.Name = "cmbEstandar";
             this.cmbEstandar.Size = new System.Drawing.Size(300, 23);
             
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 3 - Cuenta contable del concepto al homologar
+            // lblCuenta
+            this.lblCuenta.AutoSize = true;
+            this.lblCuenta.Location = new System.Drawing.Point(20, 130);
+            this.lblCuenta.Name = "lblCuenta";
+            this.lblCuenta.Size = new System.Drawing.Size(126, 15);
+            this.lblCuenta.Text = "Cuenta Contable:";
+
+            // cmbCuenta
+            this.cmbCuenta.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbCuenta.FormattingEnabled = true;
+            this.cmbCuenta.Location = new System.Drawing.Point(160, 127);
+            this.cmbCuenta.Name = "cmbCuenta";
+            this.cmbCuenta.Size = new System.Drawing.Size(300, 23);
+
             // btnGuardar
-            this.btnGuardar.Location = new System.Drawing.Point(160, 150);
+            this.btnGuardar.Location = new System.Drawing.Point(160, 180);
             this.btnGuardar.Name = "btnGuardar";
             this.btnGuardar.Size = new System.Drawing.Size(150, 30);
-            this.btnGuardar.Text = "Guardar Homologación";
+            this.btnGuardar.Text = "Guardar Homologaciï¿½n";
             this.btnGuardar.UseVisualStyleBackColor = true;
             this.btnGuardar.Click += new System.EventHandler(this.btnGuardar_Click);
 
@@ -63,20 +80,22 @@ namespace AgrupadorConceptos
             this.lblAyuda.Location = new System.Drawing.Point(160, 48);
             this.lblAyuda.Name = "lblAyuda";
             this.lblAyuda.Size = new System.Drawing.Size(390, 30);
-            this.lblAyuda.Text = "Si el campo es una descripción larga, puedes acortar el texto para \r\nque busque esta palabra clave (Ej. 'TRANSF').";
+            this.lblAyuda.Text = "Si el campo es una descripciï¿½n larga, puedes acortar el texto para \r\nque busque esta palabra clave (Ej. 'TRANSF').";
             this.lblAyuda.ForeColor = System.Drawing.Color.Gray;
             
             // HomologarForm
-            this.ClientSize = new System.Drawing.Size(584, 201);
+            this.ClientSize = new System.Drawing.Size(584, 231);
             this.Controls.Add(this.lblAyuda);
             this.Controls.Add(this.btnGuardar);
+            this.Controls.Add(this.cmbCuenta);
+            this.Controls.Add(this.lblCuenta);
             this.Controls.Add(this.cmbEstandar);
             this.Controls.Add(this.lblEstandar);
             this.Controls.Add(this.txtOriginal);
             this.Controls.Add(this.lblOriginal);
             this.Name = "HomologarForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.Text = "Crear Homologación de Conceptos";
+            this.Text = "Crear Homologaciï¿½n de Conceptos";
             this.ResumeLayout(false);
             this.PerformLayout();
         }
@@ -87,6 +106,8 @@ namespace AgrupadorConceptos
         private System.Windows.Forms.TextBox txtOriginal;
         private System.Windows.Forms.Label lblEstandar;
         private System.Windows.Forms.ComboBox cmbEstandar;
+        private System.Windows.Forms.Label lblCuenta;
+        private System.Windows.Forms.ComboBox cmbCuenta;
         private System.Windows.Forms.Button btnGuardar;
         private System.Windows.Forms.Label lblAyuda;
     }
