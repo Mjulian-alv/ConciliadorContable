@@ -12,8 +12,12 @@
 
 - **Sin proyecto de tests.** La verificación es `dotnet build` limpio + el checklist manual de la última tarea, contra una base real.
 - **Comentario de versionado en cada bloque agregado o modificado:**
-  `// Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Descripción`
+  `Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Descripción`
   En archivo nuevo va arriba de todo; en edición, inmediatamente encima del bloque. Este plan cubre un único ítem del pedido (el 5), así que todos los comentarios llevan `Linea: 5`.
+  **El token de comentario depende del lenguaje del bloque, no del archivo:** `//` en los bloques
+  ```csharp` (siempre); `--` en el único bloque ```sql` (DDL de `SqlSchema.cs`, Tarea 1) — es texto
+  T-SQL dentro de un string de C#, `//` ahí rompe el DDL al ejecutarse contra SQL Server aunque
+  `dotnet build` no lo detecte (ver el mismo bug ya corregido en el plan de ítems 1-4, commit `83fd744`).
 - **Matching:** decidido con el usuario — mismo importe absoluto, **signo opuesto** (uno en `Debitos`, el otro en `Creditos`), fecha igual o cercana. Dos pasadas, igual que la conciliación externa: 1) fecha + importe opuesto exacto, 2) sólo importe opuesto entre lo que quedó sin conciliar.
 - **Persistencia:** tablas nuevas y paralelas. No se modifica `ConciliacionExternService`, `ConciliacionSesiones`, `ConciliacionItemsExternos` ni `ConciliacionPares`.
 - **Cuenta contable al finalizar (decidido con el usuario, agregado después de la primera versión de este plan):**
@@ -95,7 +99,7 @@ archivo por archivo.
 En `AgrupadorConceptos/Data/SqlSchema.cs`, insertar inmediatamente después del bloque `CREATE TABLE bancos.ConciliacionPares (...)` (justo antes de la sección `IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_MovimientosArchivo_IdArchivo')`):
 
 ```sql
-// Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Conciliacion interna entre extractos propios
+-- Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Conciliacion interna entre extractos propios
 IF OBJECT_ID(N'bancos.ConciliacionInternaSesiones', N'U') IS NULL
 CREATE TABLE bancos.ConciliacionInternaSesiones (
     Id            INT IDENTITY(1,1) CONSTRAINT PK_ConciliacionInternaSesiones PRIMARY KEY,

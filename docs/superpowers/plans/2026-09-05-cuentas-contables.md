@@ -12,8 +12,13 @@
 
 - **Sin proyecto de tests.** La verificación de cada tarea es `dotnet build` limpio; la verificación funcional es el checklist manual de la última tarea, contra una base real.
 - **Comentario de versionado en cada bloque agregado o modificado**, según `~/.claude/CLAUDE.md`:
-  `// Fecha: 05/09/2026 - TAREA: 00021 - Linea: N - Descripción`
+  `Fecha: 05/09/2026 - TAREA: 00021 - Linea: N - Descripción`
   donde `N` es el ítem del pedido (1 a 4 en este plan; el ítem 5, conciliación interna, es un plan aparte). En archivo nuevo va arriba de todo; en edición, inmediatamente encima del bloque.
+  **El token de comentario depende del lenguaje del bloque, no del archivo:** `//` en los bloques
+  ```csharp` (siempre); `--` en los bloques ```sql` que van dentro del DDL de `SqlSchema.cs`
+  (es texto T-SQL en un string de C#, `//` ahí no es un comentario válido y rompe el DDL al
+  ejecutarse contra SQL Server, aunque `dotnet build` no lo detecte — ver la corrección en la
+  Tarea 1, commit `83fd744`).
 - **Ítems del pedido cubiertos acá:** 1 importar cuentas contables legacy · 2 asignar cuenta a perfil · 3 asignar cuenta a concepto estándar (con ventana de mantenimiento nueva) · 4 columna "Cuenta final".
 - **Comentarios y textos de UI en español.** Los comentarios explican *por qué*, no qué hace la línea.
 - **SQL siempre parametrizado** (`@Param`), nunca interpolado. Operaciones de varias sentencias en transacción explícita.
@@ -81,7 +86,7 @@
 En `AgrupadorConceptos/Data/SqlSchema.cs`, insertar **antes** del bloque `IF OBJECT_ID(N'bancos.ConceptosEstandar'...` (línea 27):
 
 ```sql
-// Fecha: 05/09/2026 - TAREA: 00021 - Linea: 1 - Catalogo de cuentas contables del legacy
+-- Fecha: 05/09/2026 - TAREA: 00021 - Linea: 1 - Catalogo de cuentas contables del legacy
 IF OBJECT_ID(N'bancos.CuentasContables', N'U') IS NULL
 CREATE TABLE bancos.CuentasContables (
     Id          INT IDENTITY(1,1) CONSTRAINT PK_CuentasContables PRIMARY KEY,
@@ -764,7 +769,7 @@ git commit -m "feat(agrupador): pantalla de cuentas contables con import de exce
 En `AgrupadorConceptos/Data/SqlSchema.cs`, agregar inmediatamente después del `CREATE TABLE bancos.PerfilesBanco (...)` (que cierra en la línea 25 con `);`):
 
 ```sql
-// Fecha: 05/09/2026 - TAREA: 00021 - Linea: 2 - Cuenta contable de referencia del perfil
+-- Fecha: 05/09/2026 - TAREA: 00021 - Linea: 2 - Cuenta contable de referencia del perfil
 IF COL_LENGTH(N'bancos.PerfilesBanco', N'IdCuentaContable') IS NULL
     ALTER TABLE bancos.PerfilesBanco ADD IdCuentaContable INT NULL
         CONSTRAINT FK_Perfil_CuentaContable REFERENCES bancos.CuentasContables(Id);
@@ -989,7 +994,7 @@ git commit -m "feat(agrupador): cuenta contable de referencia en el perfil de ba
 En `AgrupadorConceptos/Data/SqlSchema.cs`, agregar inmediatamente después del bloque de `bancos.CuentasContables` (el `CREATE UNIQUE INDEX UX_CuentasContables_CuentaCentro` agregado en la Tarea 1), antes del `CREATE TABLE bancos.ConceptosEstandar`:
 
 ```sql
-// Fecha: 05/09/2026 - TAREA: 00021 - Linea: 3 - Cuenta contable del concepto estandar
+-- Fecha: 05/09/2026 - TAREA: 00021 - Linea: 3 - Cuenta contable del concepto estandar
 IF COL_LENGTH(N'bancos.ConceptosEstandar', N'IdCuentaContable') IS NULL
     ALTER TABLE bancos.ConceptosEstandar ADD IdCuentaContable INT NULL
         CONSTRAINT FK_Concepto_CuentaContable REFERENCES bancos.CuentasContables(Id);
@@ -1740,7 +1745,7 @@ git commit -m "feat(agrupador): HomologarForm pide la cuenta contable del concep
 En `AgrupadorConceptos/Data/SqlSchema.cs`, agregar inmediatamente después del `CREATE TABLE bancos.MovimientosArchivo (...)`:
 
 ```sql
-// Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Cuenta final del movimiento
+-- Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Cuenta final del movimiento
 IF COL_LENGTH(N'bancos.MovimientosArchivo', N'CuentaFinal') IS NULL
     ALTER TABLE bancos.MovimientosArchivo ADD CuentaFinal NVARCHAR(50) NULL;
 ```
