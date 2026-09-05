@@ -88,6 +88,7 @@ namespace AgrupadorConceptos.Data
 
             foreach (var mov in movimientos)
             {
+                // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Persistir CuentaFinal tambien al insertar el lote
                 mov.Id = cn.QuerySingle<int>(@"
                     INSERT INTO bancos.MovimientosArchivo
                         (IdArchivo, Fecha, ConceptoOriginal, DescripcionOriginal, Debitos, Creditos, ConceptoEstandar, ConceptoFinal, CuentaFinal)
