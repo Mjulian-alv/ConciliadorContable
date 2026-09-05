@@ -22,6 +22,8 @@
             btnNueva = new System.Windows.Forms.Button();
             btnEditar = new System.Windows.Forms.Button();
             btnEliminar = new System.Windows.Forms.Button();
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 3 - Entrada al mantenimiento de conceptos
+            btnConceptosEstandar = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)dgvHomologaciones).BeginInit();
             ((System.ComponentModel.ISupportInitialize)dgvHomologaciones.MasterTemplate).BeginInit();
             SuspendLayout();
@@ -99,9 +101,22 @@
             btnEliminar.UseVisualStyleBackColor = true;
             btnEliminar.Click += btnEliminar_Click;
             //
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 3 - Entrada al mantenimiento de conceptos
+            // btnConceptosEstandar
+            //
+            btnConceptosEstandar.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right;
+            btnConceptosEstandar.Location = new System.Drawing.Point(480, 356);
+            btnConceptosEstandar.Name = "btnConceptosEstandar";
+            btnConceptosEstandar.Size = new System.Drawing.Size(186, 30);
+            btnConceptosEstandar.TabIndex = 6;
+            btnConceptosEstandar.Text = "Conceptos Estándar...";
+            btnConceptosEstandar.UseVisualStyleBackColor = true;
+            btnConceptosEstandar.Click += btnConceptosEstandar_Click;
+            //
             // GestionHomologacionesForm
             //
             ClientSize = new System.Drawing.Size(684, 397);
+            Controls.Add(btnConceptosEstandar);
             Controls.Add(btnEliminar);
             Controls.Add(btnEditar);
             Controls.Add(btnNueva);
@@ -124,5 +139,7 @@
         private System.Windows.Forms.Button btnNueva;
         private System.Windows.Forms.Button btnEditar;
         private System.Windows.Forms.Button btnEliminar;
+        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 3 - Entrada al mantenimiento de conceptos
+        private System.Windows.Forms.Button btnConceptosEstandar;
     }
 }

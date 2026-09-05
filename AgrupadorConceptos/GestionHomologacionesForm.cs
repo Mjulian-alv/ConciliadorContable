@@ -305,5 +305,12 @@ namespace AgrupadorConceptos
             HuboCambios = true;
             CargarDatos();
         }
+
+        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 3 - Entrada al mantenimiento de conceptos
+        private void btnConceptosEstandar_Click(object sender, EventArgs e)
+        {
+            using var frm = new GestionConceptosEstandarForm();
+            frm.ShowDialog(this);
+        }
     }
 }
