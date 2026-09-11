@@ -49,7 +49,7 @@ namespace ConciliadorContable.Forms
             pnlFondo.Dock = DockStyle.Fill;
             pnlFondo.Location = new Point(0, 0);
             pnlFondo.Name = "pnlFondo";
-            pnlFondo.Size = new Size(405, 384);
+            pnlFondo.Size = new Size(419, 375);
             pnlFondo.TabIndex = 0;
             // 
             // pnlCard
@@ -156,7 +156,7 @@ namespace ConciliadorContable.Forms
             // FormLogin
             // 
             BackColor = Color.FromArgb(30, 40, 55);
-            ClientSize = new Size(405, 384);
+            ClientSize = new Size(419, 375);
             Controls.Add(pnlFondo);
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
