@@ -264,11 +264,92 @@ Ninguno llegó a la rama sin corregir, pero quedan anotados porque son la clase 
   botones al borde inferior real del panel (`Anchor = Bottom | Right`) en vez de calcular a ojo
   un tamaño mínimo que los evite.
 
+### Corrección post-merge (05/09/2026): la Línea 5 quedó mal diseñada, no solo con un bug visual
+
+Ya mergeado y pusheado a `main`, el usuario probó `ConciliacionInternaForm` corriendo de verdad
+y reportó (con captura) dos problemas, uno de implementación y uno de diseño:
+
+- **Bug real de z-order**: `pnlConfigNueva` se agregaba último a `Controls`, y en WinForms el
+  último control agregado queda **atrás** del z-order de pintado (al revés de lo intuitivo). Al
+  mostrarse, el panel de alta se dibujaba detrás de la lista de sesiones y de los botones en vez
+  de taparlos, superponiendo todo. Ninguna revisión (todas basadas en `dotnet build` + lectura de
+  código) lo iba a detectar porque nadie corrió la ventana. Fix: `pnlConfigNueva.BringToFront()`.
+- **El diseño de "perfil + rango por lado" (línea 226 más arriba) estaba mal**: el usuario aclaró
+  que fue un error de redacción suyo en el pedido original. El diseño correcto, que reemplaza al
+  anterior:
+  - La sesión se crea con **un solo rango de fechas**, sin elegir perfil ni extracto.
+  - Los dos paneles de la pestaña Pendientes son **Débitos** y **Créditos globales** — de
+    cualquier extracto/perfil que caiga en el rango y los conceptos elegidos — no "Extracto A" /
+    "Extracto B" atados a un perfil puntual.
+  - La auto-conciliación **no empareja dos movimientos del mismo extracto** (`IdArchivo` igual):
+    se excluye explícitamente en las dos pasadas del matching.
+  - Como una sesión ya no tiene un perfil fijo por lado, `Finalizar` resuelve el perfil (y su
+    cuenta contable) **por par**, a través del `IdArchivo` de cada uno de los dos movimientos
+    conciliados — antes lo resolvía una sola vez para toda la sesión.
+
+Se reescribieron `ConciliacionInternaSesion` (ya no guarda `IdPerfilA/B` ni rangos por lado, solo
+`FechaDesde`/`FechaHasta`), `ConciliacionInternaPar` (recupera `IdArchivoA/B`, necesarios para
+`Finalizar`), `ConciliacionInternaService` completo (`CrearSesion`, el armado de los pools de
+pendientes, `AutoConciliar`, `ObtenerPares`, `Finalizar`) y las dos mitades de
+`ConciliacionInternaForm` (panel de alta con un rango único, paneles "Débitos"/"Créditos" en vez
+de "Extracto A"/"Extracto B"). Se agregó `MovimientoStorage.ObtenerTodos()` porque los pools ya
+no se arman por perfil. La tabla `ConciliacionInternaSesiones` se recreó (no había datos reales
+todavía) en vez de migrar columna por columna.
+
+### Segunda ronda de correcciones tras pruebas en vivo (07–11/09/2026)
+
+Con el diseño corregido ya funcionando, el usuario siguió probando la ventana real contra un
+servidor real y aparecieron tres ajustes más, más una duda todavía sin resolver:
+
+- **Columna "Extracto" en los paneles y en el desempate manual**: como Débitos/Créditos ahora
+  mezclan cualquier banco, dos candidatos con la misma fecha e importe eran indistinguibles a
+  simple vista (el usuario lo reportó con una captura del diálogo de desempate). Se agregó una
+  columna "Extracto" (banco — archivo) en `dgvDebitos`/`dgvCreditos` (vía un wrapper
+  `MovimientoConciliable` liviano, ya que `RadGridView` genera las columnas por reflexión) y en
+  `SeleccionCandidatoInternoDialog`, más el nombre del extracto de origen en su texto de
+  cabecera. Nuevo `ConciliacionInternaService.ObtenerNombresExtracto()`.
+
+- **Bug real: un mismo movimiento quedaba conciliado dos veces en la misma sesión** — encontrado
+  por el usuario en producción (dos pares con el mismo `IdMovimientoB`, visto directo en una
+  consulta SQL). Causa: `ConciliarPar` sólo chequeaba conflictos contra *otras* sesiones
+  `EnProceso` (a propósito, para no bloquearse a sí misma), pero nada impedía repetir el mismo
+  movimiento dentro de la propia sesión; y el loop de desempate de Auto-conciliar
+  (`btnAutoConciliar_Click`) resolvía cada duplicado contra una lista de candidatos ya vieja, sin
+  descontar lo que un desempate anterior del mismo click ya había asignado. Fix en dos capas:
+  - Capa de datos (la garantía dura): dos índices únicos nuevos,
+    `UX_ConciliacionInternaPares_MovimientoA/B` sobre `(IdSesion, IdMovimientoA)` y
+    `(IdSesion, IdMovimientoB)`, con un *dedupe* previo en el mismo `SqlSchema.cs` (conserva el
+    par más viejo de cada duplicado) para no romper la inicialización sobre una base que ya tenía
+    el duplicado real. `ConciliarPar` atrapa la violación (SQL 2601/2627) y la devuelve como
+    mensaje legible en vez de reventar.
+  - Capa de UI: `btnAutoConciliar_Click` lleva un `HashSet<int>` de créditos ya asignados durante
+    el mismo click, filtra los candidatos de cada desempate contra él antes de abrir el diálogo,
+    y cuenta como "pendiente" al que se quedó sin candidatos válidos.
+
+- **Se perdió el "ocultar todo" al crear una sesión nueva**: un edit a mano (fuera de esta sesión
+  de Claude) había agregado `.Hide()` de algunos controles en `btnNuevaSesion_Click`, pero sin el
+  `.Show()` de vuelta en Confirmar/Cancelar, y sin cubrir la pestaña Pendientes/Conciliados ni la
+  barra de botones inferior (que el panel de alta nunca tapó geométricamente, en ninguna
+  versión — ni siquiera la original). Se reemplazó por `MostrarPanelNuevaSesion(bool)`,
+  simétrico, que oculta/muestra explícitamente todo lo que no es el panel de alta.
+
+- **Duda del usuario, todavía sin acción de código**: reportó que "cada vez que pone una versión
+  nueva" se pierde la tabla `Usuarios`. Diagnóstico: no es una migración de SQLite a SQL (ese
+  módulo, `ConciliadorContable`, nunca migró; `Auth/DatabaseHelper.InitializeDatabase()` es
+  no-destructivo, sólo `CREATE TABLE IF NOT EXISTS`/`INSERT OR IGNORE`). Causa más probable:
+  `conciliador.db` vive en `AppContext.BaseDirectory` — dentro de la misma carpeta que el build —
+  así que cualquier deploy que limpie esa carpeta antes de copiar el build nuevo se lo lleva
+  puesto (`LiquidacionesAuditar` tiene el mismo patrón). Propuesta — moverlo a
+  `%ProgramData%\ConciliadorContable\`, migrando el archivo existente una sola vez — **todavía no
+  implementada**: el usuario va a probar primero si su proceso de deploy realmente toca el
+  archivo antes de decidir.
+
 ### Verificación
 
 Sin proyecto de tests (decisión explícita): cada tarea se verificó con `dotnet build` limpio y
 un review de spec + calidad; esta entrada resume los hallazgos reales, no repite el detalle
-tarea por tarea. **Pendiente del usuario, contra un servidor real**: probar el flujo completo
-(importar cuentas → asignar a perfil y concepto → ver `Cuenta Final` autocompletarse → crear y
-cerrar una conciliación interna) antes de mergear.
-El checklist funcional contra base real está en la Tarea 9 del plan.
+tarea por tarea. Las dos rondas de correcciones post-merge muestran el límite real de ese
+proceso: ni una sola de las revisiones automatizadas corrió la ventana — todos los hallazgos de
+ambas rondas salieron de pruebas en vivo del usuario contra un servidor real. **Pendiente**:
+seguir probando `ConciliacionInternaForm` (en particular el fix del doble-conciliado y el de
+ocultar/mostrar al crear sesión) antes de darlo por cerrado.

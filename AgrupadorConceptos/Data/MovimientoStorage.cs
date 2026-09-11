@@ -54,6 +54,14 @@ namespace AgrupadorConceptos.Data
                 new { IdPerfil = idPerfilBanco }).ToList();
         }
 
+        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Conciliacion interna se arma sobre todos los extractos, no uno solo
+        /// <summary>Todos los movimientos importados, de cualquier perfil/extracto.</summary>
+        public static List<MovimientoProcesado> ObtenerTodos()
+        {
+            using var cn = DatabaseHelper.Open();
+            return cn.Query<MovimientoProcesado>("SELECT Id, IdArchivo,  TRY_CONVERT( NVARCHAR(30), TRY_CONVERT(DATE, fecha, 103) ) AS Fecha, ConceptoOriginal, DescripcionOriginal, Debitos, Creditos, ConceptoEstandar, ConceptoFinal, CuentaFinal FROM bancos.MovimientosArchivo").ToList();
+        }
+
         /// <summary>Conceptos finales distintos ya homologados, para elegir qué conciliar.</summary>
         public static List<string> ObtenerConceptosFinalesDistintos(IEnumerable<int> idsArchivos)
         {

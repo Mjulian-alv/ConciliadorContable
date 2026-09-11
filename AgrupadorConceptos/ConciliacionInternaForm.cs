@@ -1,6 +1,9 @@
-﻿// Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Conciliacion interna entre extractos propios
+// Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Conciliacion interna entre extractos propios
+// Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Rediseño: sin seleccion de perfil, un solo rango
+// de fechas y paneles Debitos/Creditos globales en vez de "Extracto A"/"Extracto B".
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
@@ -16,6 +19,27 @@ namespace AgrupadorConceptos
     public partial class ConciliacionInternaForm : Form
     {
         private ConciliacionInternaSesion _sesionActiva;
+
+        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Mostrar el extracto de cada movimiento en las grillas
+        // Los pools de Debitos/Creditos son globales (cualquier extracto), asi que fecha+importe
+        // ya no alcanzan para que el usuario distinga a simple vista dos movimientos parecidos de
+        // bancos distintos. Este wrapper solo agrega el nombre del extracto para mostrar en la
+        // grilla; toda la logica de matching sigue operando sobre el MovimientoProcesado original.
+        private class MovimientoConciliable
+        {
+            [Browsable(false)]
+            public MovimientoProcesado Original { get; }
+            public string Fecha => Original.Fecha;
+            public decimal Importe => ComparadorConciliacion.ImporteEfectivo(Original);
+            public string ConceptoFinal => Original.ConceptoFinal;
+            public string Extracto { get; }
+
+            public MovimientoConciliable(MovimientoProcesado original, string extracto)
+            {
+                Original = original;
+                Extracto = extracto;
+            }
+        }
 
         public ConciliacionInternaForm()
         {
@@ -43,47 +67,22 @@ namespace AgrupadorConceptos
             lbSesiones.SelectedIndex  = sesiones.Count > 0 ? 0 : -1;
         }
 
-        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Perfiles y rango por defecto del panel de alta
-        private void CargarPerfilesEnPanel()
+        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Rango por defecto del panel de alta, sin perfiles
+        private void PrepararPanelNuevaSesion()
         {
-            var perfiles = PerfilBancoStorage.ObtenerTodos();
-
-            cmbPerfilA.DataSource = perfiles;
-            cmbPerfilA.DisplayMember = "NombreBanco";
-            cmbPerfilA.ValueMember = "Id";
-            cmbPerfilA.SelectedIndex = -1;
-
-            cmbPerfilB.DataSource = perfiles.ToList(); // lista aparte: no comparten SelectedItem
-            cmbPerfilB.DisplayMember = "NombreBanco";
-            cmbPerfilB.ValueMember = "Id";
-            cmbPerfilB.SelectedIndex = -1;
-
-            dtpDesdeA.Value = dtpDesdeB.Value = DateTime.Today.AddMonths(-1);
-            dtpHastaA.Value = dtpHastaB.Value = DateTime.Today;
-
-            clbConceptos.Items.Clear();
+            dtpDesde.Value = DateTime.Today.AddMonths(-1);
+            dtpHasta.Value = DateTime.Today;
+            CargarConceptosPorRango();
         }
 
-        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Conceptos disponibles segun perfil + rango elegidos
+        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Conceptos disponibles en cualquier extracto, segun el rango elegido
         private void CargarConceptosPorRango()
         {
             clbConceptos.Items.Clear();
 
-            if (cmbPerfilA.SelectedValue is not int idPerfilA || cmbPerfilB.SelectedValue is not int idPerfilB)
-                return;
+            if (dtpDesde.Value.Date > dtpHasta.Value.Date) return;
 
-            var conceptosA = MovimientoStorage.ObtenerPorPerfil(idPerfilA)
-                .Where(m => ComparadorConciliacionInterna.EstaEnRango(m.Fecha, dtpDesdeA.Value, dtpHastaA.Value))
-                .Select(m => m.ConceptoFinal);
-
-            var conceptosB = MovimientoStorage.ObtenerPorPerfil(idPerfilB)
-                .Where(m => ComparadorConciliacionInterna.EstaEnRango(m.Fecha, dtpDesdeB.Value, dtpHastaB.Value))
-                .Select(m => m.ConceptoFinal);
-
-            foreach (var c in conceptosA.Concat(conceptosB)
-                         .Where(c => !string.IsNullOrWhiteSpace(c))
-                         .Distinct(StringComparer.OrdinalIgnoreCase)
-                         .OrderBy(c => c))
+            foreach (var c in ConciliacionInternaService.ObtenerConceptosDisponibles(dtpDesde.Value, dtpHasta.Value))
                 clbConceptos.Items.Add(c, false);
         }
 
@@ -100,47 +99,29 @@ namespace AgrupadorConceptos
 
         private void btnNuevaSesion_Click(object sender, EventArgs e)
         {
-            CargarPerfilesEnPanel();
-            pnlConfigNueva.Visible = true;
-            btnNuevaSesion.Enabled = false;
+            PrepararPanelNuevaSesion();
+            MostrarPanelNuevaSesion(true);
         }
-
-        private void cmbPerfil_SelectedIndexChanged(object sender, EventArgs e) => CargarConceptosPorRango();
 
         private void dtpRango_ValueChanged(object sender, EventArgs e) => CargarConceptosPorRango();
 
         private void btnConfirmarNueva_Click(object sender, EventArgs e)
         {
-            if (cmbPerfilA.SelectedValue is not int idPerfilA || cmbPerfilB.SelectedValue is not int idPerfilB)
-            { MessageBox.Show("Elija el perfil de cada extracto.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
-
-            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Evitar conciliar un perfil contra si mismo
-            // Con el mismo perfil de los dos lados, un mismo movimiento puede aparecer pendiente
-            // en A y en B: la manual lo dejaria emparejar consigo mismo y Finalizar terminaria
-            // pisando la cuenta del movimiento con la cuenta del propio perfil, en vez de la del
-            // contrario.
-            if (idPerfilA == idPerfilB)
-            { MessageBox.Show("Elija dos perfiles distintos para conciliar.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
-
-            if (dtpDesdeA.Value.Date > dtpHastaA.Value.Date || dtpDesdeB.Value.Date > dtpHastaB.Value.Date)
+            if (dtpDesde.Value.Date > dtpHasta.Value.Date)
             { MessageBox.Show("La fecha 'Desde' no puede ser posterior a 'Hasta'.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
 
             var conceptos = clbConceptos.CheckedItems.Cast<string>().ToList();
             if (conceptos.Count == 0)
             { MessageBox.Show("Seleccione al menos un concepto.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
 
-            var perfilA = (PerfilBanco)cmbPerfilA.SelectedItem;
-            var perfilB = (PerfilBanco)cmbPerfilB.SelectedItem;
-            string nombreSugerido = $"{perfilA.NombreBanco} ↔ {perfilB.NombreBanco} - {DateTime.Now:dd/MM HH:mm}";
+            string nombreSugerido = $"{dtpDesde.Value:dd/MM} - {dtpHasta.Value:dd/MM} - {DateTime.Now:dd/MM HH:mm}";
             using var dlgNombre = new NombreSesionDialog(nombreSugerido);
             if (dlgNombre.ShowDialog(this) != DialogResult.OK) return;
 
             _sesionActiva = ConciliacionInternaService.CrearSesion(
-                dlgNombre.NombreSesion, idPerfilA, dtpDesdeA.Value, dtpHastaA.Value,
-                idPerfilB, dtpDesdeB.Value, dtpHastaB.Value, conceptos);
+                dlgNombre.NombreSesion, dtpDesde.Value, dtpHasta.Value, conceptos);
 
-            pnlConfigNueva.Visible = false;
-            btnNuevaSesion.Enabled = true;
+            MostrarPanelNuevaSesion(false);
             CargarSesiones();
             ActualizarEstadoSesion();
             RefrescarGrillas();
@@ -148,8 +129,32 @@ namespace AgrupadorConceptos
 
         private void btnCancelarNueva_Click(object sender, EventArgs e)
         {
-            pnlConfigNueva.Visible = false;
-            btnNuevaSesion.Enabled = true;
+            MostrarPanelNuevaSesion(false);
+        }
+
+        // Fecha: 11/09/2026 - TAREA: 00021 - Linea: 5 - Ocultar todo lo demas mientras se arma la sesion nueva
+        // pnlConfigNueva no cubre geometricamente ni la pestaña Pendientes/Conciliados (se pasa
+        // ~40px por abajo del panel) ni la barra de botones inferior (Auto-conciliar, etc. estan
+        // mas abajo todavia) — nunca lo hizo, en ninguna version. Ocultar explicitamente en vez de
+        // confiar en que el panel las tape es lo unico que garantiza que, mientras se elige el
+        // rango y se arma el filtro inicial de conceptos, no quede nada de la sesion anterior a
+        // la vista (ni clickeable) por debajo.
+        private void MostrarPanelNuevaSesion(bool nuevaSesion)
+        {
+            pnlConfigNueva.Visible = nuevaSesion;
+
+            bool mostrarTrabajo = !nuevaSesion;
+            lbSesiones.Visible         = mostrarTrabajo;
+            btnNuevaSesion.Visible     = mostrarTrabajo;
+            btnRetomar.Visible         = mostrarTrabajo;
+            btnEliminarSesion.Visible  = mostrarTrabajo;
+            lblSesionActiva.Visible    = mostrarTrabajo;
+            tabControl.Visible         = mostrarTrabajo;
+            btnAutoConciliar.Visible   = mostrarTrabajo;
+            btnConciliarManual.Visible = mostrarTrabajo;
+            btnDesconciliar.Visible    = mostrarTrabajo;
+            btnFinalizar.Visible       = mostrarTrabajo;
+            btnExportar.Visible        = mostrarTrabajo;
         }
 
         private void btnRetomar_Click(object sender, EventArgs e)
@@ -181,49 +186,64 @@ namespace AgrupadorConceptos
 
             var (conciliados, duplicados) = ConciliacionInternaService.AutoConciliar(_sesionActiva.Id);
 
-            foreach (var (a, candidatos) in duplicados)
+            // Fecha: 11/09/2026 - TAREA: 00021 - Linea: 5 - No volver a ofrecer un credito ya asignado en este mismo loop
+            // "duplicados" trae, por cada debito con mas de un candidato, la foto de candidatos que
+            // habia en el momento de AutoConciliar. Dos debitos distintos pueden compartir un
+            // candidato (mismo importe, misma fecha): sin este filtro, el segundo dialogo seguia
+            // ofreciendo un credito que el primero ya se acababa de llevar, y quedaba conciliado dos
+            // veces (el indice unico de la base lo hubiera rechazado, pero mejor no ofrecerlo).
+            var creditosAsignados = new HashSet<int>();
+            int quedaronPendientes = 0;
+
+            foreach (var (a, candidatosOriginales) in duplicados)
             {
+                var candidatos = candidatosOriginales.Where(c => !creditosAsignados.Contains(c.Id)).ToList();
+                if (candidatos.Count == 0) { quedaronPendientes++; continue; }
+
                 using var dlg = new SeleccionCandidatoInternoDialog(a, candidatos);
                 if (dlg.ShowDialog(this) == DialogResult.OK && dlg.MovimientoSeleccionado != null)
                 {
-                    // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - El elegido puede estar tomado por otra sesion EnProceso
                     string conflicto = ConciliacionInternaService.ConciliarPar(
-                        _sesionActiva.Id, a.Id, dlg.MovimientoSeleccionado.Id, TipoMatch.SoloImporte);
+                        _sesionActiva.Id, a.Id, dlg.MovimientoSeleccionado.Id, TipoMatch.SeleccionManual);
                     if (conflicto != null)
-                        MessageBox.Show(
-                            $"No se concilió: uno de los dos movimientos ya está conciliado en la sesión '{conflicto}', todavía en proceso.",
-                            "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show($"No se concilió: {conflicto}", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     else
+                    {
+                        creditosAsignados.Add(dlg.MovimientoSeleccionado.Id);
                         conciliados++;
+                    }
                 }
             }
 
             RefrescarGrillas();
-            MessageBox.Show($"Auto-conciliación completada: {conciliados} par(es) conciliado(s).",
-                "Resultado", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            string resumen = $"Auto-conciliación completada: {conciliados} par(es) conciliado(s).";
+            if (quedaronPendientes > 0)
+                resumen += $" {quedaronPendientes} quedaron pendientes porque su único candidato ya se había asignado a otro movimiento.";
+            MessageBox.Show(resumen, "Resultado", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         // ── Conciliación manual ───────────────────────────────────────────────────
 
-        private MovimientoProcesado _movimientoASeleccionado;
+        private MovimientoProcesado _movimientoDebitoSeleccionado;
 
-        private void dgvPendienteA_SelectionChanged(object sender, EventArgs e)
+        private void dgvDebitos_SelectionChanged(object sender, EventArgs e)
         {
-            _movimientoASeleccionado = dgvPendienteA.CurrentRow?.DataBoundItem as MovimientoProcesado;
-            dgvPendienteB.TableElement.BeginUpdate();
-            dgvPendienteB.TableElement.EndUpdate();
+            _movimientoDebitoSeleccionado = (dgvDebitos.CurrentRow?.DataBoundItem as MovimientoConciliable)?.Original;
+            dgvCreditos.TableElement.BeginUpdate();
+            dgvCreditos.TableElement.EndUpdate();
         }
 
-        private void dgvPendienteB_RowFormatting(object sender, RowFormattingEventArgs e)
+        private void dgvCreditos_RowFormatting(object sender, RowFormattingEventArgs e)
         {
-            if (_movimientoASeleccionado == null || e.RowElement.RowInfo.DataBoundItem is not MovimientoProcesado b)
+            if (_movimientoDebitoSeleccionado == null || e.RowElement.RowInfo.DataBoundItem is not MovimientoConciliable wrapper)
             {
                 e.RowElement.ResetValue(LightVisualElement.BackColorProperty, ValueResetFlags.Local);
                 return;
             }
 
-            bool fechaMatch   = ComparadorConciliacion.FechasIguales(_movimientoASeleccionado.Fecha, b.Fecha);
-            bool importeMatch = ComparadorConciliacionInterna.ImportesOpuestos(_movimientoASeleccionado, b);
+            var b = wrapper.Original;
+            bool fechaMatch   = ComparadorConciliacion.FechasIguales(_movimientoDebitoSeleccionado.Fecha, b.Fecha);
+            bool importeMatch = ComparadorConciliacionInterna.ImportesOpuestos(_movimientoDebitoSeleccionado, b);
 
             if (fechaMatch && importeMatch) e.RowElement.BackColor = Color.LightGreen;
             else if (importeMatch) e.RowElement.BackColor = Color.LightYellow;
@@ -232,32 +252,23 @@ namespace AgrupadorConceptos
 
         private void btnConciliarManual_Click(object sender, EventArgs e)
         {
-            if (_sesionActiva == null || _movimientoASeleccionado == null)
-            { MessageBox.Show("Seleccione un movimiento del extracto A.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+            if (_sesionActiva == null || _movimientoDebitoSeleccionado == null)
+            { MessageBox.Show("Seleccione un movimiento del panel Débitos.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
 
-            if (dgvPendienteB.CurrentRow?.DataBoundItem is not MovimientoProcesado b)
-            { MessageBox.Show("Seleccione un movimiento del extracto B.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+            if (dgvCreditos.CurrentRow?.DataBoundItem is not MovimientoConciliable wrapperB)
+            { MessageBox.Show("Seleccione un movimiento del panel Créditos.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
 
-            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - No permitir emparejar un movimiento consigo mismo
-            // Con perfiles A y B iguales y rangos de fecha superpuestos, el mismo movimiento
-            // aparece pendiente en las dos grillas: dejarlo conciliar consigo mismo hace que
-            // Finalizar dispare los dos UPDATE sobre la misma fila, pisando la cuenta con la del
-            // propio perfil en vez de la del contrario.
-            if (_movimientoASeleccionado.Id == b.Id)
-            { MessageBox.Show("No se puede conciliar un movimiento consigo mismo.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+            var b = wrapperB.Original;
 
             // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Bloquear si alguno ya esta conciliado en otra sesion EnProceso
-            string conflicto = ConciliacionInternaService.ConciliarPar(_sesionActiva.Id, _movimientoASeleccionado.Id, b.Id, TipoMatch.Manual);
+            string conflicto = ConciliacionInternaService.ConciliarPar(_sesionActiva.Id, _movimientoDebitoSeleccionado.Id, b.Id, TipoMatch.Manual);
             if (conflicto != null)
             {
-                MessageBox.Show(
-                    $"Uno de los dos movimientos ya está conciliado en la sesión '{conflicto}', todavía en proceso. " +
-                    "Cerrala o desconcilialo ahí antes de continuar.",
-                    "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(conflicto, "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            _movimientoASeleccionado = null;
+            _movimientoDebitoSeleccionado = null;
             RefrescarGrillas();
         }
 
@@ -272,12 +283,12 @@ namespace AgrupadorConceptos
         private void btnFinalizar_Click(object sender, EventArgs e)
         {
             if (_sesionActiva == null) return;
-            var pendA = ConciliacionInternaService.ObtenerPendientesA(_sesionActiva.Id);
-            if (pendA.Count > 0 &&
-                MessageBox.Show($"Aún quedan {pendA.Count} movimientos sin conciliar. ¿Finalizar igual?",
+            var pendDebitos = ConciliacionInternaService.ObtenerPendientesDebitos(_sesionActiva.Id);
+            if (pendDebitos.Count > 0 &&
+                MessageBox.Show($"Aún quedan {pendDebitos.Count} movimientos sin conciliar. ¿Finalizar igual?",
                     "Confirmar", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
 
-            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Cierre pisa CuentaFinal con la del perfil opuesto
+            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Cierre pisa CuentaFinal con la del perfil opuesto, resuelta por par
             var resultado = ConciliacionInternaService.Finalizar(_sesionActiva.Id);
             if (!resultado.Exito)
             {
@@ -304,13 +315,13 @@ namespace AgrupadorConceptos
             if (dlg.ShowDialog() != DialogResult.OK) return;
 
             var pares = ConciliacionInternaService.ObtenerPares(_sesionActiva.Id);
-            var pendA = ConciliacionInternaService.ObtenerPendientesA(_sesionActiva.Id);
-            var pendB = ConciliacionInternaService.ObtenerPendientesB(_sesionActiva.Id);
+            var pendDebitos = ConciliacionInternaService.ObtenerPendientesDebitos(_sesionActiva.Id);
+            var pendCreditos = ConciliacionInternaService.ObtenerPendientesCreditos(_sesionActiva.Id);
 
             using var wb = new XLWorkbook();
             var wsCon = wb.Worksheets.Add("Conciliados");
-            wsCon.Cell(1,1).Value = "Fecha A"; wsCon.Cell(1,2).Value = "Importe A"; wsCon.Cell(1,3).Value = "Concepto A";
-            wsCon.Cell(1,4).Value = "Fecha B"; wsCon.Cell(1,5).Value = "Importe B"; wsCon.Cell(1,6).Value = "Concepto B";
+            wsCon.Cell(1,1).Value = "Fecha Débito"; wsCon.Cell(1,2).Value = "Importe Débito"; wsCon.Cell(1,3).Value = "Concepto Débito";
+            wsCon.Cell(1,4).Value = "Fecha Crédito"; wsCon.Cell(1,5).Value = "Importe Crédito"; wsCon.Cell(1,6).Value = "Concepto Crédito";
             wsCon.Cell(1,7).Value = "Tipo Match";
             for (int i = 0; i < pares.Count; i++)
             {
@@ -321,13 +332,13 @@ namespace AgrupadorConceptos
             }
 
             var wsPend = wb.Worksheets.Add("Pendientes");
-            wsPend.Cell(1,1).Value = "Extracto"; wsPend.Cell(1,2).Value = "Fecha";
+            wsPend.Cell(1,1).Value = "Lado"; wsPend.Cell(1,2).Value = "Fecha";
             wsPend.Cell(1,3).Value = "Importe"; wsPend.Cell(1,4).Value = "Concepto";
             int rp = 2;
-            foreach (var m in pendA)
-            { wsPend.Cell(rp,1).Value="A"; wsPend.Cell(rp,2).Value=m.Fecha; wsPend.Cell(rp,3).Value=(double)ComparadorConciliacion.ImporteEfectivo(m); wsPend.Cell(rp,4).Value=m.ConceptoFinal; rp++; }
-            foreach (var m in pendB)
-            { wsPend.Cell(rp,1).Value="B"; wsPend.Cell(rp,2).Value=m.Fecha; wsPend.Cell(rp,3).Value=(double)ComparadorConciliacion.ImporteEfectivo(m); wsPend.Cell(rp,4).Value=m.ConceptoFinal; rp++; }
+            foreach (var m in pendDebitos)
+            { wsPend.Cell(rp,1).Value="Débito"; wsPend.Cell(rp,2).Value=m.Fecha; wsPend.Cell(rp,3).Value=(double)ComparadorConciliacion.ImporteEfectivo(m); wsPend.Cell(rp,4).Value=m.ConceptoFinal; rp++; }
+            foreach (var m in pendCreditos)
+            { wsPend.Cell(rp,1).Value="Crédito"; wsPend.Cell(rp,2).Value=m.Fecha; wsPend.Cell(rp,3).Value=(double)ComparadorConciliacion.ImporteEfectivo(m); wsPend.Cell(rp,4).Value=m.ConceptoFinal; rp++; }
 
             wb.SaveAs(dlg.FileName);
             MessageBox.Show("Exportado correctamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -339,20 +350,33 @@ namespace AgrupadorConceptos
         {
             if (_sesionActiva == null) { LimpiarGrillas(); return; }
 
-            dgvPendienteA.DataSource = ConciliacionInternaService.ObtenerPendientesA(_sesionActiva.Id);
-            dgvPendienteA.AutoSizeColumnsMode = GridViewAutoSizeColumnsMode.Fill;
+            var extractos = ConciliacionInternaService.ObtenerNombresExtracto();
+            string ExtractoDe(MovimientoProcesado m) =>
+                extractos.TryGetValue(m.IdArchivo, out var nombre) ? nombre : $"Archivo #{m.IdArchivo}";
 
-            dgvPendienteB.DataSource = ConciliacionInternaService.ObtenerPendientesB(_sesionActiva.Id);
-            dgvPendienteB.AutoSizeColumnsMode = GridViewAutoSizeColumnsMode.Fill;
+            dgvDebitos.DataSource = ConciliacionInternaService.ObtenerPendientesDebitos(_sesionActiva.Id)
+                .Select(m => new MovimientoConciliable(m, ExtractoDe(m))).ToList();
+            dgvDebitos.AutoSizeColumnsMode = GridViewAutoSizeColumnsMode.Fill;
+
+            dgvCreditos.DataSource = ConciliacionInternaService.ObtenerPendientesCreditos(_sesionActiva.Id)
+                .Select(m => new MovimientoConciliable(m, ExtractoDe(m))).ToList();
+            dgvCreditos.AutoSizeColumnsMode = GridViewAutoSizeColumnsMode.Fill;
 
             dgvConciliados.DataSource = ConciliacionInternaService.ObtenerPares(_sesionActiva.Id);
+            dgvConciliados.Columns["Id"].IsVisible = false;
+            dgvConciliados.Columns["IdSesion"].IsVisible = false;
+            dgvConciliados.Columns["IdMovimientoA"].IsVisible = false;
+            dgvConciliados.Columns["IdMovimientoB"].IsVisible = false;
+            dgvConciliados.Columns["IdArchivoA"].IsVisible = false;
+            dgvConciliados.Columns["IdArchivoB"].IsVisible = false;
+
             dgvConciliados.AutoSizeColumnsMode = GridViewAutoSizeColumnsMode.Fill;
         }
 
         private void LimpiarGrillas()
         {
-            dgvPendienteA.DataSource = null;
-            dgvPendienteB.DataSource = null;
+            dgvDebitos.DataSource = null;
+            dgvCreditos.DataSource = null;
             dgvConciliados.DataSource = null;
         }
 

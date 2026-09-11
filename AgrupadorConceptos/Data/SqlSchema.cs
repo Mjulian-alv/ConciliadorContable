@@ -130,18 +130,26 @@ CREATE TABLE bancos.ConciliacionPares (
     FechaConciliacion     DATETIME2(0) NOT NULL
 );
 
--- Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Conciliacion interna entre extractos propios
+-- Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Rediseno: sin elegir perfil, un solo rango de fechas
+-- No se elige perfil al armar la sesion: se concilian debitos contra creditos de TODOS los
+-- extractos dentro de un rango de fechas unico (la exclusion de pares del mismo archivo importado
+-- vive en el matching, no en el alta). La tabla es nueva y sin datos reales todavia, asi que se
+-- recrea en vez de migrar columna por columna; ConciliacionInternaPares depende de ella (FK), se
+-- borra primero.
+IF COL_LENGTH(N'bancos.ConciliacionInternaSesiones', N'IdPerfilA') IS NOT NULL
+BEGIN
+    IF OBJECT_ID(N'bancos.ConciliacionInternaPares', N'U') IS NOT NULL
+        DROP TABLE bancos.ConciliacionInternaPares;
+    DROP TABLE bancos.ConciliacionInternaSesiones;
+END
+
 IF OBJECT_ID(N'bancos.ConciliacionInternaSesiones', N'U') IS NULL
 CREATE TABLE bancos.ConciliacionInternaSesiones (
     Id            INT IDENTITY(1,1) CONSTRAINT PK_ConciliacionInternaSesiones PRIMARY KEY,
     Nombre        NVARCHAR(200) NOT NULL,
     FechaCreacion DATETIME2(0) NOT NULL,
-    IdPerfilA     INT NOT NULL CONSTRAINT FK_SesionInterna_PerfilA REFERENCES bancos.PerfilesBanco(Id),
-    FechaDesdeA   DATE NOT NULL,
-    FechaHastaA   DATE NOT NULL,
-    IdPerfilB     INT NOT NULL CONSTRAINT FK_SesionInterna_PerfilB REFERENCES bancos.PerfilesBanco(Id),
-    FechaDesdeB   DATE NOT NULL,
-    FechaHastaB   DATE NOT NULL,
+    FechaDesde    DATE NOT NULL,
+    FechaHasta    DATE NOT NULL,
     ConceptosJson NVARCHAR(MAX) NOT NULL CONSTRAINT DF_SesionesInternas_Conceptos DEFAULT N'[]',
     Estado        NVARCHAR(50) NOT NULL CONSTRAINT DF_SesionesInternas_Estado DEFAULT N'EnProceso'
 );
@@ -169,6 +177,28 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_ConciliacionPares_IdS
     CREATE INDEX IX_ConciliacionPares_IdSesion     ON bancos.ConciliacionPares(IdSesion);
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_ConciliacionInternaPares_IdSesion')
     CREATE INDEX IX_ConciliacionInternaPares_IdSesion ON bancos.ConciliacionInternaPares(IdSesion);
+-- Fecha: 11/09/2026 - TAREA: 00021 - Linea: 5 - Un movimiento no puede quedar conciliado dos veces en la misma sesion
+-- Sin esto, dos desempates manuales de un mismo Auto-conciliar (con listas de candidatos que se
+-- superponen) podian terminar asignando el mismo credito a dos debitos distintos: nada en la base
+-- lo impedia, ConciliarPar solo chequeaba conflictos contra OTRAS sesiones EnProceso.
+-- Dedupe primero: bases que ya vinieron probando esta pantalla antes del fix pueden tener el
+-- duplicado que lo motivo. Sin este paso, el CREATE UNIQUE INDEX de abajo falla sobre esos datos
+-- y rompe TODA la inicializacion del schema (no solo esta tabla), no solo la tabla nueva. Se
+-- conserva el par mas viejo (Id mas bajo) de cada duplicado y se borra el resto; es idempotente,
+-- en una base sin duplicados no borra nada.
+IF OBJECT_ID(N'bancos.ConciliacionInternaPares', N'U') IS NOT NULL
+BEGIN
+    DELETE p1 FROM bancos.ConciliacionInternaPares p1
+    WHERE EXISTS (SELECT 1 FROM bancos.ConciliacionInternaPares p2
+                  WHERE p2.IdSesion = p1.IdSesion AND p2.IdMovimientoA = p1.IdMovimientoA AND p2.Id < p1.Id);
+    DELETE p1 FROM bancos.ConciliacionInternaPares p1
+    WHERE EXISTS (SELECT 1 FROM bancos.ConciliacionInternaPares p2
+                  WHERE p2.IdSesion = p1.IdSesion AND p2.IdMovimientoB = p1.IdMovimientoB AND p2.Id < p1.Id);
+END
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_ConciliacionInternaPares_MovimientoA')
+    CREATE UNIQUE INDEX UX_ConciliacionInternaPares_MovimientoA ON bancos.ConciliacionInternaPares(IdSesion, IdMovimientoA);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_ConciliacionInternaPares_MovimientoB')
+    CREATE UNIQUE INDEX UX_ConciliacionInternaPares_MovimientoB ON bancos.ConciliacionInternaPares(IdSesion, IdMovimientoB);
 ";
     }
 }

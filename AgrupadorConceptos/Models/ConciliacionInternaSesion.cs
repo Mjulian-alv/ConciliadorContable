@@ -1,24 +1,21 @@
-﻿// Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Sesion de conciliacion interna entre extractos
+// Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Sesion de conciliacion interna entre extractos
 using System;
 
 namespace AgrupadorConceptos.Models
 {
     /// <summary>
-    /// Sesión de conciliación interna: dos lados, cada uno un perfil de banco y un rango de
-    /// fechas (no una lista fija de archivos importados — los movimientos se recalculan del
-    /// perfil filtrando por rango cada vez que se abre la sesión).
+    /// Sesión de conciliación interna: un solo rango de fechas, sin elegir perfil. Se concilian
+    /// débitos contra créditos de TODOS los extractos que caen en el rango — la exclusión de un
+    /// mismo extracto contra sí mismo vive en el matching (ver
+    /// ConciliacionInternaService.AutoConciliar), no en el alta de la sesión.
     /// </summary>
     public class ConciliacionInternaSesion
     {
         public int Id { get; set; }
         public string Nombre { get; set; }
         public DateTime FechaCreacion { get; set; }
-        public int IdPerfilA { get; set; }
-        public DateTime FechaDesdeA { get; set; }
-        public DateTime FechaHastaA { get; set; }
-        public int IdPerfilB { get; set; }
-        public DateTime FechaDesdeB { get; set; }
-        public DateTime FechaHastaB { get; set; }
+        public DateTime FechaDesde { get; set; }
+        public DateTime FechaHasta { get; set; }
         public string ConceptosJson { get; set; }
         public string Estado { get; set; }
 

@@ -265,14 +265,27 @@ editarla antes sería trabajo perdido, así que el sistema avisa y cancela la ed
 dejarla y perderla en silencio. Deja de estar bloqueada si el par se desconcilia o si la sesión ya
 se finalizó (no hay ningún cierre futuro pendiente que la vuelva a tocar).
 
-### Selección por perfil + rango de fechas, no por archivo
+### Selección por rango de fechas único, sin elegir perfil ni archivo (corregido 05/09/2026)
 
-Al armar una sesión, cada lado se define eligiendo un perfil de banco y un rango de fechas
-`[Desde, Hasta]`, no tildando archivos importados puntuales — los movimientos de ese lado son los
-del perfil elegido cuya fecha cae en el rango, recorriendo todo lo importado de ese perfil (no una
-lista fija de `ArchivosImportados`). Como `MovimientosArchivo.Fecha` es texto libre (tal como lo
-exporta cada banco), el filtro por rango se resuelve en memoria con el mismo parseo de fechas que
-ya usa el resaltado de la conciliación externa, no con una condición de rango en SQL.
+> **Corrección post-merge**: la versión original de esta sección describía "perfil + rango de
+> fechas por lado" — un error de redacción del pedido, aclarado por el usuario después de probar
+> la ventana ya en producción. Queda documentado abajo el diseño real, ver también el addendum en
+> `docs/Historial.md` (TAREA 00022).
+
+Al armar una sesión se elige **un solo rango de fechas** `[Desde, Hasta]`, sin elegir perfil de
+banco ni tildar archivos importados puntuales. Los dos lados de la sesión son **Débitos** y
+**Créditos globales**: todos los movimientos de cualquier extracto/perfil cuya fecha cae en el
+rango y cuyo concepto está entre los tildados, separados según `Debitos <> 0` o no. Como
+`MovimientosArchivo.Fecha` es texto libre (tal como lo exporta cada banco), el filtro por rango se
+resuelve en memoria con el mismo parseo de fechas que ya usa el resaltado de la conciliación
+externa, no con una condición de rango en SQL.
+
+La auto-conciliación excluye emparejar dos movimientos del mismo extracto (`IdArchivo` igual):
+una transferencia entre cuentas propias por definición mueve plata entre dos extractos distintos,
+nunca dentro del mismo. Como una sesión ya no tiene un perfil fijo por lado, el cierre (más
+arriba, "poner la cuenta contrapartida al finalizar") resuelve el perfil de cada movimiento **por
+par**, a través de su `IdArchivo` — antes se resolvía una sola vez para toda la sesión porque los
+dos perfiles eran fijos.
 
 ## Preguntas abiertas / a confirmar antes de implementar
 

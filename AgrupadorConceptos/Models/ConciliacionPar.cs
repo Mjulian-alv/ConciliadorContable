@@ -5,6 +5,7 @@ namespace AgrupadorConceptos.Models
     public enum TipoMatch
     {
         FechaImporte,
+        SeleccionManual,
         SoloImporte,
         Manual
     }
