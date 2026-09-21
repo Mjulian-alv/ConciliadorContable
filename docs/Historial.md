@@ -353,3 +353,16 @@ proceso: ni una sola de las revisiones automatizadas corrió la ventana — todo
 ambas rondas salieron de pruebas en vivo del usuario contra un servidor real. **Pendiente**:
 seguir probando `ConciliacionInternaForm` (en particular el fix del doble-conciliado y el de
 ocultar/mostrar al crear sesión) antes de darlo por cerrado.
+
+## TAREA 00039 — 14/09/2026
+
+### Lo que se pidió
+
+> 1. Verificar el error que daba al importar los archivos del banco hipotecario.
+
+### Lo que se hizo
+**Línea 1** : se verifico que dentro de la configuracion falta el separador del archivo. 
+se incorpora una configuracion en la linea del csvreader para fijar el separador en punto y coma
+### Pendiente 
+Hay que hacer una configuracion para que no sea fija. por ahora esta funcionando. 
+-

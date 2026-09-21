@@ -94,8 +94,15 @@ namespace AgrupadorConceptos.Services
 
             using var stream = File.Open(filePath, FileMode.Open, FileAccess.Read);
             string ext = Path.GetExtension(filePath).ToLowerInvariant();
+
+            // Fecha: 14/09/2026 - TAREA: 00039 - Linea: 1 - Error al parsear csv que tiene con punto y coma. 
+            // TODO: debo poner un selector de separacion para el archivo - esto lo pone fijo
+            var config = new ExcelReaderConfiguration()
+            {
+                AutodetectSeparators = new char[] { ';' }
+            };
             using var reader = ext == ".csv"
-                ? ExcelReaderFactory.CreateCsvReader(stream)
+                ? ExcelReaderFactory.CreateCsvReader(stream,config)
                 : ExcelReaderFactory.CreateReader(stream);
 
             // Avanzar hasta la fila de encabezado
