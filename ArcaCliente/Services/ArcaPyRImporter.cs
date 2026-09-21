@@ -63,7 +63,7 @@ namespace ArcaCliente.Services
                     string hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(ruta)));
                     if (hashes.TryGetValue(hash, out var original))
                     {
-                        carga.ArchivosNoReconocidos.Add((nombre, $"es idéntico a {original}, se salteó"));
+                        carga.ArchivosRepetidos.Add((nombre, original));
                         continue;
                     }
                     hashes[hash] = nombre;

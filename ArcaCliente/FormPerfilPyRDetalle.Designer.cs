@@ -166,6 +166,7 @@ namespace ArcaCliente
             gridCuentas.MasterTemplate.AllowEditRow     = false;
             gridCuentas.MasterTemplate.ShowRowHeaderColumn = false;
             gridCuentas.MasterTemplate.AutoSizeColumnsMode = Telerik.WinControls.UI.GridViewAutoSizeColumnsMode.Fill;
+            gridCuentas.ShowGroupPanel = false;
             gridCuentas.CellDoubleClick += GridCuentas_CellDoubleClick;
             gridCuentas.RowFormatting   += GridCuentas_RowFormatting;
 

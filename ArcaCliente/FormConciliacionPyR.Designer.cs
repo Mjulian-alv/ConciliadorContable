@@ -130,6 +130,7 @@ namespace ArcaCliente
             gridMayores.MasterTemplate.AllowEditRow   = false;
             gridMayores.MasterTemplate.ShowRowHeaderColumn = false;
             gridMayores.MasterTemplate.AutoSizeColumnsMode = Telerik.WinControls.UI.GridViewAutoSizeColumnsMode.Fill;
+            gridMayores.ShowGroupPanel = false;
 
             lblSinMayores.AutoSize      = false;
             lblSinMayores.Location      = new System.Drawing.Point(12, 22);
@@ -174,6 +175,8 @@ namespace ArcaCliente
             splitGrillas.Panel2.Controls.Add(pvPresea);
 
             pvArca.Dock = System.Windows.Forms.DockStyle.Fill;
+            // Pestañas fijas: sin botones de cerrar ni de desplazamiento.
+            ((Telerik.WinControls.UI.RadPageViewStripElement)pvArca.ViewElement).StripButtons = Telerik.WinControls.UI.StripViewButtons.None;
             pvArca.Pages.Add(pageArca);
             pageArca.Text = "Registros ARCA";
             pageArca.Controls.Add(gridArca);
@@ -189,6 +192,8 @@ namespace ArcaCliente
             lblVacioArca.Text          = "Cargá la carpeta de ARCA para ver los certificados.";
 
             pvPresea.Dock = System.Windows.Forms.DockStyle.Fill;
+            // Pestañas fijas: sin botones de cerrar ni de desplazamiento.
+            ((Telerik.WinControls.UI.RadPageViewStripElement)pvPresea.ViewElement).StripButtons = Telerik.WinControls.UI.StripViewButtons.None;
             pvPresea.Pages.Add(pagePresea);
             pvPresea.Pages.Add(pageSinComprobante);
             pagePresea.Text = "Mayor PRESEA";
@@ -209,7 +214,8 @@ namespace ArcaCliente
 
             // ── pnlPie ───────────────────────────────────────────────────────────
             pnlPie.Dock   = System.Windows.Forms.DockStyle.Bottom;
-            pnlPie.Height = 52;
+            // Mismo motivo que los GroupBox: los controles anclados a la derecha necesitan el ancho real.
+            pnlPie.Size   = new System.Drawing.Size(1400, 52);
 
             lblPerfil.Location = new System.Drawing.Point(12, 17);
             lblPerfil.Text     = "Perfil:";
@@ -269,6 +275,7 @@ namespace ArcaCliente
             grid.MasterTemplate.AllowEditRow   = false;
             grid.MasterTemplate.ShowRowHeaderColumn = false;
             grid.MasterTemplate.AutoGenerateColumns = false;
+            grid.ShowGroupPanel = false;   // la maqueta no tiene el panel de agrupar de Telerik
         }
 
         private System.Windows.Forms.TableLayoutPanel  tblTop;

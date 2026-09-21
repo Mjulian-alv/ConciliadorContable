@@ -67,6 +67,8 @@ namespace ArcaCliente.Models
         public List<string>          ArchivosLeidos       { get; } = new();
         /// <summary>Nombre de archivo → motivo.</summary>
         public List<(string Archivo, string Motivo)> ArchivosNoReconocidos { get; } = new();
+        /// <summary>Archivo repetido → archivo idéntico que sí se leyó.</summary>
+        public List<(string Archivo, string IgualA)> ArchivosRepetidos { get; } = new();
         public int                   FilasNoReconocidas   { get; set; }
     }
 }

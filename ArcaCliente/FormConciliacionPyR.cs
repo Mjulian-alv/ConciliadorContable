@@ -171,6 +171,10 @@ namespace ArcaCliente
             if (carga.ArchivosNoReconocidos.Count > 0)
                 avisos.Add($"{carga.ArchivosNoReconocidos.Count} no reconocido(s): " +
                            string.Join(", ", carga.ArchivosNoReconocidos.Select(a => a.Archivo)));
+            // Fecha: 21/09/2026 - TAREA: 00041 - Linea: 3 - Un repetido no es "no reconocido": se informa aparte
+            if (carga.ArchivosRepetidos.Count > 0)
+                avisos.Add($"{carga.ArchivosRepetidos.Count} repetido(s), se salteó: " +
+                           string.Join(", ", carga.ArchivosRepetidos.Select(a => a.Archivo)));
             if (carga.FilasNoReconocidas > 0)
                 avisos.Add($"{N(carga.FilasNoReconocidas)} fila(s) con impuesto u operación no reconocidos");
 
@@ -185,13 +189,16 @@ namespace ArcaCliente
                 lblEstadoArca.ForeColor = Color.DarkOrange;
             }
             // El motivo de cada archivo no reconocido no entra en la línea de estado: va al tooltip.
-            lblEstadoArca.LabelElement.ToolTipText = carga.ArchivosNoReconocidos.Count == 0 ? null
-                : string.Join("\n", carga.ArchivosNoReconocidos.Select(a => $"{a.Archivo}: {a.Motivo}"));
+            var detalle = carga.ArchivosNoReconocidos.Select(a => $"{a.Archivo}: {a.Motivo}")
+                .Concat(carga.ArchivosRepetidos.Select(a => $"{a.Archivo}: idéntico a {a.IgualA}"))
+                .ToList();
+            lblEstadoArca.LabelElement.ToolTipText = detalle.Count == 0 ? null : string.Join("\n", detalle);
 
-            lblResumenArca.Text = "<html>" + string.Join("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;", _registrosArca
+            // Texto plano: el formato HTML de Telerik se come el espacio antes de <b>.
+            lblResumenArca.Text = string.Join("      ", _registrosArca
                 .GroupBy(r => (r.Impuesto, r.Operacion))
                 .OrderBy(g => g.Key.Impuesto).ThenBy(g => g.Key.Operacion)
-                .Select(g => $"{CuentaPyR.NombreImpuesto(g.Key.Impuesto)} · {CuentaPyR.NombreTipo(g.Key.Operacion)} <b>{N(g.Count())}</b>"));
+                .Select(g => $"{CuentaPyR.NombreImpuesto(g.Key.Impuesto)} · {CuentaPyR.NombreTipo(g.Key.Operacion)}: {N(g.Count())}"));
         }
 
         // ── PRESEA (Línea 4) ─────────────────────────────────────────────────────

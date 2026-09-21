@@ -40,12 +40,15 @@ Ruta: `D:\DESARROLLOS CONTABLE\CONCILIADOR\PERCEP Y RETEN\`
 
 ### Perfil — `PerfilOfflinePyR` (Línea 2)
 
-Se mantiene lo que ya tiene la copia (tipo de archivo, hoja, cabecera, formato de fecha,
-separador decimal, directivas) y se agrega:
+*(Ajustado al implementar)* De la copia quedan hoja, cabecera, formato de fecha, separador
+decimal y directivas. Se **quitaron** tipo de archivo, separador, encoding y las posiciones
+`Pos*`: PRESEA exporta el mayor siempre en Excel, así que el tipo de archivo se muestra fijo
+("Excel (.xlsx / .xls)", deshabilitado), y sin cabecera las mismas casillas `Col*` se cargan
+con el número de columna (1, 2, 3…) en vez de duplicar los campos.
 
 | Campo | Tipo | Notas |
 |---|---|---|
-| `ColAsiento` / `PosAsiento` | string / int | Para mostrar el asiento de origen en la grilla. Default `asiento` / 2. |
+| `ColFecha`, `ColAsiento`, `ColConcepto`, `ColDebe`, `ColHaber` | string | Nombre del encabezado, o número de columna si no hay cabecera. |
 | `CarpetaArca` | string | Renombre de `CarpetaCsvArca`: ya no son sólo CSV. |
 | `Cuentas` | `List<CuentaPyR>` | Ver abajo. |
 
@@ -65,7 +68,8 @@ Defaults de columnas pensados para el mayor de PRESEA: `fecha`, `asiento`, `conc
 Persistencia: tabla nueva `arca.ArcaPerfilesPyR` en `ArcaSqlSchema.cs`, con el mismo patrón
 que `ArcaPerfilesOffline` (mismas columnas de lectura de archivo, sin `ColPuntoVenta`,
 `ColNumero`, `ColTipoComprobante`, `ColCuit`, `ColNombreProveedor`, `ColTotal`,
-`SistemaExportacion`, `ConfigPreseaJson`), más `ColAsiento`, `PosAsiento`, `CarpetaArca`,
+`SistemaExportacion`, `ConfigPreseaJson`, `TipoArchivo`, `Separador`, `Encoding` ni `Pos*`),
+más `ColAsiento`, `ColConcepto`, `ColDebe`, `ColHaber`, `CarpetaArca`,
 `CuentasJson NVARCHAR(MAX) NOT NULL DEFAULT '[]'` y `DirectivasJson`. Acceso en
 `ArcaSqlStorage` (`LoadPerfilesPyR` / `SavePerfilesPyR`) detrás de `PerfilPyRStorage`.
 
@@ -178,8 +182,22 @@ los escribe PRESEA.
 | Elegir cuenta (diálogo) | nuevo | Combo con las cuentas del perfil ("1.1.4.05 — Percepciones IVA (Percepción · IVA)"), al agregar un mayor. |
 | Conciliación PyR | copia de `FormComprobantesOffline` | Grupo ARCA: carpeta + Cargar + resumen por impuesto/operación. Grupo PRESEA: lista de archivos (Archivo · Cuenta · Filas · Sin comprobante) con Agregar/Quitar. Dos grillas de resultado (ARCA / PRESEA). CONCILIAR deshabilitado. |
 
-Entrada desde el menú: nueva opción "Conciliación Percepciones y Retenciones" junto a la de
-Conciliación Offline en `FormMenu`.
+Entrada desde el menú *(ajustado al implementar)*: `FormMenu` de ArcaCliente no se instancia en
+ningún lado; la entrada real es el menú principal del shell (`FormMenuPrincipal`), panel ARCA:
+botones **"Percepciones y Retenciones"** (elegir perfil → pantalla, igual que Offline) y
+**"Perfiles PyR"**, los dos con el permiso nuevo `ArcaPyR` (criterio de TAREA 00021: un
+permiso por módulo; los usuarios no admin no lo ven hasta que se les otorgue).
+
+Decisiones tomadas al implementar, que ni la guía ni las maquetas cubrían:
+
+- El combo **Perfil** del pie de la pantalla principal permite cambiar de perfil; como cambian
+  las cuentas, lo cargado se descarta, con confirmación si había algo cargado.
+- El código de cuenta repetido se valida **al guardar el perfil** (como la maqueta de error),
+  no en el diálogo de cuenta; las filas en conflicto se pintan en rojo.
+- Archivos repetidos de la carpeta de ARCA se informan como "repetido(s), se salteó", aparte
+  de los no reconocidos. El motivo de cada uno va en el tooltip de la línea de estado.
+- El resumen por impuesto/operación de ARCA es texto plano ("IVA · Percepción: 2.569"): el
+  formato HTML de Telerik se comía el espacio antes del número en negrita.
 
 ## Flujograma
 
