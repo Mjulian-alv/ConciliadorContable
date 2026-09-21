@@ -496,3 +496,23 @@ Emparejados por directiva: 1 → 2530, 2 → 91, 3 → 88. Fuera de alcance: 392
   filas de ARCA con importe 0 **se excluyen de la conciliación** y se informan junto al aviso
   de alcance ("6 registros de ARCA con importe 0 excluidos"). Con esto, los "Sólo ARCA" de
   IIBB de la simulación bajan de 32 a 26.
+
+## Ajustes al implementar (segunda etapa)
+
+- **Directiva sin campos:** la maqueta `05-directivas-pyr-error` muestra el error al aceptar la
+  lista. Se valida antes, en el detalle (`06`): no deja aceptar una directiva sin campos, así que
+  la lista nunca llega a tener una. El mensaje es el mismo.
+- **Alto de la pestaña Conciliación:** con esa pestaña a la vista, la grilla de ARCA de arriba se
+  achica para que el resultado tenga lugar; al volver a las otras pestañas, se reparte a la mitad.
+- **Implementación verificada contra la simulación de julio:** mismos números en las dos cuentas y
+  por directiva (con los 6 de importe 0 excluidos, IIBB "Sólo ARCA" da 26).
+
+## Orden de implementación (segunda etapa)
+
+1. `CampoPyR` y `DirectivaPyR` con las 3 por defecto; `PerfilOfflinePyR.DirectivasConciliacion`
+   pasa a `List<DirectivaPyR>` (el storage no cambia, sólo el tipo).
+2. `FormDirectivasPyR` + `FormDirectivaPyRDetalle`; botón en Perfiles PyR. (Línea 6)
+3. `ConciliacionPyRService`: alcance, anulaciones, directivas, resultado. Probado con los
+   archivos de julio antes de tocar la pantalla. (Línea 7)
+4. Pestaña Conciliación, resumen, filtro, colores, caducidad del resultado; botones del pie. (Línea 7)
+5. `ConciliacionPyRExcelExporter` (ClosedXML, como `ConciliacionExcelExporter`). (Línea 7)
