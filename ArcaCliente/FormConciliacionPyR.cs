@@ -215,7 +215,9 @@ namespace ArcaCliente
             if (dlgArchivo.ShowDialog(this) != DialogResult.OK) return;
 
             string archivo = Path.GetFileName(dlgArchivo.FileName);
-            using var dlgCuenta = new FormElegirCuentaPyR(archivo, _perfil.Cuentas);
+            // Fecha: 21/09/2026 - TAREA: 00041 - Linea: 5 - Pasar los mayores ya cargados para que el diálogo arranque en una cuenta libre
+            using var dlgCuenta = new FormElegirCuentaPyR(archivo, _perfil.Cuentas,
+                _mayores.ToDictionary(m => m.Cuenta.Id, m => m.Archivo));
             if (dlgCuenta.ShowDialog(this) != DialogResult.OK || dlgCuenta.CuentaElegida == null) return;
             var cuenta = dlgCuenta.CuentaElegida;
 

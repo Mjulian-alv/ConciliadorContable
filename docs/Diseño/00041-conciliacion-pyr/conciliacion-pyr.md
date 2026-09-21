@@ -24,6 +24,8 @@ se construye con el botón **CONCILIAR** visible pero deshabilitado.
 > 4. Levantar los archivos que van a contener las percepciones y las retenciones del sistema.
 >    A diferencia de ARCA, acá viene el tipo de comprobante y el documento en la misma casilla
 >    de concepto, una columna de debe y otra de haber.
+> 5. *(21/09/2026, después de probarlo)* Que deje tomar dos archivos de PRESEA, uno por cada
+>    cuenta configurada.
 
 ## Archivos de ejemplo (julio 2026)
 
@@ -146,6 +148,9 @@ los escribe PRESEA.
    el aviso "El perfil no tiene cuentas configuradas".
 2. **Agregar** pide el archivo y, en un diálogo, **a qué cuenta del perfil corresponde**.
    Una cuenta tiene a lo sumo un archivo cargado: si ya había uno, se pregunta si se reemplaza.
+   *(Línea 5)* El combo arranca en la **primera cuenta que todavía no tiene mayor**, y las que ya
+   tienen muestran cuál: "… (ya cargada: PERC. IVA 07-2026.XLSX)". Antes arrancaba siempre en la
+   primera cuenta y el segundo archivo, sin tocar el combo, pedía reemplazar al primero.
 3. Faltan columnas del perfil en el encabezado → error con la lista de las que faltan; el
    archivo no se agrega.
 4. Patrón del concepto (sin distinguir mayúsculas, espacios múltiples colapsados):
