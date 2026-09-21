@@ -127,6 +127,10 @@ los escribe PRESEA.
 5. Al cargar bien, `CarpetaArca` se guarda en el perfil (igual que hoy `CarpetaCsvArca`).
 6. Encabezados: se comparan normalizados (sin tildes, minúsculas, espacios colapsados),
    porque el xls de AFIP viene en Latin-1 ("Denominaci�n").
+7. Encoding del HTML provincial: viene en **UTF-8 sin BOM y sin `charset` declarado**, así que
+   se decodifica explícitamente como UTF-8 (y, si los bytes no son UTF-8 válido, como
+   Windows-1252). Adivinarlo da mojibake: "RetenciÃ³n" en vez de "Retención", y la operación
+   deja de reconocerse.
 
 ### Lectura de los mayores de PRESEA
 
@@ -139,13 +143,15 @@ los escribe PRESEA.
 4. Patrón del concepto (sin distinguir mayúsculas, espacios múltiples colapsados):
 
    ```
-   ^(SEGUN|POR ANULACION)\s+(?<tipo>.+?)\s+(?<numero>\d+)\s+de\s+(?<proveedor>.*)$
+   ^(SEGUN|POR ANULACION)\s+(?<tipo>.+?)\s+(?<numero>\d+)(?:\s+de\s+(?<proveedor>.*))?$
    ```
 
    Ejemplos reales:
    - `SEGUN FACTURA A    36900627623 de CIA INDUSTRIAL C` → FACTURA A · 36900627623 · CIA INDUSTRIAL C
    - `SEGUN NOTA DE CREDITO A ...` → NOTA DE CREDITO A
-   - `POR ANULACION FACTURA A ...` → FACTURA A, `EsAnulacion = true`
+   - `POR ANULACION FACTURA A    73200019077` → FACTURA A · 73200019077, `EsAnulacion = true`,
+     sin proveedor: las anulaciones de PRESEA **no traen " de …"** (22 en julio), por eso esa
+     parte del patrón es opcional.
 5. Lo que no respeta el patrón (en julio: `Según MINUTA FINANCIERA Nº …`, `M.FINANCIERA`) se
    carga igual con `SinComprobante = true` y se **resalta** en la grilla. No se descarta: las
    directivas de la etapa siguiente deciden qué hacer con esas filas.
@@ -173,7 +179,71 @@ Conciliación Offline en `FormMenu`.
 
 ## Flujograma
 
-<!-- Lo produce Codex. -->
+Exportado en `00-flujograma.png`.
+
+```mermaid
+flowchart TD
+    A([Menú: Conciliación Percepciones y Retenciones]) --> B[Elegir perfil PyR]
+    B --> P{¿El perfil tiene cuentas?}
+    P -- No --> P1[Agregar PRESEA deshabilitado<br/>'El perfil no tiene cuentas configuradas']
+    P1 --> PE[Editar perfil]
+    P -- Sí --> C
+
+    subgraph PERFIL [Detalle de perfil - Línea 2]
+        PE --> PC[Agregar / Editar cuenta:<br/>Código, Nombre, Tipo, Impuesto]
+        PC --> PV{¿Código y Nombre cargados<br/>y Código único?}
+        PV -- No --> PX[Error en el diálogo / al guardar] --> PC
+        PV -- Sí --> PG[Guardar perfil en arca.ArcaPerfilesPyR]
+    end
+    PG --> B
+
+    C[Pantalla Conciliación PyR<br/>carpeta ARCA precargada del perfil] --> D
+
+    subgraph ARCA [Carpeta ARCA - Línea 3]
+        D[Cargar carpeta] --> D1{¿Existe la carpeta?}
+        D1 -- No --> DX[Error: carpeta inexistente<br/>no se carga nada]
+        D1 -- Sí --> D2[Por cada archivo .xls .xlsx .htm .html<br/>salvo ~$ temporales]
+        D2 --> D3{Formato por contenido}
+        D3 -- Empieza con '<' --> D4[Lector HTML provincial<br/>Impuesto = IIBB]
+        D3 -- Firma OLE / ZIP --> D5[Lector AFIP ExcelDataReader<br/>767 IVA · 217 Ganancias]
+        D3 -- Otro --> D6[Archivo no reconocido]
+        D4 --> D7[Normalizar número<br/>sólo dígitos, sin ceros a la izquierda]
+        D5 --> D7
+        D5 -- Código de impuesto desconocido --> D8[Fila no reconocida]
+        D7 --> D9{¿Quedó al menos un archivo reconocido?}
+        D6 --> D9
+        D8 --> D9
+        D9 -- No --> DX2[Error: ningún archivo reconocible]
+        D9 -- Sí --> D10[Grilla ARCA + resumen por impuesto/operación<br/>+ aviso de no reconocidos<br/>Guardar CarpetaArca en el perfil]
+    end
+
+    D10 --> E
+    DX --> E
+    DX2 --> E
+
+    subgraph PRESEA [Mayores PRESEA - Línea 4]
+        E[Agregar mayor] --> E1[Elegir archivo xlsx]
+        E1 --> E2[Diálogo: elegir cuenta del perfil]
+        E2 --> E3{¿La cuenta ya tiene archivo?}
+        E3 -- Sí --> E4{¿Reemplazar?}
+        E4 -- No --> E
+        E4 -- Sí --> E5
+        E3 -- No --> E5{¿Están las columnas del perfil?}
+        E5 -- No --> EX[Error: columnas faltantes<br/>el archivo no se agrega]
+        E5 -- Sí --> E6[Por cada fila con fecha y debe/haber]
+        E6 --> E7{¿Concepto respeta el patrón<br/>SEGUN / POR ANULACION ... de ...?}
+        E7 -- Sí --> E8[Tipo · Número · Proveedor<br/>EsAnulacion si POR ANULACION]
+        E7 -- No --> E9[Sin comprobante<br/>se carga resaltada]
+        E8 --> E10[Importe = debe − haber]
+        E9 --> E10
+        E10 --> E11[Archivo en la lista:<br/>Archivo · Cuenta · Filas · Sin comprobante]
+        E11 --> Q[Quitar archivo seleccionado]
+        Q --> E11
+    end
+
+    E11 --> F[CONCILIAR deshabilitado<br/>directivas y conciliación: próxima etapa]
+    F --> Z([Cerrar pantalla: los datos cargados se descartan])
+```
 
 ## Maquetas
 
