@@ -42,7 +42,9 @@ namespace ArcaCliente
             pnlPie            = new System.Windows.Forms.Panel();
             lblPerfil         = new Telerik.WinControls.UI.RadLabel();
             cmbPerfil         = new Telerik.WinControls.UI.RadDropDownList();
-            lblProximaEtapa   = new Telerik.WinControls.UI.RadLabel();
+            // Fecha: 21/09/2026 - TAREA: 00041 - Linea: 6, 7 - El aviso de "proxima etapa" se reemplaza por Directivas y Exportar
+            btnDirectivas     = new Telerik.WinControls.UI.RadButton();
+            btnExportar       = new Telerik.WinControls.UI.RadButton();
             btnConciliar      = new Telerik.WinControls.UI.RadButton();
 
             ((System.ComponentModel.ISupportInitialize)gridMayores).BeginInit();
@@ -223,19 +225,28 @@ namespace ArcaCliente
             cmbPerfil.Size          = new System.Drawing.Size(320, 24);
             cmbPerfil.DropDownStyle = Telerik.WinControls.RadDropDownStyle.DropDownList;
 
-            lblProximaEtapa.Anchor    = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right;
-            lblProximaEtapa.Location  = new System.Drawing.Point(1010, 17);
-            lblProximaEtapa.ForeColor = System.Drawing.Color.Gray;
-            lblProximaEtapa.Text      = "Directivas y conciliación: próxima etapa";
+            btnDirectivas.Anchor   = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right;
+            btnDirectivas.Location = new System.Drawing.Point(962, 11);
+            btnDirectivas.Size     = new System.Drawing.Size(110, 30);
+            btnDirectivas.Text     = "Directivas...";
+            btnDirectivas.Click   += BtnDirectivas_Click;
+
+            btnExportar.Anchor   = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right;
+            btnExportar.Location = new System.Drawing.Point(1080, 11);
+            btnExportar.Size     = new System.Drawing.Size(168, 30);
+            btnExportar.Text     = "Exportar conciliación...";
+            btnExportar.Enabled  = false;
+            btnExportar.Click   += BtnExportar_Click;
 
             btnConciliar.Anchor   = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right;
             btnConciliar.Font     = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
             btnConciliar.Location = new System.Drawing.Point(1256, 9);
             btnConciliar.Size     = new System.Drawing.Size(130, 34);
             btnConciliar.Text     = "CONCILIAR";
-            btnConciliar.Enabled  = false;   // directivas y conciliación: próxima etapa de la TAREA 00041
+            btnConciliar.Enabled  = false;   // se habilita con carpeta de ARCA y al menos un mayor cargados
+            btnConciliar.Click   += BtnConciliar_Click;
 
-            pnlPie.Controls.AddRange(new System.Windows.Forms.Control[] { lblPerfil, cmbPerfil, lblProximaEtapa, btnConciliar });
+            pnlPie.Controls.AddRange(new System.Windows.Forms.Control[] { lblPerfil, cmbPerfil, btnDirectivas, btnExportar, btnConciliar });
 
             // ── Form ─────────────────────────────────────────────────────────────
             AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
@@ -306,7 +317,8 @@ namespace ArcaCliente
         private System.Windows.Forms.Panel             pnlPie;
         private Telerik.WinControls.UI.RadLabel        lblPerfil;
         private Telerik.WinControls.UI.RadDropDownList cmbPerfil;
-        private Telerik.WinControls.UI.RadLabel        lblProximaEtapa;
+        private Telerik.WinControls.UI.RadButton       btnDirectivas;
+        private Telerik.WinControls.UI.RadButton       btnExportar;
         private Telerik.WinControls.UI.RadButton       btnConciliar;
     }
 }

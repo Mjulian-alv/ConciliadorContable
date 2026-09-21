@@ -187,7 +187,9 @@ namespace ArcaCliente.Services
                     SeparadorDecimal = r.GetString(r.GetOrdinal("SeparadorDecimal")),
                     CarpetaArca      = Str(r, "CarpetaArca"),
                     Cuentas          = Deserialize<List<CuentaPyR>>(Str(r, "CuentasJson")) ?? new(),
-                    DirectivasConciliacion = Deserialize<List<DirectivaConciliacion>>(Str(r, "DirectivasJson")) ?? new()
+                    // Fecha: 21/09/2026 - TAREA: 00041 - Linea: 6 - Directivas propias de PyR; sin ninguna, las 3 por defecto
+                    DirectivasConciliacion = Deserialize<List<DirectivaPyR>>(Str(r, "DirectivasJson")) is { Count: > 0 } dirs
+                        ? dirs : DirectivaPyR.CrearPredeterminadas()
                 });
             }
             return list;

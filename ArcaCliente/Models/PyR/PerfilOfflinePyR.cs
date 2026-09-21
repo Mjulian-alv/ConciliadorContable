@@ -41,8 +41,9 @@ namespace ArcaCliente.Models
         // ── Cuentas ────────────────────────────────────────────────────────────────
         public List<CuentaPyR> Cuentas { get; set; } = new();
 
-        // ── Directivas de conciliación (se usan en la etapa siguiente) ────────────
-        public List<DirectivaConciliacion> DirectivasConciliacion { get; set; } = new();
+        // ── Directivas de conciliación ─────────────────────────────────────────────
+        // Fecha: 21/09/2026 - TAREA: 00041 - Linea: 6 - Directivas propias de PyR (antes el tipo copiado de Offline); un perfil nuevo arranca con las 3 por defecto
+        public List<DirectivaPyR> DirectivasConciliacion { get; set; } = DirectivaPyR.CrearPredeterminadas();
 
         public int CantidadCuentas => Cuentas?.Count ?? 0;
 

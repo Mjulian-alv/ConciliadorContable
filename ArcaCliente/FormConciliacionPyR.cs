@@ -36,6 +36,8 @@ namespace ArcaCliente
             ConfigurarColumnas();
             gridMayores.DataSource = _mayores;
             gridPresea.RowFormatting += GridPresea_RowFormatting;
+            // Fecha: 21/09/2026 - TAREA: 00041 - Linea: 7 - Pestaña Conciliación (FormConciliacionPyR.Conciliacion.cs)
+            InicializarPestanaConciliacion();
 
             CargarPerfiles(perfil);
             AplicarPerfil(perfil);
@@ -58,6 +60,9 @@ namespace ArcaCliente
         private void AplicarPerfil(PerfilOfflinePyR perfil)
         {
             _perfil = perfil;
+            // Fecha: 21/09/2026 - TAREA: 00041 - Linea: 7 - Perfil nuevo = pestaña vacía, no "caducada"
+            _resultado = null;
+            MostrarResultado();
             txtCarpeta.Text = perfil.CarpetaArca ?? string.Empty;
             _registrosArca = new List<RegistroArcaPyR>();
             _mayores.Clear();
@@ -157,6 +162,8 @@ namespace ArcaCliente
             gridArca.Visible     = hay;
             lblVacioArca.Visible = !hay;
             pageArca.Text = hay ? $"Registros ARCA ({N(_registrosArca.Count)})" : "Registros ARCA";
+            // Fecha: 21/09/2026 - TAREA: 00041 - Linea: 7 - Otra carpeta de ARCA: el resultado anterior caduca
+            DatosCambiaron("se volvió a cargar la carpeta de ARCA");
 
             if (carga == null)
             {
@@ -285,6 +292,9 @@ namespace ArcaCliente
 
             bool hayCuentas = _perfil.Cuentas.Count > 0;
             btnAgregarMayor.Enabled = hayCuentas;
+
+            // Fecha: 21/09/2026 - TAREA: 00041 - Linea: 7 - Se agregó o quitó un mayor: el resultado anterior caduca
+            DatosCambiaron("cambiaron los mayores de PRESEA");
         }
 
         /// <summary>

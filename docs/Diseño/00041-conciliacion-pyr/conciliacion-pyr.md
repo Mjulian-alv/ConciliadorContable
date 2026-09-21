@@ -400,6 +400,8 @@ Directivas por defecto (se crean si el perfil no tiene ninguna):
    mayor, se cambian las directivas o se cambia de perfil, la pestaña Conciliación se vacía con
    el aviso "Los datos cambiaron: volvé a conciliar".
 7. CONCILIAR se habilita cuando hay carpeta de ARCA cargada y al menos un mayor.
+8. Las filas de ARCA con **importe 0** se excluyen antes de conciliar y se informan con el
+   aviso de alcance (ver "Pregunta resuelta").
 
 ## Pantallas (segunda etapa)
 
@@ -487,18 +489,10 @@ referencia para verificar la implementación:
 
 Emparejados por directiva: 1 → 2530, 2 → 91, 3 → 88. Fuera de alcance: 392 (IIBB · Retención).
 
-## Pregunta abierta
+## Pregunta resuelta
 
 - La consulta provincial trae **notas de crédito con percepción 0** (6 en julio, todas de
-  PANIFICADORA VENEZIANA). PRESEA no las registra, así que quedarían como "Sólo ARCA" por $0.
-  Propuesta: excluirlas de la conciliación e informarlas junto al aviso de alcance.
-
-## Orden de implementación (segunda etapa)
-
-1. `CampoPyR` y `DirectivaPyR` con las 3 por defecto; `PerfilOfflinePyR.DirectivasConciliacion`
-   pasa a `List<DirectivaPyR>` (el storage no cambia, sólo el tipo).
-2. `FormDirectivasPyR` + `FormDirectivaPyRDetalle`; botón en Perfiles PyR. (Línea 6)
-3. `ConciliacionPyRService`: alcance, anulaciones, directivas, resultado. Probado con los
-   archivos de julio antes de tocar la pantalla. (Línea 7)
-4. Pestaña Conciliación, resumen, filtro, colores, caducidad del resultado; botones del pie. (Línea 7)
-5. `ConciliacionPyRExcelExporter` (ClosedXML, como `ConciliacionExcelExporter`). (Línea 7)
+  PANIFICADORA VENEZIANA) que PRESEA no registra. *Decisión del usuario (21/09/2026)*: las
+  filas de ARCA con importe 0 **se excluyen de la conciliación** y se informan junto al aviso
+  de alcance ("6 registros de ARCA con importe 0 excluidos"). Con esto, los "Sólo ARCA" de
+  IIBB de la simulación bajan de 32 a 26.

@@ -104,6 +104,24 @@ namespace ArcaCliente
             }
         }
 
+        // Fecha: 21/09/2026 - TAREA: 00041 - Linea: 6 - Editar las directivas del perfil seleccionado
+        private void BtnDirectivas_Click(object sender, EventArgs e)
+        {
+            if (gridPerfiles.CurrentRow?.DataBoundItem is not PerfilOfflinePyR perfil)
+            {
+                MessageBox.Show("Seleccioná un perfil para configurar sus directivas.", "Información",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            using var form = new FormDirectivasPyR(perfil.Nombre, perfil.DirectivasConciliacion);
+            if (form.ShowDialog(this) == DialogResult.OK)
+            {
+                perfil.DirectivasConciliacion = form.Directivas;
+                Guardar();
+            }
+        }
+
         // ── Selección ────────────────────────────────────────────────────────────
 
         private void BtnSeleccionar_Click(object sender, EventArgs e)

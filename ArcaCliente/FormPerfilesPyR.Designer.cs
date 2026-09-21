@@ -1,4 +1,4 @@
-// Fecha: 21/09/2026 - TAREA: 00041 - Linea: 2 - Lista de perfiles PyR (copia de FormPerfilesOffline sin el botón de directivas, que llegan en la etapa siguiente)
+// Fecha: 21/09/2026 - TAREA: 00041 - Linea: 2 - Lista de perfiles PyR (copia de FormPerfilesOffline)
 namespace ArcaCliente
 {
     partial class FormPerfilesPyR
@@ -18,6 +18,8 @@ namespace ArcaCliente
             btnNuevo       = new Telerik.WinControls.UI.RadButton();
             btnEditar      = new Telerik.WinControls.UI.RadButton();
             btnEliminar    = new Telerik.WinControls.UI.RadButton();
+            // Fecha: 21/09/2026 - TAREA: 00041 - Linea: 6 - Vuelve el boton de directivas (como en Offline)
+            btnDirectivas  = new Telerik.WinControls.UI.RadButton();
             btnSeleccionar = new Telerik.WinControls.UI.RadButton();
             btnCancelar    = new Telerik.WinControls.UI.RadButton();
             gridPerfiles   = new Telerik.WinControls.UI.RadGridView();
@@ -27,6 +29,7 @@ namespace ArcaCliente
             ((System.ComponentModel.ISupportInitialize)btnNuevo).BeginInit();
             ((System.ComponentModel.ISupportInitialize)btnEditar).BeginInit();
             ((System.ComponentModel.ISupportInitialize)btnEliminar).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)btnDirectivas).BeginInit();
             ((System.ComponentModel.ISupportInitialize)btnSeleccionar).BeginInit();
             ((System.ComponentModel.ISupportInitialize)btnCancelar).BeginInit();
             ((System.ComponentModel.ISupportInitialize)gridPerfiles).BeginInit();
@@ -37,11 +40,12 @@ namespace ArcaCliente
             pnlBotones.Controls.Add(btnNuevo);
             pnlBotones.Controls.Add(btnEditar);
             pnlBotones.Controls.Add(btnEliminar);
+            pnlBotones.Controls.Add(btnDirectivas);
             pnlBotones.Controls.Add(btnSeleccionar);
             pnlBotones.Controls.Add(btnCancelar);
             pnlBotones.Dock     = System.Windows.Forms.DockStyle.Bottom;
             pnlBotones.Name     = "pnlBotones";
-            pnlBotones.Size     = new System.Drawing.Size(584, 48);
+            pnlBotones.Size     = new System.Drawing.Size(700, 48);
             pnlBotones.TabIndex = 0;
 
             btnNuevo.Location  = new System.Drawing.Point(12, 10);
@@ -65,18 +69,25 @@ namespace ArcaCliente
             btnEliminar.Text     = "Eliminar";
             btnEliminar.Click   += BtnEliminar_Click;
 
+            btnDirectivas.Location = new System.Drawing.Point(336, 10);
+            btnDirectivas.Name     = "btnDirectivas";
+            btnDirectivas.Size     = new System.Drawing.Size(116, 28);
+            btnDirectivas.TabIndex = 3;
+            btnDirectivas.Text     = "Directivas...";
+            btnDirectivas.Click   += BtnDirectivas_Click;
+
             btnSeleccionar.Font     = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            btnSeleccionar.Location = new System.Drawing.Point(344, 10);
+            btnSeleccionar.Location = new System.Drawing.Point(460, 10);
             btnSeleccionar.Name     = "btnSeleccionar";
             btnSeleccionar.Size     = new System.Drawing.Size(120, 28);
-            btnSeleccionar.TabIndex = 3;
+            btnSeleccionar.TabIndex = 4;
             btnSeleccionar.Text     = "Usar perfil →";
             btnSeleccionar.Click   += BtnSeleccionar_Click;
 
-            btnCancelar.Location = new System.Drawing.Point(472, 10);
+            btnCancelar.Location = new System.Drawing.Point(588, 10);
             btnCancelar.Name     = "btnCancelar";
             btnCancelar.Size     = new System.Drawing.Size(100, 28);
-            btnCancelar.TabIndex = 4;
+            btnCancelar.TabIndex = 5;
             btnCancelar.Text     = "Cancelar";
             btnCancelar.Click   += BtnCancelar_Click;
 
@@ -92,7 +103,7 @@ namespace ArcaCliente
             // ── Form ─────────────────────────────────────────────────────────────
             AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             AutoScaleMode       = System.Windows.Forms.AutoScaleMode.Font;
-            ClientSize          = new System.Drawing.Size(584, 400);
+            ClientSize          = new System.Drawing.Size(700, 400);
             Controls.Add(gridPerfiles);
             Controls.Add(pnlBotones);
             FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
@@ -107,6 +118,7 @@ namespace ArcaCliente
             ((System.ComponentModel.ISupportInitialize)btnNuevo).EndInit();
             ((System.ComponentModel.ISupportInitialize)btnEditar).EndInit();
             ((System.ComponentModel.ISupportInitialize)btnEliminar).EndInit();
+            ((System.ComponentModel.ISupportInitialize)btnDirectivas).EndInit();
             ((System.ComponentModel.ISupportInitialize)btnSeleccionar).EndInit();
             ((System.ComponentModel.ISupportInitialize)btnCancelar).EndInit();
             ((System.ComponentModel.ISupportInitialize)gridPerfiles).EndInit();
@@ -118,6 +130,7 @@ namespace ArcaCliente
         private Telerik.WinControls.UI.RadButton     btnNuevo;
         private Telerik.WinControls.UI.RadButton     btnEditar;
         private Telerik.WinControls.UI.RadButton     btnEliminar;
+        private Telerik.WinControls.UI.RadButton     btnDirectivas;
         private Telerik.WinControls.UI.RadButton     btnSeleccionar;
         private Telerik.WinControls.UI.RadButton     btnCancelar;
         private Telerik.WinControls.UI.RadGridView   gridPerfiles;
