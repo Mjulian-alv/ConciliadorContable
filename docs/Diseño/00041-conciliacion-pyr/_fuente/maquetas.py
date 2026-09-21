@@ -186,10 +186,91 @@ s.append(("04-conciliacion-pyr", pagina("04-conciliacion-pyr", TIT, conc("ok"), 
 s.append(("04-conciliacion-pyr-vacio", pagina("04-conciliacion-pyr-vacio", TIT, conc("vacio"), 1500)))
 s.append(("04-conciliacion-pyr-error", pagina("04-conciliacion-pyr-error", TIT, conc("error"), 1500)))
 
+# ── Segunda etapa (Líneas 6 y 7) ─────────────────────────────────────────────
+# Fecha: 21/09/2026 - TAREA: 00041 - Linea: 6, 7 - Maquetas de directivas y del resultado de la conciliación
+SIM = json.load(io.open(os.path.join(AQUI, "simulacion-julio.json"), encoding="utf-8"))
+CSS2 = """
+tr.e-ok td{background:#aaf0d1} tr.e-dif td{background:#fef0ba} tr.e-sa td{background:#ffcdd2}
+tr.e-sp td{background:#ced4ed} tr.e-an td{background:#e4e4e4;color:#555}
+tr.fija td{background:#dcebff;color:#00008b;font-weight:600}
+.filtro span{display:inline-block;border:1px solid #9aa7b4;background:#fff;padding:2px 10px;margin-right:4px;border-radius:2px}
+.filtro span.on{background:#255b95;color:#fff;border-color:#1f4d7e}
+.aviso{background:#fff8e1;border:1px solid #e0c46c;padding:4px 8px;margin:6px 0;color:#7a5a00}
+td.hdr{background:#eef2f6;font-weight:600}
+"""
+CSS += CSS2
+
+DIRS = [("1", "Número completo", "Número"),
+        ("2", "Últimos 8 dígitos + Importe", "Número (últimos 8) + Importe"),
+        ("3", "Importe + Fecha + Proveedor", "Importe + Fecha + Proveedor")]
+
+def directivas(error=False):
+    g = grilla(["#", "Descripción", "Campos"], [d for d in DIRS] + ([("4", "Nueva directiva", "(sin campos)")] if error else []),
+               {0: "fija", **({3: "dup sel"} if error else {1: "sel"})})
+    btns = "".join(f'<span class="btn {c}">{t}</span>' for t, c in
+                   [("Agregar...", ""), ("Editar...", ""), ("Eliminar", ""), ("▲ Subir", "dis"), ("▼ Bajar", ""), ("Restablecer predeterminadas", "")])
+    cuerpo = f"""<div class="hint" style="margin-bottom:6px">Se aplican en orden: cada una trabaja sobre lo que las anteriores no emparejaron. La primera es fija.</div>
+{g}<div class="row" style="margin-top:8px;flex-wrap:wrap">{btns}</div>
+<div class="foot" style="margin-top:10px"><span class="btn pri">Aceptar</span><span class="btn">Cancelar</span></div>"""
+    if error:
+        cuerpo += '<div class="shade"></div><div class="msg"><div class="tb"><span>Directivas PyR</span><span class="x">✕</span></div><div class="c"><div class="ico bad">⛔</div><div>La directiva 4 «Nueva directiva» no tiene campos.<br><br>Elegí al menos un campo o eliminala.</div></div><div class="f"><span class="btn">Aceptar</span></div></div>'
+    return cuerpo
+
+s.append(("05-directivas-pyr", pagina("05-directivas-pyr", "Directivas de conciliación — Supermercado — Percepciones y Retenciones", directivas(), 720)))
+s.append(("05-directivas-pyr-error", pagina("05-directivas-pyr-error", "Directivas de conciliación — Supermercado — Percepciones y Retenciones", directivas(True), 720)))
+
+campos = [("Número (completo)", False), ("Número (últimos 8 dígitos)", True), ("Importe", True), ("Fecha", False), ("Proveedor (primeras 6 letras)", False)]
+det = """<div class="row"><label>Descripción:</label><input style="width:320px" value="Últimos 8 dígitos + Importe"></div>
+<fieldset style="margin-top:8px"><legend>Campos que tienen que coincidir</legend>""" + "".join(
+    f'<div class="row"><label style="min-width:0"><input type="checkbox" {"checked" if c else ""} style="height:auto"> {e(n)}</label></div>' for n, c in campos) + """
+<div class="hint">Si a una fila le falta alguno de estos valores (por ejemplo, una minuta no tiene número), esta directiva no la empareja.</div></fieldset>
+<div class="foot"><span class="btn pri">Aceptar</span><span class="btn">Cancelar</span></div>"""
+s.append(("06-directiva-pyr-detalle", pagina("06-directiva-pyr-detalle", "Directiva de conciliación", det, 480)))
+
+def m(x): return "" if x is None else f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+CLS = {"Conciliado": "e-ok", "Diferencia de importe": "e-dif", "Sólo ARCA": "e-sa", "Sólo PRESEA": "e-sp", "Anulada en PRESEA": "e-an"}
+EST = ["Conciliado", "Diferencia de importe", "Sólo ARCA", "Sólo PRESEA", "Anulada en PRESEA"]
+
+def resultado(estado):
+    arriba = conc("ok").split('<div style="display:flex;gap:10px"><div style="flex:1;min-width:0">')[0]
+    total = sum(sum(v for k, v in r.items() if not k.startswith("_")) for r in SIM["resumen"].values())
+    tabs = f'<div class="tabs"><span class="tab">Mayor PRESEA (3.040)</span><span class="tab">Sin comprobante (17)</span><span class="tab on">Conciliación{f" ({total:,})".replace(",", ".") if estado == "ok" else ""}</span></div>'
+    if estado == "vacio":
+        cuerpo = '<div class="empty" style="padding:60px">Todavía no se concilió. Tocá CONCILIAR para cruzar ARCA con los mayores cargados.</div>'
+    elif estado == "error":
+        cuerpo = '<div class="empty" style="padding:60px;color:#a15c00;font-style:normal">⚠ Los datos cambiaron (se agregó el mayor «PERC. IIBB 07-2026.XLSX»): volvé a conciliar.</div>'
+    else:
+        filas = []
+        for cta, r in SIM["resumen"].items():
+            filas.append([cta] + [f'{r.get(k, 0):,}'.replace(",", ".") for k in EST] + [m(r["_arca"]), m(r["_presea"]), m(round(r["_arca"] - r["_presea"], 2))])
+        resumen = grilla(["Cuenta", "Conciliados", "Diferencias", "Sólo ARCA", "Sólo PRESEA", "Anuladas", "Total ARCA", "Total PRESEA", "Diferencia"], filas, num=(1, 2, 3, 4, 5, 6, 7, 8))
+        fuera = " · ".join(f"{n} registros de ARCA fuera de alcance: {g}" for g, n in SIM["fuera"].items())
+        pd_ = "   ".join(f"Dir. {k.split('-')[0]}: {v:,}".replace(",", ".") for k, v in sorted(SIM["porDir"].items()))
+        filtro = '<div class="row filtro"><label style="min-width:0">Mostrar:</label>' + "".join(
+            f'<span class="{"on" if t == "Todos" else ""}">{t}</span>' for t in ["Todos"] + EST) + f'<span style="border:none;background:none" class="mut">Emparejados por {pd_}</span></div>'
+        det = []
+        clases = {}
+        for i, x in enumerate(SIM["muestra"]):
+            clases[i] = CLS[x["estado"]]
+            det.append([x["estado"], x["cuenta"], x["dir"], x["fa"], x["cuit"], x["den"], x["tipo"], x["na"], m(x["ia"]),
+                        x["fp"], x["asi"], x["np"], x["prov"], m(x["ip"]), m(x["dif"])])
+        grid = grilla(["Estado", "Cuenta", "Dir.", "Fecha ARCA", "CUIT", "Denominación", "Tipo", "Número ARCA", "Importe ARCA",
+                       "Fecha PRESEA", "Asiento", "Número PRESEA", "Proveedor", "Importe PRESEA", "Diferencia"], det, clases, num=(8, 13, 14))
+        cuerpo = f'{resumen}<div class="aviso">ⓘ {fuera}</div>{filtro}{grid}'
+    pie = """<div class="row" style="justify-content:space-between;margin-top:10px">
+ <div class="row"><label style="min-width:0">Perfil:</label><select style="width:320px"><option>Supermercado — Percepciones y Retenciones</option></select></div>
+ <div class="row"><span class="btn">Directivas...</span><span class="btn """ + ("" if estado == "ok" else "dis") + """">Exportar conciliación...</span><span class="btn big pri">CONCILIAR</span></div></div>"""
+    arca_min = '<div class="tabs"><span class="tab on">Registros ARCA (3.851)</span></div><div class="empty" style="padding:8px;font-style:normal;text-align:left">(grilla de ARCA — igual que en 04, más baja)</div>'
+    return arriba + arca_min + f'<div style="margin-top:10px">{tabs}{cuerpo}</div>' + pie
+
+s.append(("07-conciliacion-pyr-resultado", pagina("07-conciliacion-pyr-resultado", TIT, resultado("ok"), 1500)))
+s.append(("07-conciliacion-pyr-resultado-vacio", pagina("07-conciliacion-pyr-resultado-vacio", TIT, resultado("vacio"), 1500)))
+s.append(("07-conciliacion-pyr-resultado-error", pagina("07-conciliacion-pyr-resultado-error", TIT, resultado("error"), 1500)))
+
 for nombre, ruta in s:
     png = os.path.join(DEST, nombre + ".png")
-    ancho = 1560 if nombre.startswith("04") else 820 if nombre.startswith("01") else 600
-    alto = 1000 if nombre.startswith("04") else 720 if nombre.startswith("01") else 340
+    TAM = {"01": (820, 720), "04": (1560, 1000), "05": (780, 420), "06": (540, 400), "07": (1560, 1060)}
+    ancho, alto = TAM.get(nombre[:2], (600, 340))
     subprocess.run([CHROME, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--force-device-scale-factor=1.5",
                     f"--window-size={ancho},{alto}", f"--screenshot={png}", "file:///" + ruta.replace("\\", "/")],
                    check=True, capture_output=True)

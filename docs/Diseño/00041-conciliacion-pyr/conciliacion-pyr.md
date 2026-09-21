@@ -26,6 +26,9 @@ se construye con el botón **CONCILIAR** visible pero deshabilitado.
 >    de concepto, una columna de debe y otra de haber.
 > 5. *(21/09/2026, después de probarlo)* Que deje tomar dos archivos de PRESEA, uno por cada
 >    cuenta configurada.
+> 6. *(21/09/2026)* Directivas de conciliación.
+> 7. *(21/09/2026)* Conciliación. Aclaración del pedido: "solo debe conciliar contra las cuentas
+>    subidas en el archivo de PRESEA. Por ejemplo en mi ejemplo solo tenemos percepciones."
 
 ## Archivos de ejemplo (julio 2026)
 
@@ -298,3 +301,204 @@ flowchart TD
 8. Verificación con los cuatro archivos de ejemplo: cantidades leídas por archivo, filas sin
    comprobante (en julio: 17 en Perc. IVA) y números normalizados que coincidan entre ambos
    lados en una muestra.
+
+---
+
+# Segunda etapa — Directivas y conciliación (Líneas 6 y 7)
+
+Decisiones acordadas con el usuario el 21/09/2026:
+
+| Tema | Decisión |
+|---|---|
+| Directivas por defecto | Tres, en orden, editables por perfil (la primera fija, como en Offline). |
+| Anulaciones de PRESEA | Se neutralizan si la factura y su anulación suman cero. |
+| Importes | Comparación **exacta**: cualquier diferencia, aunque sea de centavos, es "Diferencia de importe". |
+| Resultado | Pestaña "Conciliación" en la misma pantalla. |
+| Exportación | A Excel, con hoja de detalle y hoja de resumen por cuenta. |
+
+## Lo que mostraron los datos de julio
+
+Cruce sólo por número, dentro de cada cuenta:
+
+| | Perc. IVA | Perc. IIBB |
+|---|---|---|
+| Mismo número y mismo importe | 1662 | 840 |
+| Mismo número, importe distinto | 24 (9 por centavos) | 20 (11 por centavos) |
+| PRESEA sin par por número | 343 | 120 |
+| ARCA sin par | 891 (534 son "Otro comprobante": bancos y tarjetas) | 33 |
+
+- AFIP no siempre escribe el número como PRESEA: DREAMCO `166000442096` (ARCA) contra
+  `16600442096` (PRESEA); ALIMENTOS SARANDI `315520` (ARCA, sin punto de venta) contra
+  `10200315520`. Por eso existe el campo **Número (últimos 8 dígitos)**.
+- Las notas de crédito vienen en negativo en los dos lados: se compara con signo.
+
+## Modelo de datos
+
+### `DirectivaPyR` (Línea 6)
+
+Propia de PyR: la `DirectivaConciliacion` de Offline tiene CUIT y punto de venta, que el mayor de
+PRESEA no trae. Se guarda en la columna `DirectivasJson` que `arca.ArcaPerfilesPyR` ya tiene
+(hoy vacía en todos los perfiles, así que cambiar su tipo no rompe nada).
+
+| Campo | Tipo |
+|---|---|
+| `Id` | Guid |
+| `Descripcion` | string |
+| `Campos` | `List<CampoPyR>` |
+
+`CampoPyR` y cómo arma la clave de cada lado:
+
+| Campo | ARCA | PRESEA |
+|---|---|---|
+| `Numero` | Número normalizado | Número normalizado |
+| `NumeroUltimos8` | Últimos 8 dígitos del número (con ceros a la izquierda si tiene menos) | Ídem |
+| `Importe` | Importe con signo, 2 decimales | Importe (debe − haber), 2 decimales |
+| `Fecha` | Fecha ret./perc. | Fecha del asiento |
+| `Proveedor` | Primeras 6 letras/dígitos de la denominación, sin espacios, puntos ni tildes, en mayúsculas | Ídem sobre el proveedor del concepto (cortado a 16 por PRESEA) |
+
+Si a una fila le falta el valor de algún campo de la directiva (por ejemplo, una fila sin
+comprobante no tiene número ni proveedor), **esa directiva no la empareja**: dos vacíos no son
+una coincidencia.
+
+Directivas por defecto (se crean si el perfil no tiene ninguna):
+
+1. **Número completo**: fija, no se edita ni se borra.
+2. **Últimos 8 dígitos + Importe**: cubre los casos de DREAMCO y ALIMENTOS SARANDI.
+3. **Importe + Fecha + Proveedor**: la más floja, por eso va última.
+
+### Resultado — `ItemConciliacionPyR` (Línea 7)
+
+| Campo | Notas |
+|---|---|
+| `Estado` | `Conciliado`, `DiferenciaImporte`, `SoloArca`, `SoloPresea`, `AnuladaPresea` |
+| `Cuenta` | Cuenta del mayor (para los `SoloArca`, la del grupo impuesto + tipo) |
+| `Directiva` | Número y descripción de la directiva que emparejó (vacío si no emparejó) |
+| `Arca` | `RegistroArcaPyR` o null |
+| `Presea` | `RegistroPreseaPyR` o null |
+| `Diferencia` | Importe ARCA − importe PRESEA, sólo en `DiferenciaImporte` |
+
+## Reglas de la conciliación (Línea 7)
+
+1. **Alcance: sólo las cuentas con mayor cargado.** Se arman grupos por (impuesto, tipo) con las
+   cuentas que tienen mayor en la pantalla. Las filas de ARCA de un impuesto + tipo sin mayor
+   cargado **quedan fuera**: no aparecen como "Sólo ARCA", sólo se informa cuántas se
+   excluyeron ("392 registros de ARCA fuera de alcance: IIBB · Retención"). Si dos cuentas
+   comparten impuesto + tipo, sus mayores se concilian juntos contra ese grupo de ARCA.
+2. **Anulaciones, antes de las directivas.** Dentro de cada mayor, cada fila `POR ANULACION`
+   busca una fila sin anulación del mismo tipo y número cuyo importe sume cero con ella. Si la
+   encuentra, las dos quedan `AnuladaPresea` y no se concilian. Si no, la anulación sigue como
+   una fila más.
+3. **Directivas en orden.** Cada directiva trabaja sobre lo que las anteriores no emparejaron.
+   Se indexa PRESEA por la clave de la directiva (si hay repetidos gana el primero libre, igual
+   que Offline) y se busca cada fila de ARCA pendiente. El emparejamiento es uno a uno.
+4. **Importe exacto.** Si la directiva no incluye Importe, la pareja es `Conciliado` cuando los
+   importes son iguales al centavo, y `DiferenciaImporte` si no.
+5. Lo que queda sin par es `SoloArca` o `SoloPresea`. Las filas sin comprobante de PRESEA
+   (minutas) terminan en `SoloPresea`, salvo que alguna directiva sin número ni proveedor las
+   empareje.
+6. **El resultado caduca.** Si después de conciliar se carga la carpeta, se agrega o quita un
+   mayor, se cambian las directivas o se cambia de perfil, la pestaña Conciliación se vacía con
+   el aviso "Los datos cambiaron: volvé a conciliar".
+7. CONCILIAR se habilita cuando hay carpeta de ARCA cargada y al menos un mayor.
+
+## Pantallas (segunda etapa)
+
+| Pantalla | Base | Cambio |
+|---|---|---|
+| Directivas PyR | patrón de `FormDirectivasConciliacion` | Lista ordenada (#, Descripción, Campos); primera fila fija y resaltada; Agregar, Editar, Eliminar, Subir, Bajar, **Restablecer predeterminadas**; Aceptar/Cancelar. |
+| Directiva PyR (detalle) | patrón de `FormDirectivaConciliacionDetalle` | Descripción + casillas de los 5 campos. Sin ningún campo no se puede aceptar. |
+| Perfiles PyR | ya existe | Vuelve el botón **Directivas...** (como en Offline). |
+| Conciliación PyR | ya existe | Pie: **Directivas...** al lado de CONCILIAR (ya habilitado) y **Exportar conciliación...**. Abajo, tercera pestaña **Conciliación**: resumen por cuenta arriba (conciliados, diferencias, sólo ARCA, sólo PRESEA, anuladas, totales), filtro por estado y grilla con Estado, Cuenta, Dir., datos de ARCA (fecha, CUIT, denominación, tipo, número, importe), datos de PRESEA (fecha, asiento, número, proveedor, importe) y Diferencia. Colores por estado como en Offline. |
+
+## Maquetas (segunda etapa)
+
+- `05-directivas-pyr.png`: las 3 directivas por defecto, la primera resaltada.
+- `05-directivas-pyr-error.png`: intento de aceptar una directiva sin campos.
+- `06-directiva-pyr-detalle.png`: detalle de la directiva 2 (Últimos 8 dígitos + Importe).
+- `07-conciliacion-pyr-resultado.png`: pestaña Conciliación con el resultado de julio (percepciones de IVA e IIBB), el aviso de alcance y el filtro en "Todos".
+- `07-conciliacion-pyr-resultado-vacio.png`: pestaña Conciliación antes de conciliar.
+- `07-conciliacion-pyr-resultado-error.png`: resultado caducado ("Los datos cambiaron: volvé a conciliar").
+
+## Flujograma (segunda etapa)
+
+Exportado en `00b-flujograma-conciliacion.png`.
+
+```mermaid
+flowchart TD
+    A([Pantalla Conciliación PyR<br/>carpeta ARCA y mayores cargados]) --> B{¿Hay carpeta ARCA<br/>y al menos un mayor?}
+    B -- No --> B1[CONCILIAR deshabilitado]
+    B -- Sí --> DIR
+
+    subgraph DIRECTIVAS [Directivas - Línea 6]
+        DIR[Directivas... desde el pie o desde Perfiles PyR] --> D0{¿El perfil tiene directivas?}
+        D0 -- No --> D1[Crear las 3 por defecto:<br/>1 Número · 2 Últimos 8 + Importe<br/>3 Importe + Fecha + Proveedor]
+        D0 -- Sí --> D2[Lista ordenada, la 1 fija]
+        D1 --> D2
+        D2 --> D3[Agregar / Editar / Eliminar /<br/>Subir / Bajar / Restablecer]
+        D3 --> D4{¿La directiva tiene<br/>al menos un campo?}
+        D4 -- No --> D5[Error: elegí al menos un campo] --> D3
+        D4 -- Sí --> D6[Guardar en el perfil]
+        D6 --> CAD[El resultado anterior caduca]
+    end
+
+    B -- Sí --> C[CONCILIAR]
+    C --> E[Grupos impuesto + tipo<br/>de las cuentas con mayor cargado]
+    E --> F[ARCA fuera de esos grupos:<br/>se excluye y se informa la cantidad]
+    E --> G
+
+    subgraph CONCILIACION [Conciliación - Línea 7, por grupo]
+        G[Anulaciones: POR ANULACION + factura<br/>mismo tipo y número que suman cero] --> G1[Anulada en PRESEA<br/>fuera de la conciliación]
+        G --> H[Directiva 1..N sobre lo pendiente]
+        H --> H1{¿Los dos lados tienen valor<br/>en todos los campos?}
+        H1 -- No --> H4[Esa directiva no la empareja]
+        H1 -- Sí --> H2{¿Misma clave en PRESEA<br/>todavía libre?}
+        H2 -- No --> H4
+        H2 -- Sí --> H3{¿Importes iguales<br/>al centavo?}
+        H3 -- Sí --> OK[Conciliado]
+        H3 -- No --> DIF[Diferencia de importe]
+        H4 --> H5{¿Quedan directivas?}
+        H5 -- Sí --> H
+        H5 -- No --> SA[Sólo ARCA / Sólo PRESEA<br/>minutas incluidas]
+    end
+
+    OK --> R
+    DIF --> R
+    SA --> R
+    G1 --> R
+    F --> R
+    R[Pestaña Conciliación:<br/>resumen por cuenta, filtro, colores] --> X{¿Exportar?}
+    X -- Sí --> X1[Excel: Detalle + Resumen]
+    X -- No --> Y
+    X1 --> Y{¿Cambia carpeta, mayor,<br/>directivas o perfil?}
+    Y -- Sí --> CAD
+    CAD --> CAD1[Pestaña vacía:<br/>Los datos cambiaron, volvé a conciliar] --> C
+    Y -- No --> Z([Fin])
+```
+
+## Resultado esperado con julio (simulación)
+
+`_fuente/simulacion-julio.py` aplica estas reglas en Python sobre los archivos de ejemplo; es la
+referencia para verificar la implementación:
+
+| Cuenta | Conciliados | Diferencias | Sólo ARCA | Sólo PRESEA | Anuladas |
+|---|---|---|---|---|---|
+| 114105 — Percepciones IVA | 1827 | 24 | 718 | 161 | 44 |
+| 114110 — Percepciones IIBB Santa Fe | 838 | 20 | 32 | 118 | 8 |
+
+Emparejados por directiva: 1 → 2530, 2 → 91, 3 → 88. Fuera de alcance: 392 (IIBB · Retención).
+
+## Pregunta abierta
+
+- La consulta provincial trae **notas de crédito con percepción 0** (6 en julio, todas de
+  PANIFICADORA VENEZIANA). PRESEA no las registra, así que quedarían como "Sólo ARCA" por $0.
+  Propuesta: excluirlas de la conciliación e informarlas junto al aviso de alcance.
+
+## Orden de implementación (segunda etapa)
+
+1. `CampoPyR` y `DirectivaPyR` con las 3 por defecto; `PerfilOfflinePyR.DirectivasConciliacion`
+   pasa a `List<DirectivaPyR>` (el storage no cambia, sólo el tipo).
+2. `FormDirectivasPyR` + `FormDirectivaPyRDetalle`; botón en Perfiles PyR. (Línea 6)
+3. `ConciliacionPyRService`: alcance, anulaciones, directivas, resultado. Probado con los
+   archivos de julio antes de tocar la pantalla. (Línea 7)
+4. Pestaña Conciliación, resumen, filtro, colores, caducidad del resultado; botones del pie. (Línea 7)
+5. `ConciliacionPyRExcelExporter` (ClosedXML, como `ConciliacionExcelExporter`). (Línea 7)

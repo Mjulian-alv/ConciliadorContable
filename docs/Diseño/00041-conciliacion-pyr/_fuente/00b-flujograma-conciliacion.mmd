@@ -1,0 +1,49 @@
+flowchart TD
+    A([Pantalla Conciliación PyR<br/>carpeta ARCA y mayores cargados]) --> B{¿Hay carpeta ARCA<br/>y al menos un mayor?}
+    B -- No --> B1[CONCILIAR deshabilitado]
+    B -- Sí --> DIR
+
+    subgraph DIRECTIVAS [Directivas - Línea 6]
+        DIR[Directivas... desde el pie o desde Perfiles PyR] --> D0{¿El perfil tiene directivas?}
+        D0 -- No --> D1[Crear las 3 por defecto:<br/>1 Número · 2 Últimos 8 + Importe<br/>3 Importe + Fecha + Proveedor]
+        D0 -- Sí --> D2[Lista ordenada, la 1 fija]
+        D1 --> D2
+        D2 --> D3[Agregar / Editar / Eliminar /<br/>Subir / Bajar / Restablecer]
+        D3 --> D4{¿La directiva tiene<br/>al menos un campo?}
+        D4 -- No --> D5[Error: elegí al menos un campo] --> D3
+        D4 -- Sí --> D6[Guardar en el perfil]
+        D6 --> CAD[El resultado anterior caduca]
+    end
+
+    B -- Sí --> C[CONCILIAR]
+    C --> E[Grupos impuesto + tipo<br/>de las cuentas con mayor cargado]
+    E --> F[ARCA fuera de esos grupos:<br/>se excluye y se informa la cantidad]
+    E --> G
+
+    subgraph CONCILIACION [Conciliación - Línea 7, por grupo]
+        G[Anulaciones: POR ANULACION + factura<br/>mismo tipo y número que suman cero] --> G1[Anulada en PRESEA<br/>fuera de la conciliación]
+        G --> H[Directiva 1..N sobre lo pendiente]
+        H --> H1{¿Los dos lados tienen valor<br/>en todos los campos?}
+        H1 -- No --> H4[Esa directiva no la empareja]
+        H1 -- Sí --> H2{¿Misma clave en PRESEA<br/>todavía libre?}
+        H2 -- No --> H4
+        H2 -- Sí --> H3{¿Importes iguales<br/>al centavo?}
+        H3 -- Sí --> OK[Conciliado]
+        H3 -- No --> DIF[Diferencia de importe]
+        H4 --> H5{¿Quedan directivas?}
+        H5 -- Sí --> H
+        H5 -- No --> SA[Sólo ARCA / Sólo PRESEA<br/>minutas incluidas]
+    end
+
+    OK --> R
+    DIF --> R
+    SA --> R
+    G1 --> R
+    F --> R
+    R[Pestaña Conciliación:<br/>resumen por cuenta, filtro, colores] --> X{¿Exportar?}
+    X -- Sí --> X1[Excel: Detalle + Resumen]
+    X -- No --> Y
+    X1 --> Y{¿Cambia carpeta, mayor,<br/>directivas o perfil?}
+    Y -- Sí --> CAD
+    CAD --> CAD1[Pestaña vacía:<br/>Los datos cambiaron, volvé a conciliar] --> C
+    Y -- No --> Z([Fin])
