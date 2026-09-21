@@ -97,6 +97,12 @@ namespace ArcaCliente
         public static void SavePerfilesOffline(List<PerfilOffline> perfiles) =>
             PerfilOfflineStorage.Save(perfiles);
 
+        // Fecha: 21/09/2026 - TAREA: 00041 - Linea: 2 - Perfiles de la conciliacion de percepciones y retenciones
+        public static List<PerfilOfflinePyR> PerfilesPyR => PerfilPyRStorage.Load();
+
+        public static void SavePerfilesPyR(List<PerfilOfflinePyR> perfiles) =>
+            PerfilPyRStorage.Save(perfiles);
+
         // ?? PRESEA: proveedores (mapa por CUIT) ???????????????????????????????????
 
         public static List<ConfigPreseaProveedor> PreseaProveedores =>

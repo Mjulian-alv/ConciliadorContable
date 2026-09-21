@@ -124,6 +124,10 @@ los escribe PRESEA.
 3. Un archivo no reconocido, o una fila con impuesto no reconocido, **no corta la carga**:
    se cuenta y se informa al final ("2 archivos cargados, 1 no reconocido: X.xls").
 4. Si la carpeta no existe o no tiene ningún archivo reconocible → error, no se carga nada.
+   *(Decisión tomada al implementar)* Un archivo con **contenido idéntico** a otro ya leído se
+   saltea y se informa ("es idéntico a X"): el portal provincial baja el reporte como
+   `Listado - <fecha>.xls`, y bajarlo dos veces duplicaba en silencio todos los importes de IIBB
+   (pasó con la carpeta de ejemplo el 18/09).
 5. Al cargar bien, `CarpetaArca` se guarda en el perfil (igual que hoy `CarpetaCsvArca`).
 6. Encabezados: se comparan normalizados (sin tildes, minúsculas, espacios colapsados),
    porque el xls de AFIP viene en Latin-1 ("Denominaci�n").

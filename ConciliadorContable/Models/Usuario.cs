@@ -34,7 +34,9 @@ namespace ConciliadorContable.Models
         {
             "ArcaOffline", "ArcaPerfiles", "ArcaEquivalencias",
             "AgrProcesador", "AgrHomologaciones", "AgrConciliacion", "AgrCuentasContables",
-            "AgrConciliacionInterna"
+            "AgrConciliacionInterna",
+            // Fecha: 21/09/2026 - TAREA: 00041 - Linea: 3, 4 - Modulo nuevo: conciliacion de percepciones y retenciones
+            "ArcaPyR"
         };
 
         public static readonly Dictionary<string, string> NombresModulos = new()
@@ -47,6 +49,7 @@ namespace ConciliadorContable.Models
             ["AgrConciliacion"]     = "Agrupador - Conciliación Externa",
             ["AgrCuentasContables"] = "Agrupador - Cuentas Contables",
             ["AgrConciliacionInterna"] = "Agrupador - Conciliación Interna",
+            ["ArcaPyR"]             = "ARCA - Percepciones y Retenciones",
         };
     }
 }

@@ -366,3 +366,17 @@ se incorpora una configuracion en la linea del csvreader para fijar el separador
 ### Pendiente 
 Hay que hacer una configuracion para que no sea fija. por ahora esta funcionando. 
 -
+## TAREA 00041 — 16/09/2026
+
+### Lo que se pidió
+
+> 1. Poder Conciliar con archivos de ARCA sacados de los sistemas de retenciones y perceciones
+para hacer esto vamos a hacer una copia del sistema de conciliacion de ARCA OffLine con directivas y archivos xlsx, xls como fuente de datos y archivo CSV
+de PRESEA.
+
+### Lo que se hizo
+**Línea 1** : Duplicar los modelos, servicios y formularios de ARCA OffLine 
+se incorpora una configuracion en la linea del csvreader para fijar el separador en punto y coma
+### Pendiente 
+Hay que hacer una configuracion para que no sea fija. por ahora esta funcionando. 
+-
