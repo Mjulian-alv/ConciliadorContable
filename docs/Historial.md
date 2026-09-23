@@ -474,3 +474,68 @@ el uso completo en la aplicación, que el usuario ya probó por su cuenta antes 
 - IIBB dejó 118 filas "Sólo PRESEA" de proveedores que no están en la consulta de Santa Fe
   (MASTELLONE, PONDESUR): puede ser que esa cuenta incluya percepciones de otras provincias.
 - El separador fijo del CSV de la TAREA 00039 sigue sin ser configurable (no es de esta tarea).
+
+## TAREA 00046 — 23/09/2026
+
+### Lo que se pidió
+
+> 1. Estaba haciendo unos cambios en la importación para agregar un campo operador, ya tengo todo
+>    hecho. También agregué campo nuevo en la tabla de perfiles.
+> 2. Tengo que cambiar el archivo y no me lee los encabezados
+>    (`presea\iibb202607.XLSX`; en la tabla el perfil está ajustado a lo que viene en el archivo).
+> 3. Se me desconfiguró la pantalla cuando entré en FormConciliacionPyR.
+
+Sin diseño previo: son ajustes sobre pantallas que ya existen, sin cambio de circuito.
+
+### Lo que se hizo
+
+**Línea 1** — El campo operador lo agregó el usuario a mano (modelo, perfil, grilla, storage y
+columna en el `CREATE TABLE`). Acá se completó con dos correcciones que impedían que funcionara:
+
+- `PreseaPyRImporter.LeerFila` buscaba la columna como `Valor("Operador")`, pero la clave del
+  diccionario es `"operador"`: lanzaba `KeyNotFoundException` en la primera fila, y ese tipo de
+  excepción no lo atrapa la pantalla, así que el error salía como cuelgue y no como aviso.
+- Faltaba el `ALTER TABLE`. El DDL del módulo crea las tablas sólo `IF OBJECT_ID(...) IS NULL`,
+  así que en una base donde el módulo ya se usó (la de producción, desde la TAREA 00041) la
+  columna `ColOperador` nunca se creaba y la lectura del perfil fallaba. Se agregó un `ALTER`
+  idempotente con `IF COL_LENGTH(...) IS NULL`.
+
+Por decisión del usuario el operador es **obligatorio**: si el perfil no lo mapea o el archivo no
+lo trae, el mayor se rechaza por columnas faltantes.
+
+**Línea 2** — El export nuevo de PRESEA tiene otro encabezado: `codigo, nombre, fecha, concepto,
+concepto_1, concepto_2, centro, debe, haber, fecha_comp, operador`. Dos diferencias que rompían la
+lectura: **no trae `asiento`**, que era obligatorio, y **`concepto` pasó a ser el nombre de la
+cuenta** ("PERCEPCIONES IIBB SANTA FE") mientras el concepto real, con tipo, número y proveedor,
+quedó en `concepto_1`. El asiento pasa a ser opcional (si el perfil lo deja vacío, el mayor se lee
+y la columna queda en blanco) y el resto se resuelve mapeando el perfil, sin tocar código. De
+paso, el archivo nuevo trae el **nombre completo del proveedor**, no cortado a 16 caracteres.
+
+**Línea 3** — La pantalla no se desconfiguró sola: al abrir `FormConciliacionPyR` en el diseñador
+de Visual Studio, el diseñador reescribió `FormConciliacionPyR.Designer.cs` y
+`FormPerfilPyRDetalle.Designer.cs` enteros y creó tres `.resx`. Lo concreto: el cuadro de la
+carpeta pasó de 426 a 1026 px y tapaba los botones, y la grilla de mayores de 544 a 600. Se
+restauraron los dos designer commiteados (los verificados contra las maquetas) y se repuso a mano
+el control del operador que el usuario había agregado desde el diseñador, en la misma posición.
+
+### Verificación
+
+- `iibb202607.XLSX` con el perfil ajustado: 984 filas, 0 sin comprobante, 4 anulaciones, operador
+  cargado en todas (OLOPEZ, CBONINO, JVALLEJO…), y la conciliación contra ARCA da los mismos
+  números que con el archivo viejo: 838 conciliados / 20 diferencias / 26 sólo ARCA / 118 sólo
+  PRESEA / 8 anuladas.
+- Capturas de las dos pantallas restauradas, con la columna y el campo Operador a la vista.
+- Los cinco casos de error de encabezados quedaron reproducidos en la consola de prueba (ver la
+  respuesta al usuario en el chat): con el mapeo viejo contra el archivo nuevo da "Faltan las
+  columnas asiento", y apuntando a `concepto` en vez de `concepto_1` se lee todo como filas sin
+  comprobante.
+
+### Pendiente
+
+- **Un perfil mapea las columnas de todos sus mayores.** Si el export de IVA sigue con el formato
+  viejo y el de IIBB pasa al nuevo, un mismo perfil no puede leer los dos: hoy hay que usar un
+  perfil por formato. Si los dos exports pasan al formato nuevo, el tema desaparece.
+- Los archivos del formato viejo ya no se pueden leer, porque el operador es obligatorio.
+- El archivo nuevo trae `codigo` y `nombre` de la cuenta: se podría preseleccionar sola la cuenta
+  al agregar el mayor, en vez de la primera libre. Quedó anotado, no implementado.
+
