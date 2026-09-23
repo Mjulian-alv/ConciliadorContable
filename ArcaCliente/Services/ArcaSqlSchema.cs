@@ -93,6 +93,26 @@ CREATE TABLE arca.PreseaMapeoColumnas (
     Entidad    NVARCHAR(100) NOT NULL CONSTRAINT PK_PreseaMapeoColumnas PRIMARY KEY,
     ConfigJson NVARCHAR(MAX) NOT NULL CONSTRAINT DF_PreseaMapeoColumnas_ConfigJson DEFAULT '{}'
 );
+
+-- Fecha: 21/09/2026 - TAREA: 00041 - Linea: 2 - Perfiles de la conciliacion de percepciones y retenciones
+-- Mismo patron que ArcaPerfilesOffline; las cuentas van en JSON igual que las directivas.
+IF OBJECT_ID(N'arca.ArcaPerfilesPyR', N'U') IS NULL
+CREATE TABLE arca.ArcaPerfilesPyR (
+    Id               NVARCHAR(36)  NOT NULL CONSTRAINT PK_ArcaPerfilesPyR PRIMARY KEY,
+    Nombre           NVARCHAR(200) NOT NULL CONSTRAINT DF_ArcaPerfilesPyR_Nombre DEFAULT '',
+    HojaExcel        NVARCHAR(200) NULL,
+    TieneCabecera    BIT           NOT NULL CONSTRAINT DF_ArcaPerfilesPyR_TieneCabecera DEFAULT 1,
+    ColFecha         NVARCHAR(100) NULL,
+    ColAsiento       NVARCHAR(100) NULL,
+    ColConcepto      NVARCHAR(100) NULL,
+    ColDebe          NVARCHAR(100) NULL,
+    ColHaber         NVARCHAR(100) NULL,
+    FormatoFecha     NVARCHAR(30)  NOT NULL CONSTRAINT DF_ArcaPerfilesPyR_FormatoFecha DEFAULT 'dd/MM/yyyy',
+    SeparadorDecimal NVARCHAR(5)   NOT NULL CONSTRAINT DF_ArcaPerfilesPyR_SeparadorDecimal DEFAULT '.',
+    CarpetaArca      NVARCHAR(500) NULL,
+    CuentasJson      NVARCHAR(MAX) NOT NULL CONSTRAINT DF_ArcaPerfilesPyR_CuentasJson DEFAULT '[]',
+    DirectivasJson   NVARCHAR(MAX) NOT NULL CONSTRAINT DF_ArcaPerfilesPyR_DirectivasJson DEFAULT '[]'
+);
 ";
     }
 }

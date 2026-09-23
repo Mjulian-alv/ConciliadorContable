@@ -1,0 +1,45 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><title>ARCA Cliente — Conciliación Percepciones y Retenciones</title>
+<style>
+*{box-sizing:border-box} body{margin:0;padding:18px;background:#dfe3e8;font:12px 'Segoe UI',Tahoma,sans-serif;color:#1e1e1e}
+.win{background:#f3f3f3;border:1px solid #7a8a99;box-shadow:0 4px 18px rgba(0,0,0,.25);display:inline-block;position:relative}
+.tb{background:linear-gradient(#2f6fb3,#255b95);color:#fff;padding:6px 10px;font-weight:600;display:flex;justify-content:space-between}
+.tb span.x{letter-spacing:10px;font-weight:400}
+.body{padding:12px}
+fieldset{border:1px solid #b9c3cd;margin:0 0 10px;padding:8px 10px 10px;background:#fafafa}
+legend{color:#255b95;font-weight:600;padding:0 4px}
+.row{display:flex;gap:10px;align-items:center;margin:4px 0}
+label{min-width:110px;color:#333}
+input,select{font:12px 'Segoe UI';border:1px solid #9aa7b4;background:#fff;padding:3px 5px;height:23px}
+input.err{border:2px solid #d13438;background:#fff4f4}
+.btn{display:inline-block;border:1px solid #8a99a8;background:linear-gradient(#fdfdfd,#e4e8ec);padding:4px 12px;border-radius:2px;min-width:78px;text-align:center}
+.btn.pri{background:linear-gradient(#3b82c9,#255b95);color:#fff;border-color:#1f4d7e;font-weight:600}
+.btn.dis{color:#9aa0a6;background:#eceef0;border-color:#c5cbd1}
+.btn.big{padding:8px 26px;font-weight:700}
+table.g{border-collapse:collapse;background:#fff;width:100%;border:1px solid #9aa7b4}
+table.g th{background:linear-gradient(#f4f6f8,#dde3e9);border:1px solid #b9c3cd;padding:4px 6px;text-align:left;font-weight:600;white-space:nowrap}
+table.g td{border:1px solid #e1e5ea;padding:3px 6px;white-space:nowrap}
+table.g tr.sel td{background:#cfe3f7}
+table.g tr.sin td{background:#fff3c4}
+table.g tr.dup td{background:#fde2e2;color:#8b1a1a}
+td.n{text-align:right;font-variant-numeric:tabular-nums}
+.empty{padding:26px;text-align:center;color:#7a8490;background:#fff;border:1px solid #9aa7b4;font-style:italic}
+.st{font-weight:600} .ok{color:#107c10} .warn{color:#a15c00} .bad{color:#c50f1f} .mut{color:#7a8490}
+.chip{display:inline-block;border:1px solid #b9c3cd;background:#fff;border-radius:10px;padding:1px 9px;margin-right:6px}
+.foot{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
+.msg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:430px;background:#fff;border:1px solid #6b7b8b;box-shadow:0 8px 30px rgba(0,0,0,.35)}
+.msg .c{padding:16px 18px;display:flex;gap:14px} .ico{font-size:30px;line-height:1}
+.msg .f{background:#f0f0f0;padding:8px;text-align:right}
+.shade{position:absolute;inset:0;background:rgba(255,255,255,.35)}
+.tabs{display:flex;gap:2px;margin-bottom:-1px} .tab{border:1px solid #b9c3cd;border-bottom:none;padding:4px 14px;background:#e4e8ec}
+.tab.on{background:#fff;font-weight:600}
+.hint{color:#5c6773;font-size:11px;margin-top:3px}
+</style></head><body><div class="win" style="width:1500px">
+<div class="tb"><span>ARCA Cliente — Conciliación Percepciones y Retenciones</span><span class="x">– ▢ ✕</span></div><div class="body"><div style="display:flex;gap:10px"><fieldset style="flex:1"><legend>ARCA — carpeta de certificados</legend>
+ <div class="row"><label style="min-width:55px">Carpeta:</label><input style="flex:1" value="D:\DESARROLLOS CONTABLE\CONCILIADOR\PERCEP Y RETEN\arca"><span class="btn" style="min-width:30px">…</span>
+ <span class="btn pri">Cargar carpeta</span></div>
+ <div class="row"><span class="st mut">Sin cargar</span></div><div class="row"></div></fieldset><fieldset style="flex:1"><legend>PRESEA — mayores por cuenta</legend>
+ <div style="display:flex;gap:8px"><div style="flex:1"><div class="empty" style="padding:14px">Todavía no se agregó ningún mayor.</div></div><div style="display:flex;flex-direction:column;gap:6px">
+ <span class="btn pri">Agregar…</span><span class="btn dis">Quitar</span></div></div>
+ <div class="row"><span class="st mut">Sin cargar</span></div></fieldset></div><div class="tabs"><span class="tab on">Registros ARCA</span></div><div class="empty">Cargá la carpeta de ARCA para ver los certificados.</div><div style="margin-top:10px"><div class="tabs"><span class="tab on">Mayor PRESEA</span></div><div class="empty">Agregá los mayores de PRESEA eligiendo a qué cuenta corresponde cada uno.</div></div><div class="row" style="justify-content:space-between;margin-top:10px">
+ <div class="row"><label style="min-width:0">Perfil:</label><select style="width:320px"><option>Supermercado — Percepciones y Retenciones</option></select></div>
+ <div class="row"><span class="mut">Directivas y conciliación: próxima etapa</span><span class="btn big dis">CONCILIAR</span></div></div></div></div></body></html>

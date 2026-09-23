@@ -25,6 +25,9 @@ namespace ConciliadorContable.Forms
             btnArcaOffline.Enabled         = u.TienePermiso("ArcaOffline");
             btnArcaPerfiles.Enabled        = u.TienePermiso("ArcaPerfiles");
             btnArcaEquivalencias.Enabled   = u.TienePermiso("ArcaEquivalencias");
+            // Fecha: 21/09/2026 - TAREA: 00041 - Linea: 3, 4 - Permiso de la conciliacion de percepciones y retenciones
+            btnArcaPyR.Enabled             = u.TienePermiso("ArcaPyR");
+            btnArcaPerfilesPyR.Enabled     = u.TienePermiso("ArcaPyR");
             btnAgrProcesador.Enabled       = u.TienePermiso("AgrProcesador");
             btnAgrHomologaciones.Enabled   = u.TienePermiso("AgrHomologaciones");
             btnAgrConciliacion.Enabled     = u.TienePermiso("AgrConciliacion");
@@ -49,6 +52,18 @@ namespace ConciliadorContable.Forms
 
         private void BtnArcaEquivalencias_Click(object sender, EventArgs e)
             => AbrirVentana(new ArcaCliente.FormEquivalencias());
+
+        // Fecha: 21/09/2026 - TAREA: 00041 - Linea: 3, 4 - Abrir la conciliacion de percepciones y retenciones (mismo circuito que Offline: elegir perfil y abrir)
+        private void BtnArcaPyR_Click(object sender, EventArgs e)
+        {
+            var selector = new ArcaCliente.FormPerfilesPyR();
+            if (selector.ShowDialog(this) != DialogResult.OK || selector.PerfilSeleccionado == null)
+                return;
+            AbrirVentana(new ArcaCliente.FormConciliacionPyR(selector.PerfilSeleccionado));
+        }
+
+        private void BtnArcaPerfilesPyR_Click(object sender, EventArgs e)
+            => AbrirVentana(new ArcaCliente.FormPerfilesPyR());
 
         // ── Agrupador
 

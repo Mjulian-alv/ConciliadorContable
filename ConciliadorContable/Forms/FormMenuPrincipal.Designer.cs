@@ -32,6 +32,9 @@ namespace ConciliadorContable.Forms
             btnArcaOffline = new RadButton();
             btnArcaPerfiles    = new RadButton();
             btnArcaEquivalencias = new RadButton();
+            // Fecha: 21/09/2026 - TAREA: 00041 - Linea: 3, 4 - Botones de la conciliacion de percepciones y retenciones
+            btnArcaPyR         = new RadButton();
+            btnArcaPerfilesPyR = new RadButton();
 
             // Tarjeta Agrupador
             pnlAgrupador       = new Panel();
@@ -60,6 +63,8 @@ namespace ConciliadorContable.Forms
             ((System.ComponentModel.ISupportInitialize)btnArcaOffline).BeginInit();
             ((System.ComponentModel.ISupportInitialize)btnArcaPerfiles).BeginInit();
             ((System.ComponentModel.ISupportInitialize)btnArcaEquivalencias).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)btnArcaPyR).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)btnArcaPerfilesPyR).BeginInit();
             pnlAgrupador.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)lblAgrTitulo).BeginInit();
             ((System.ComponentModel.ISupportInitialize)lblAgrDesc).BeginInit();
@@ -128,7 +133,7 @@ namespace ConciliadorContable.Forms
             pnlArca.Controls.AddRange(new System.Windows.Forms.Control[]
             {
                 lblArcaTitulo, lblArcaDesc,
-                btnArcaOffline, btnArcaPerfiles, btnArcaEquivalencias
+                btnArcaOffline, btnArcaPerfiles, btnArcaEquivalencias, btnArcaPyR, btnArcaPerfilesPyR
             });
 
             lblArcaTitulo.Text      = "📋  ARCA Cliente";
@@ -146,6 +151,9 @@ namespace ConciliadorContable.Forms
             ConfigurarBotonModulo(btnArcaOffline,       "Comprobantes Offline",    new System.Drawing.Point(16, 100), BtnArcaOffline_Click);
             ConfigurarBotonModulo(btnArcaPerfiles,      "Perfiles Offline",        new System.Drawing.Point(16, 160), BtnArcaPerfiles_Click);
             ConfigurarBotonModulo(btnArcaEquivalencias, "Equivalencias",           new System.Drawing.Point(16, 220), BtnArcaEquivalencias_Click);
+            // Fecha: 21/09/2026 - TAREA: 00041 - Linea: 3, 4 - Conciliacion de percepciones y retenciones y sus perfiles
+            ConfigurarBotonModulo(btnArcaPyR,           "Percepciones y Retenciones", new System.Drawing.Point(16, 280), BtnArcaPyR_Click);
+            ConfigurarBotonModulo(btnArcaPerfilesPyR,   "Perfiles PyR",            new System.Drawing.Point(16, 340), BtnArcaPerfilesPyR_Click);
 
             // ── pnlAgrupador
             pnlAgrupador.BackColor   = Color.White;
@@ -195,6 +203,8 @@ namespace ConciliadorContable.Forms
             ((System.ComponentModel.ISupportInitialize)btnArcaOffline).EndInit();
             ((System.ComponentModel.ISupportInitialize)btnArcaPerfiles).EndInit();
             ((System.ComponentModel.ISupportInitialize)btnArcaEquivalencias).EndInit();
+            ((System.ComponentModel.ISupportInitialize)btnArcaPyR).EndInit();
+            ((System.ComponentModel.ISupportInitialize)btnArcaPerfilesPyR).EndInit();
             pnlAgrupador.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)lblAgrTitulo).EndInit();
             ((System.ComponentModel.ISupportInitialize)lblAgrDesc).EndInit();
@@ -230,6 +240,8 @@ namespace ConciliadorContable.Forms
         private RadButton btnArcaOffline;
         private RadButton btnArcaPerfiles;
         private RadButton btnArcaEquivalencias;
+        private RadButton btnArcaPyR;
+        private RadButton btnArcaPerfilesPyR;
 
         private Panel     pnlAgrupador;
         private RadLabel  lblAgrTitulo;

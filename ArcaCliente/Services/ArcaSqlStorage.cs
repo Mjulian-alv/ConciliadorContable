@@ -160,6 +160,83 @@ namespace ArcaCliente.Services
             tx.Commit();
         }
 
+        // Fecha: 21/09/2026 - TAREA: 00041 - Linea: 2 - Perfiles de la conciliacion de percepciones y retenciones
+        // ── Perfiles PyR ──────────────────────────────────────────────────────────
+
+        public static List<PerfilOfflinePyR> LoadPerfilesPyR()
+        {
+            var list = new List<PerfilOfflinePyR>();
+            using var cn = Open();
+            using var cmd = cn.CreateCommand();
+            cmd.CommandText = "SELECT * FROM arca.ArcaPerfilesPyR ORDER BY Nombre";
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+            {
+                list.Add(new PerfilOfflinePyR
+                {
+                    Id               = Guid.Parse(r.GetString(r.GetOrdinal("Id"))),
+                    Nombre           = r.GetString(r.GetOrdinal("Nombre")),
+                    HojaExcel        = Str(r, "HojaExcel"),
+                    TieneCabecera    = r.GetBoolean(r.GetOrdinal("TieneCabecera")),
+                    ColFecha         = Str(r, "ColFecha"),
+                    ColAsiento       = Str(r, "ColAsiento"),
+                    ColConcepto      = Str(r, "ColConcepto"),
+                    ColDebe          = Str(r, "ColDebe"),
+                    ColHaber         = Str(r, "ColHaber"),
+                    FormatoFecha     = r.GetString(r.GetOrdinal("FormatoFecha")),
+                    SeparadorDecimal = r.GetString(r.GetOrdinal("SeparadorDecimal")),
+                    CarpetaArca      = Str(r, "CarpetaArca"),
+                    Cuentas          = Deserialize<List<CuentaPyR>>(Str(r, "CuentasJson")) ?? new(),
+                    // Fecha: 21/09/2026 - TAREA: 00041 - Linea: 6 - Directivas propias de PyR; sin ninguna, las 3 por defecto
+                    DirectivasConciliacion = Deserialize<List<DirectivaPyR>>(Str(r, "DirectivasJson")) is { Count: > 0 } dirs
+                        ? dirs : DirectivaPyR.CrearPredeterminadas()
+                });
+            }
+            return list;
+        }
+
+        // Mismo delete-all + reinsert (y el mismo riesgo de lost update) que SavePerfilesOffline.
+        public static void SavePerfilesPyR(List<PerfilOfflinePyR> perfiles)
+        {
+            using var cn = Open();
+            using var tx = cn.BeginTransaction();
+
+            Execute(cn, "DELETE FROM arca.ArcaPerfilesPyR", tx);
+
+            foreach (var p in perfiles)
+            {
+                using var cmd = cn.CreateCommand();
+                cmd.Transaction = tx;
+                cmd.CommandText = @"
+                    INSERT INTO arca.ArcaPerfilesPyR
+                        (Id, Nombre, HojaExcel, TieneCabecera,
+                         ColFecha, ColAsiento, ColConcepto, ColDebe, ColHaber,
+                         FormatoFecha, SeparadorDecimal, CarpetaArca, CuentasJson, DirectivasJson)
+                    VALUES
+                        (@Id, @Nombre, @HojaExcel, @TieneCabecera,
+                         @ColFecha, @ColAsiento, @ColConcepto, @ColDebe, @ColHaber,
+                         @FormatoFecha, @SeparadorDecimal, @CarpetaArca, @CuentasJson, @DirectivasJson)";
+
+                cmd.Parameters.AddWithValue("@Id",               p.Id.ToString());
+                cmd.Parameters.AddWithValue("@Nombre",           p.Nombre ?? "");
+                cmd.Parameters.AddWithValue("@HojaExcel",        (object?)p.HojaExcel ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@TieneCabecera",    p.TieneCabecera ? 1 : 0);
+                cmd.Parameters.AddWithValue("@ColFecha",         (object?)p.ColFecha ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ColAsiento",       (object?)p.ColAsiento ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ColConcepto",      (object?)p.ColConcepto ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ColDebe",          (object?)p.ColDebe ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ColHaber",         (object?)p.ColHaber ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@FormatoFecha",     p.FormatoFecha ?? "dd/MM/yyyy");
+                cmd.Parameters.AddWithValue("@SeparadorDecimal", p.SeparadorDecimal ?? ".");
+                cmd.Parameters.AddWithValue("@CarpetaArca",      (object?)p.CarpetaArca ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@CuentasJson",      JsonSerializer.Serialize(p.Cuentas ?? new(), JsonOpts));
+                cmd.Parameters.AddWithValue("@DirectivasJson",   JsonSerializer.Serialize(p.DirectivasConciliacion ?? new(), JsonOpts));
+                cmd.ExecuteNonQuery();
+            }
+
+            tx.Commit();
+        }
+
         // ── Perfiles Fiscales ─────────────────────────────────────────────────────
 
         public static List<PerfilFiscal> LoadPerfilesFiscales()

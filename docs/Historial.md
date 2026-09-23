@@ -366,3 +366,111 @@ se incorpora una configuracion en la linea del csvreader para fijar el separador
 ### Pendiente 
 Hay que hacer una configuracion para que no sea fija. por ahora esta funcionando. 
 -
+## TAREA 00041 — 16/09/2026 (líneas 2 a 7: 21/09/2026)
+
+### Lo que se pidió
+
+> 1. Poder Conciliar con archivos de ARCA sacados de los sistemas de retenciones y percepciones.
+>    Para hacer esto vamos a hacer una copia del sistema de conciliación de ARCA OffLine con
+>    directivas y archivos xlsx, xls como fuente de datos y archivo CSV de PRESEA.
+> 2. Tenemos que colocar en el perfil qué cuenta significa percepción y cuál retención.
+> 3. Hacer como con ARCA una carpeta donde vamos a tomar todo el contenido como base de datos.
+> 4. Levantar los archivos que van a contener las percepciones y las retenciones del sistema. A
+>    diferencia de ARCA, acá viene el tipo de comprobante y el documento en la misma casilla de
+>    concepto, una columna de debe y otra de haber.
+> 5. Que deje tomar dos archivos de PRESEA, uno por cada cuenta configurada.
+> 6. Directivas de conciliación.
+> 7. Conciliación. "Solo debe conciliar contra las cuentas subidas en el archivo de PRESEA. Por
+>    ejemplo en mi ejemplo solo tenemos percepciones."
+
+Diseño previo en `docs/Diseño/00041-conciliacion-pyr/`: guía, dos flujogramas y 14 maquetas.
+
+### Lo que se hizo
+
+**Línea 1** (hecha a mano por el usuario, antes de esta sesión): copia inicial de los modelos de
+ARCA Offline en `Models/Conciliacion PyR/`. Al implementar se reemplazó por `Models/PyR/`: se
+borró `PerfilFiscalPyR` (era el perfil online, con clave fiscal y API, que acá no se usa) y se
+sacó del `.csproj` una carpeta `<Folder>` que apuntaba a un directorio inexistente.
+
+**Línea 2** — `PerfilOfflinePyR` con una lista de `CuentaPyR` (código, nombre, percepción o
+retención, e impuesto IVA/IIBB/Ganancias), en la tabla nueva `arca.ArcaPerfilesPyR` (cuentas y
+directivas en JSON, como `ArcaPerfilesOffline`). Pantallas: lista de perfiles, detalle con la
+grilla de cuentas y diálogo de cuenta. El perfil quedó más chico que la copia: PRESEA exporta el
+mayor siempre en Excel, así que se sacaron tipo de archivo, separador, encoding y las posiciones
+`Pos*`; sin cabecera, las mismas casillas de columna se cargan con el número de columna.
+
+**Línea 3** — `ArcaPyRImporter` lee toda la carpeta de ARCA. **El formato se detecta por
+contenido, no por extensión**, porque los dos archivos vienen como `.xls` pero sólo uno lo es: el
+de IVA es un Excel binario (BIFF, que ClosedXML no abre — se agregó ExcelDataReader 3.8.0) y el de
+IIBB es una tabla HTML en UTF-8 sin BOM ni charset declarado (si se adivina el encoding se lee
+"RetenciÃ³n" y la operación deja de reconocerse). El número se normaliza igual de los dos lados
+(sólo dígitos, sin ceros a la izquierda). Un archivo no reconocido no corta la carga.
+
+**Línea 4** — `PreseaPyRImporter` levanta un mayor por cuenta, elegida al agregar el archivo. El
+concepto se separa con `^(SEGUN|POR ANULACION)\s+(tipo)\s+(número)(?:\s+de\s+(proveedor))?$`:
+la parte del proveedor es opcional porque **las anulaciones no la traen** (22 en julio), y con el
+patrón original habrían quedado como filas sin comprobante. Lo que no respeta el patrón (17
+minutas financieras en julio) se carga marcado y resaltado, no se descarta.
+
+**Línea 5** (pedida por el usuario después de probarlo) — el diálogo de elegir cuenta arranca en
+la primera cuenta **sin mayor cargado** y marca las que ya tienen archivo. Antes arrancaba siempre
+en la primera y el segundo archivo pedía reemplazar al primero.
+
+**Línea 6** — `DirectivaPyR` con cinco campos propios de PyR (número, número últimos 8 dígitos,
+importe, fecha, proveedor): el mayor de PRESEA no tiene CUIT ni punto de venta, así que las
+directivas de Offline no servían. Tres por defecto: número completo (fija), últimos 8 dígitos más
+importe, e importe más fecha más proveedor. La de los últimos 8 dígitos existe porque AFIP no
+siempre escribe el número como PRESEA (DREAMCO `166000442096` contra `16600442096`; ALIMENTOS
+SARANDI `315520`, sin punto de venta, contra `10200315520`). Se editan desde Perfiles PyR y desde
+la propia pantalla de conciliación.
+
+**Línea 7** — `ConciliacionPyRService`: alcance por las cuentas con mayor cargado (lo pedido: las
+392 retenciones de IIBB de ARCA quedan fuera y sólo se informan), exclusión de las filas de ARCA
+con importe 0 (6 notas de crédito de IIBB que PRESEA no registra; decisión del usuario),
+neutralización de las anulaciones que suman cero con su factura, y las directivas en orden con
+comparación de importe exacta al centavo. El resultado va en una pestaña nueva con resumen por
+cuenta, aviso de lo excluido, filtro por estado y colores; caduca solo si cambia la carpeta, un
+mayor, las directivas o el perfil. Exportación a Excel con hojas Detalle y Resumen.
+
+Entrada en el menú principal del shell (`FormMenuPrincipal`), no en el `FormMenu` de ArcaCliente,
+que no se instancia en ningún lado: dos botones ("Percepciones y Retenciones" y "Perfiles PyR")
+con el permiso nuevo `ArcaPyR`, que nadie tiene hasta que se lo otorguen.
+
+### Verificación
+
+Sin proyecto de tests (decisión del repo). Se verificó así:
+
+- **Importadores y servicio** contra los cuatro archivos reales de julio 2026, con una consola
+  descartable: ARCA 3851 registros; PRESEA IVA 2056 filas (17 sin comprobante, 22 anulaciones);
+  los números coinciden entre los dos lados en 1750 de 2039 filas de IVA y 901 de 984 de IIBB.
+- **Conciliación** contra `_fuente/simulacion-julio.py`, una simulación en Python de las reglas de
+  la guía escrita antes del código: **los números dieron idénticos** — IVA 1827 conciliados / 24
+  diferencias / 718 sólo ARCA / 161 sólo PRESEA / 44 anuladas; IIBB 838 / 20 / 26 / 118 / 8; por
+  directiva 2530, 91 y 88. Además, cada fila de ARCA y de PRESEA aparece exactamente una vez.
+- **Pantallas**, con capturas contra una base LocalDB descartable comparadas con las maquetas:
+  guardar y releer el perfil, estados vacío y de error, conciliar, filtrar, exportar (se abrió el
+  Excel generado) y la caducidad del resultado al quitar un mayor.
+- El servidor compartido (`192.168.7.51`) no se tocó en ningún momento.
+
+**Pendiente de prueba real**: los botones que abren diálogos (elegir archivo, guardar el Excel) y
+el uso completo en la aplicación, que el usuario ya probó por su cuenta antes del cierre.
+
+### Decisiones y desvíos
+
+- **Revisión de Codex salteada por decisión del usuario** ("podemos saltear la revisión porque es
+  lo que acabo de hacer"). La convención pide hasta 2 rondas; no se hizo ninguna y no hay archivos
+  en `docs/Revisiones/`. Queda anotado para que no parezca un paso olvidado.
+- **Flujograma y maquetas los hizo Claude, no Codex**, que estuvo sin cuota hasta el 23/09.
+- **Archivos repetidos en la carpeta de ARCA**: se saltean por contenido idéntico. El portal baja
+  el reporte como `Listado - <fecha>.xls`; bajarlo dos veces duplicaba en silencio todos los
+  importes de IIBB (pasó con la carpeta de ejemplo).
+- El combo de perfil de la pantalla permite cambiarlo y descarta lo cargado, con confirmación.
+- Una directiva sin campos se rechaza en su propio diálogo, no al aceptar la lista como mostraba
+  la maqueta `05-directivas-pyr-error`.
+
+### Pendiente
+
+- Al primer uso se crea la tabla `arca.ArcaPerfilesPyR` en el servidor compartido.
+- IIBB dejó 118 filas "Sólo PRESEA" de proveedores que no están en la consulta de Santa Fe
+  (MASTELLONE, PONDESUR): puede ser que esa cuenta incluya percepciones de otras provincias.
+- El separador fijo del CSV de la TAREA 00039 sigue sin ser configurable (no es de esta tarea).
