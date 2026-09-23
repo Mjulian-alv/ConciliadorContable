@@ -183,7 +183,8 @@ namespace ArcaCliente.Services
                     ColConcepto      = Str(r, "ColConcepto"),
                     ColDebe          = Str(r, "ColDebe"),
                     ColHaber         = Str(r, "ColHaber"),
-                    FormatoFecha     = r.GetString(r.GetOrdinal("FormatoFecha")),
+                    ColOperador      = Str(r, "ColOperador"),
+                    FormatoFecha = r.GetString(r.GetOrdinal("FormatoFecha")),
                     SeparadorDecimal = r.GetString(r.GetOrdinal("SeparadorDecimal")),
                     CarpetaArca      = Str(r, "CarpetaArca"),
                     Cuentas          = Deserialize<List<CuentaPyR>>(Str(r, "CuentasJson")) ?? new(),
@@ -210,11 +211,11 @@ namespace ArcaCliente.Services
                 cmd.CommandText = @"
                     INSERT INTO arca.ArcaPerfilesPyR
                         (Id, Nombre, HojaExcel, TieneCabecera,
-                         ColFecha, ColAsiento, ColConcepto, ColDebe, ColHaber,
+                         ColFecha, ColAsiento, ColConcepto, ColDebe, ColHaber, ColOperador,
                          FormatoFecha, SeparadorDecimal, CarpetaArca, CuentasJson, DirectivasJson)
                     VALUES
                         (@Id, @Nombre, @HojaExcel, @TieneCabecera,
-                         @ColFecha, @ColAsiento, @ColConcepto, @ColDebe, @ColHaber,
+                         @ColFecha, @ColAsiento, @ColConcepto, @ColDebe, @ColHaber, @ColOperador,
                          @FormatoFecha, @SeparadorDecimal, @CarpetaArca, @CuentasJson, @DirectivasJson)";
 
                 cmd.Parameters.AddWithValue("@Id",               p.Id.ToString());
@@ -226,6 +227,7 @@ namespace ArcaCliente.Services
                 cmd.Parameters.AddWithValue("@ColConcepto",      (object?)p.ColConcepto ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@ColDebe",          (object?)p.ColDebe ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@ColHaber",         (object?)p.ColHaber ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ColOperador",      (object?)p.ColOperador ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@FormatoFecha",     p.FormatoFecha ?? "dd/MM/yyyy");
                 cmd.Parameters.AddWithValue("@SeparadorDecimal", p.SeparadorDecimal ?? ".");
                 cmd.Parameters.AddWithValue("@CarpetaArca",      (object?)p.CarpetaArca ?? DBNull.Value);

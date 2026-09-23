@@ -371,7 +371,9 @@ namespace ArcaCliente
                     Texto(nameof(RegistroPreseaPyR.Proveedor),        "Proveedor",         150),
                     Texto(nameof(RegistroPreseaPyR.AnulacionTexto),   "Anul.",             45),
                     Importe(nameof(RegistroPreseaPyR.Importe)),
-                    Texto(nameof(RegistroPreseaPyR.ConceptoOriginal), "Concepto original", 330));
+                    Texto(nameof(RegistroPreseaPyR.ConceptoOriginal), "Concepto original", 330),
+                    Texto(nameof(RegistroPreseaPyR.Operador), "Operador", 100)
+                    );
 
             gridMayores.AutoGenerateColumns = false;
             gridMayores.Columns.AddRange(

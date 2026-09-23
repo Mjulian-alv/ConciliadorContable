@@ -41,6 +41,7 @@ namespace ArcaCliente.Models
         public string    Proveedor       => Presea == null ? null
                                           : Presea.SinComprobante ? Presea.ConceptoOriginal : Presea.Proveedor;
         public decimal?  ImportePresea   => Presea?.Importe;
+        public string Operador => Presea?.Operador;
 
         public static string NombreEstado(EstadoConciliacionPyR e) => e switch
         {

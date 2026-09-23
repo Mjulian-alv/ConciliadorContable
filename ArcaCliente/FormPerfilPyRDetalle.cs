@@ -76,6 +76,7 @@ namespace ArcaCliente
             txtColConcepto.Text = _perfil.ColConcepto ?? string.Empty;
             txtColDebe.Text     = _perfil.ColDebe     ?? string.Empty;
             txtColHaber.Text    = _perfil.ColHaber    ?? string.Empty;
+            txtOperador.Text    = _perfil.ColOperador ?? string.Empty;
 
             ActualizarTituloColumnas();
             ActualizarEstadoCuentas();
@@ -202,7 +203,7 @@ namespace ArcaCliente
             var columnas = new (string Nombre, RadTextBox Txt)[]
             {
                 ("Fecha", txtColFecha), ("Asiento", txtColAsiento), ("Concepto", txtColConcepto),
-                ("Debe", txtColDebe), ("Haber", txtColHaber)
+                ("Debe", txtColDebe), ("Haber", txtColHaber), ("operador", txtOperador)
             };
             foreach (var (nombre, txt) in columnas)
             {
@@ -252,6 +253,7 @@ namespace ArcaCliente
             _perfil.ColConcepto = txtColConcepto.Text.Trim();
             _perfil.ColDebe     = txtColDebe.Text.Trim();
             _perfil.ColHaber    = txtColHaber.Text.Trim();
+            _perfil.ColOperador = txtOperador.Text.Trim();
 
             _perfil.Cuentas = _cuentas.ToList();
         }

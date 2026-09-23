@@ -82,20 +82,29 @@ namespace ArcaCliente.Services
 
         // ── Columnas ─────────────────────────────────────────────────────────────
 
-        private static IEnumerable<(string Campo, string Valor)> Configuradas(PerfilOfflinePyR p) => new[]
+        // Fecha: 23/09/2026 - TAREA: 00046 - Linea: 1, 2 - Operador, y asiento opcional
+        // El export nuevo de PRESEA (iibb202607.XLSX) no trae asiento: si el perfil lo deja vacío,
+        // el mayor se lee igual y la columna Asiento queda en blanco. Los demás siguen siendo
+        // obligatorios, el operador incluido (decisión del usuario).
+        private static IEnumerable<(string Campo, string Valor, bool Opcional)> Configuradas(PerfilOfflinePyR p) => new[]
         {
-            ("fecha", p.ColFecha), ("asiento", p.ColAsiento), ("concepto", p.ColConcepto),
-            ("debe", p.ColDebe),   ("haber", p.ColHaber)
+            ("fecha", p.ColFecha, false), ("asiento", p.ColAsiento, true), ("concepto", p.ColConcepto, false),
+            ("debe", p.ColDebe, false),   ("haber", p.ColHaber, false),    ("operador", p.ColOperador, false)
         };
 
         private static Dictionary<string, int> ColumnasPorNombre(PerfilOfflinePyR perfil, List<string> encabezado)
         {
             var cols = new Dictionary<string, int>();
             var faltantes = new List<string>();
-            foreach (var (campo, valor) in Configuradas(perfil))
+            foreach (var (campo, valor, opcional) in Configuradas(perfil))
             {
-                int i = encabezado.IndexOf(TextParsingUtils.NormalizarEncabezado(valor ?? string.Empty));
-                if (string.IsNullOrWhiteSpace(valor) || i < 0) faltantes.Add(string.IsNullOrWhiteSpace(valor) ? campo : valor);
+                if (string.IsNullOrWhiteSpace(valor))
+                {
+                    if (!opcional) faltantes.Add(campo);
+                    continue;
+                }
+                int i = encabezado.IndexOf(TextParsingUtils.NormalizarEncabezado(valor));
+                if (i < 0) faltantes.Add(valor);
                 else cols[campo] = i;
             }
             if (faltantes.Count > 0) throw new ColumnasFaltantesException(faltantes);
@@ -106,8 +115,9 @@ namespace ArcaCliente.Services
         {
             var cols = new Dictionary<string, int>();
             var faltantes = new List<string>();
-            foreach (var (campo, valor) in Configuradas(perfil))
+            foreach (var (campo, valor, opcional) in Configuradas(perfil))
             {
+                if (string.IsNullOrWhiteSpace(valor) && opcional) continue;
                 if (int.TryParse(valor, out int pos) && pos >= 1) cols[campo] = pos - 1;
                 else faltantes.Add($"{campo} (número de columna inválido: \"{valor}\")");
             }
@@ -120,13 +130,15 @@ namespace ArcaCliente.Services
         private static RegistroPreseaPyR LeerFila(IExcelDataReader reader, Dictionary<string, int> cols,
             PerfilOfflinePyR perfil, CuentaPyR cuenta, string archivo)
         {
+            // Fecha: 23/09/2026 - TAREA: 00046 - Linea: 1, 2 - Columna ausente (asiento opcional) en vez de KeyNotFoundException
             object Valor(string campo) =>
-                cols[campo] < reader.FieldCount ? reader.GetValue(cols[campo]) : null;
+                cols.TryGetValue(campo, out int i) && i < reader.FieldCount ? reader.GetValue(i) : null;
 
             var fecha = ParsearFecha(Valor("fecha"), perfil.FormatoFecha);
             var debe  = ParsearImporte(Valor("debe"),  perfil.SeparadorDecimal);
             var haber = ParsearImporte(Valor("haber"), perfil.SeparadorDecimal);
-
+            // La clave del diccionario es "operador" en minúscula: con "Operador" reventaba al leer la primera fila.
+            var operador = Convert.ToString(Valor("operador"), CultureInfo.InvariantCulture)?.Trim();
             // Renglones en blanco y totales: sin fecha o sin debe ni haber.
             if (fecha == null || (debe == null && haber == null)) return null;
 
@@ -145,7 +157,8 @@ namespace ArcaCliente.Services
                 EsAnulacion      = parte?.EsAnulacion ?? false,
                 SinComprobante   = parte == null,
                 Importe          = (debe ?? 0m) - (haber ?? 0m),
-                ArchivoOrigen    = archivo
+                ArchivoOrigen    = archivo,
+                Operador         = operador
             };
         }
 

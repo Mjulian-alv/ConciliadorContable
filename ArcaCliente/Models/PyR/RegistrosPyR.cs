@@ -45,6 +45,8 @@ namespace ArcaCliente.Models
 
         public string CuentaNombre => Cuenta?.Nombre;
         public string AnulacionTexto => EsAnulacion ? "Sí" : string.Empty;
+
+        public string Operador {  get; set; }
     }
 
     /// <summary>Un mayor de PRESEA cargado en la pantalla, atado a una cuenta del perfil.</summary>

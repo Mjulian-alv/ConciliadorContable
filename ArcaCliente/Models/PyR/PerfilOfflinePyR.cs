@@ -27,6 +27,7 @@ namespace ArcaCliente.Models
         public string ColConcepto { get; set; } = "concepto";
         public string ColDebe     { get; set; } = "debe";
         public string ColHaber    { get; set; } = "haber";
+        public string ColOperador { get; set; } = "operador";
 
         /// <summary>Formato para fechas que vengan como texto. Ejemplo: "dd/MM/yyyy"</summary>
         public string FormatoFecha { get; set; } = "dd/MM/yyyy";

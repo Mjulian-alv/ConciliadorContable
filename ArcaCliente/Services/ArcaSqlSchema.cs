@@ -107,12 +107,19 @@ CREATE TABLE arca.ArcaPerfilesPyR (
     ColConcepto      NVARCHAR(100) NULL,
     ColDebe          NVARCHAR(100) NULL,
     ColHaber         NVARCHAR(100) NULL,
+    ColOperador      NVARCHAR(100) NULL,
     FormatoFecha     NVARCHAR(30)  NOT NULL CONSTRAINT DF_ArcaPerfilesPyR_FormatoFecha DEFAULT 'dd/MM/yyyy',
     SeparadorDecimal NVARCHAR(5)   NOT NULL CONSTRAINT DF_ArcaPerfilesPyR_SeparadorDecimal DEFAULT '.',
     CarpetaArca      NVARCHAR(500) NULL,
     CuentasJson      NVARCHAR(MAX) NOT NULL CONSTRAINT DF_ArcaPerfilesPyR_CuentasJson DEFAULT '[]',
     DirectivasJson   NVARCHAR(MAX) NOT NULL CONSTRAINT DF_ArcaPerfilesPyR_DirectivasJson DEFAULT '[]'
 );
+
+-- Fecha: 23/09/2026 - TAREA: 00046 - Linea: 1 - Columna del operador en bases que ya tienen la tabla
+-- El CREATE de arriba solo corre si la tabla no existe: en una base donde ya se uso el modulo,
+-- la columna nueva solo aparece con este ALTER.
+IF COL_LENGTH(N'arca.ArcaPerfilesPyR', N'ColOperador') IS NULL
+    ALTER TABLE arca.ArcaPerfilesPyR ADD ColOperador NVARCHAR(100) NULL;
 ";
     }
 }

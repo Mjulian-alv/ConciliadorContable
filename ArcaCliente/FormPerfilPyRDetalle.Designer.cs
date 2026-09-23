@@ -37,6 +37,9 @@ namespace ArcaCliente
             txtColDebe         = new Telerik.WinControls.UI.RadTextBox();
             lblColHaber        = new Telerik.WinControls.UI.RadLabel();
             txtColHaber        = new Telerik.WinControls.UI.RadTextBox();
+            // Fecha: 23/09/2026 - TAREA: 00046 - Linea: 1 - Columna del operador del mayor
+            lblOperador        = new Telerik.WinControls.UI.RadLabel();
+            txtOperador        = new Telerik.WinControls.UI.RadTextBox();
             lblAyudaConcepto   = new Telerik.WinControls.UI.RadLabel();
             grpCuentas         = new System.Windows.Forms.GroupBox();
             gridCuentas        = new Telerik.WinControls.UI.RadGridView();
@@ -136,6 +139,12 @@ namespace ArcaCliente
             txtColDebe.Size     = new System.Drawing.Size(150, 24);
             txtColDebe.TabIndex = 3;
 
+            lblOperador.Location = new System.Drawing.Point(514, 27);
+            lblOperador.Text     = "Operador:";
+            txtOperador.Location = new System.Drawing.Point(580, 24);
+            txtOperador.Size     = new System.Drawing.Size(140, 24);
+            txtOperador.TabIndex = 5;
+
             lblColHaber.Location = new System.Drawing.Point(528, 57);
             lblColHaber.Text     = "Haber:";
             txtColHaber.Location = new System.Drawing.Point(580, 54);
@@ -149,7 +158,7 @@ namespace ArcaCliente
             grpColumnas.Controls.AddRange(new System.Windows.Forms.Control[]
             {
                 lblColFecha, txtColFecha, lblColAsiento, txtColAsiento, lblColConcepto, txtColConcepto,
-                lblColDebe, txtColDebe, lblColHaber, txtColHaber, lblAyudaConcepto
+                lblColDebe, txtColDebe, lblColHaber, txtColHaber, lblOperador, txtOperador, lblAyudaConcepto
             });
 
             // ── grpCuentas ───────────────────────────────────────────────────────
@@ -266,6 +275,8 @@ namespace ArcaCliente
         private Telerik.WinControls.UI.RadTextBox      txtColDebe;
         private Telerik.WinControls.UI.RadLabel        lblColHaber;
         private Telerik.WinControls.UI.RadTextBox      txtColHaber;
+        private Telerik.WinControls.UI.RadLabel        lblOperador;
+        private Telerik.WinControls.UI.RadTextBox      txtOperador;
         private Telerik.WinControls.UI.RadLabel        lblAyudaConcepto;
         private System.Windows.Forms.GroupBox          grpCuentas;
         private Telerik.WinControls.UI.RadGridView     gridCuentas;
