@@ -550,20 +550,23 @@ el control del operador que el usuario había agregado desde el diseñador, en l
 1. Analizar conciliación contra ARCA con filtro por lista de CUIT asociado al perfil.
 2. Analizar conciliación contra comprobantes pendientes de un proveedor, con formato de archivo
    guardado por CUIT. El usuario pidió actuar como analista y no modificar código.
+3. Reservar el número de tarea y registrar el resultado en el historial.
+4. Preparar un archivo resumido para enviar al cliente por correo.
+5. Diseñar las pantallas como propuesta visual.
 
 ### Documentación elaborada
 
 Especificación: [Conciliación ARCA por CUIT y proveedor](superpowers/specs/2026-10-05-conciliacion-arca-cuits-proveedor-design.md).
 
-Consolida 20 decisiones del taller: modalidades excluyentes en el perfil, reemplazo de la
+Consolida 21 decisiones del taller: modalidades excluyentes en el perfil, reemplazo de la
 lista CUIT, formato único por proveedor, CUIT agregado desde el contexto, importe sin
 interpretación de deuda, previsualización de solo lectura, equivalencias al catálogo existente
 con confirmación inicial, bloqueo total por errores y exportación de resultados sin PRESEA
 en modalidad proveedor. Mantiene directivas y fechas actuales.
 
-Incluye circuitos, modelo de información propuesto, impacto localizado y 30 criterios de
-aceptación futuros. Las propuestas P01–P06 y P08–P09 se distinguen de las decisiones confirmadas;
-el tratamiento de signos P07 fue confirmado como D20. Estado: **para revisión**, no aprobado
+Incluye circuitos, modelo de información propuesto, impacto localizado y 33 criterios de
+aceptación futuros. Las propuestas P01–P04, P06 y P08–P09 se distinguen de las decisiones confirmadas;
+los signos P07 y las exclusiones P05 fueron confirmados como D20/D21. Estado: **para revisión**, no aprobado
 para implementación. No se creó un plan de implementación.
 
 <!-- Fecha: 05/10/2026 - TAREA: 00063 - Linea: 2 - Se registra la confirmación puntual de signos sin extenderla al resto de las propuestas. -->
@@ -571,14 +574,35 @@ Actualización del taller: el usuario confirmó comparar la magnitud del importe
 signo del resumen por tipo (FC/ND positivo, NC negativo), conservando el valor original en
 la previsualización. Se actualizó la especificación y el criterio A27; no se modificó código.
 
+<!-- Fecha: 05/10/2026 - TAREA: 00063 - Linea: 2 - Se registra la exclusión por tipo confirmada sin permitir que se omitan errores fiscales individuales. -->
+El usuario confirmó excluir pagos, recibos y movimientos ajenos al alcance mediante una
+clasificación por tipo y CUIT. La previsualización los identifica y cuenta; las decisiones
+confirmadas se reutilizan. Un tipo desconocido sigue bloqueando hasta clasificarlo.
+
+<!-- Fecha: 05/10/2026 - TAREA: 00063 - Linea: 4 - El archivo para correo resume el alcance sin incluir propuestas técnicas todavía no confirmadas. -->
+**Resumen para cliente:** [PDF de una página](../output/pdf/TAREA-00063-resumen-cliente.pdf),
+con [texto editable](Diseno/00063-conciliaciones/resumen-cliente.md). Preparado para adjuntar;
+no se envió ningún correo.
+
+<!-- Fecha: 05/10/2026 - TAREA: 00063 - Linea: 5 - Las maquetas permiten revisar estados e interacciones sin modificar formularios de producción. -->
+**Diseño:** [maqueta navegable](Diseno/00063-conciliaciones/pantallas.html) y
+[guía de pantallas](Diseno/00063-conciliaciones/guia-pantallas.md). Siete pantallas de escritorio:
+perfil, lista CUIT, selección de proveedor, archivo/formato, tipos/exclusiones,
+previsualización y resultado. Incluye ejemplos de bloqueo y carga válida, sin acceso a SQL.
+
 ### Verificación y límites
 
 Revisión de código y coherencia documental únicamente. Se identificaron el filtro de fechas
 previo al motor, el tratamiento actual de signos, la normalización de tipos del modo offline,
 las etiquetas ARCA en los exportadores y el riesgo del guardado de perfiles mediante borrado
 completo al incorporar relaciones hijas. No se modificó ninguno de esos comportamientos.
-No se consultó la base, no se ejecutaron pruebas funcionales ni se procesaron archivos reales.
+No se consultó la base, no se ejecutaron pruebas funcionales de la aplicación ni se procesaron archivos reales.
 Los cambios de código que ya estaban presentes en el directorio quedaron fuera de esta tarea.
+
+Se verificó el PDF mediante render y revisión visual de su única página. Se recorrieron las
+siete maquetas en navegador: modalidad, clasificación y exclusiones, bloqueo por tipo o fecha,
+corrección del formato, carga válida, filtro del resultado y reemplazo de la lista. Sin errores
+de ejecución ni desbordes horizontales de página en 768, 850, 1280 y 1536 píxeles.
 
 ### Correlativo
 

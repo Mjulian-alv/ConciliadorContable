@@ -12,6 +12,9 @@ propuestas del analista que requieren revisión. No se elaboró un plan de imple
    antes de conciliar.
 2. Incorporar la modalidad contra cuenta corriente de proveedor: seleccionar su CUIT, importar
    su archivo mediante un formato guardado por proveedor y reutilizar el motor de conciliación.
+3. Reservar el número de tarea y registrar el análisis y sus entregables en el historial.
+4. Preparar un archivo resumido para enviar al cliente por correo.
+5. Diseñar las pantallas sin implementar cambios en la aplicación.
 
 El resultado esperado es comparar comprobantes fiscales y sus importes, informar coincidencias,
 diferencias y registros presentes en una sola fuente. Aunque el proveedor entregue su cuenta
@@ -41,6 +44,7 @@ corriente pendiente, no se concilian pagos ni se calcula deuda.
 | D18 | Las directivas y el tratamiento de fechas conservan su funcionamiento; no se agrega un criterio especial por tratarse de pendientes. |
 | D19 | En modalidad proveedor se exportan resultados, pero no se envían comprobantes a PRESEA. |
 | D20 | Se compara la magnitud del importe de FC, NC y ND; el resumen asigna el signo por tipo. El valor original se conserva en la previsualización. |
+| D21 | Pagos, recibos y otros movimientos ajenos al alcance se clasifican como «Excluir de la conciliación». La clasificación se guarda por proveedor, se cuentan las filas excluidas y los tipos desconocidos siguen bloqueando hasta clasificarse. |
 
 ## 3. Límites funcionales
 
@@ -184,7 +188,7 @@ La previsualización agrupa los valores distintos de la columna de tipo y muestr
 |---|---|
 | Valor de origen | Texto tal como vino en el archivo. |
 | Cantidad | Número de registros que utilizan ese valor. |
-| Tipo destino | Código y descripción del catálogo existente. |
+| Tratamiento | Código y descripción del catálogo existente, o «Excluir de la conciliación». |
 | Estado | Confirmado, Sugerido o Sin resolver. |
 
 La detección aplica primero equivalencias guardadas. Para valores nuevos propone coincidencias
@@ -196,11 +200,18 @@ Toda sugerencia nueva exige confirmación. Confirmarla guarda la equivalencia au
 y actualiza todas las filas afectadas. Si no hay coincidencia única, se selecciona manualmente
 un tipo del catálogo. No se deduce el tipo a partir del signo del importe.
 
-Solo FC, NC y ND integran el alcance. **Propuesta P05:** si aparece otro movimiento dentro del
-rango de datos, señalarlo como fuera de alcance y bloquear la importación, sin descartarlo
-silenciosamente ni convertirlo a factura. Debe cargarse un archivo/rango que contenga los
-comprobantes admitidos. La propuesta evita incorporar una función de exclusión individual
-que no se pidió; requiere revisión si los archivos reales mezclan movimientos.
+<!-- Fecha: 05/10/2026 - TAREA: 00063 - Linea: 2 - La exclusión confirmada por tipo permite leer reportes mixtos sin confundir movimientos ajenos al alcance con errores fiscales. -->
+Solo FC, NC y ND integran el alcance. **Decisión D21 (antes P05):** pagos, recibos y otros
+movimientos ajenos al alcance pueden clasificarse como «Excluir de la conciliación» en la
+tabla de equivalencias. Se confirma una sola vez por valor de tipo y CUIT, se guarda
+automáticamente y se aplica en futuras importaciones.
+
+Las filas excluidas se muestran en la previsualización con su motivo y cantidad, pero no
+ingresan al motor ni a sus totales. No son registros erróneos ni producen resultados
+«Solo proveedor». La clasificación se realiza antes de validar los campos fiscales: un
+recibo excluido no requiere un punto de venta fiscal. Un tipo desconocido no se excluye
+por descarte; bloquea hasta que el usuario le asigne un tipo fiscal o confirme su exclusión.
+No se ofrece exclusión por fila individual para eludir un error de un comprobante fiscal.
 
 ### 6.5 Previsualización y guardado automático
 
@@ -209,8 +220,8 @@ solo lectura. Solo son editables los controles de formato y la tabla de equivale
 
 Debe poder consultarse el archivo completo mediante navegación; una muestra visual no
 sustituye la validación de todas sus filas. Cada error identifica archivo, hoja si corresponde,
-fila original, campo, valor leído y motivo. Se muestran cantidades de registros válidos y
-con error. «Importar» permanece deshabilitado mientras haya errores, tipos sin resolver o
+fila original, campo, valor leído y motivo. Se muestran cantidades de registros válidos,
+excluidos por tipo y con error. «Importar» permanece deshabilitado mientras haya errores, tipos sin resolver o
 una validación en curso.
 
 Al modificar el formato se invalida la validación anterior y se recalcula la previsualización.
@@ -234,7 +245,7 @@ una importación anterior por una colección parcial.
 |---|---|
 | Falta una columna obligatoria o no existe la hoja | Corregir la configuración o elegir el archivo correcto. |
 | Tipo nuevo sugerido o sin equivalencia | Confirmar o seleccionar su tipo de catálogo. |
-| Fecha/importe ilegible | Ajustar formato; si el dato es incorrecto, corregir el archivo fuera de la aplicación. |
+| Fecha/importe ilegible en comprobante incluido | Ajustar formato; si el dato es incorrecto, corregir el archivo fuera de la aplicación. |
 | Punto de venta/número no extraíble | Corregir columnas o regla de separación. |
 | Campo obligatorio vacío | Corregir el archivo de origen; no completar valores en la grilla. |
 | Archivo sin comprobantes | Informar y no importar. |
@@ -306,7 +317,7 @@ Los nombres siguientes son orientativos de diseño. No constituyen un script de 
 | Perfil offline existente | Id del perfil | Modalidad y opción de filtro CUIT, además de sus campos actuales. |
 | Lista CUIT del perfil | Perfil + CUIT normalizado | Un CUIT por fila, sin duplicados dentro del perfil. |
 | Formato de proveedor | CUIT normalizado | Un único formato actual, opciones de lectura y extracción; descripción opcional. |
-| Equivalencia de proveedor | CUIT + valor de tipo normalizado | Tipo del catálogo existente y valor de origen para mostrar. Solo confirmadas. |
+| Equivalencia de proveedor | CUIT + valor de tipo normalizado | Acción «Conciliar» con tipo del catálogo, o «Excluir» sin tipo fiscal destino; valor de origen para mostrar. Solo confirmadas. |
 
 Como propuesta física, las nuevas relaciones pueden vivir en `arca.ArcaPerfilesOfflineCuits`,
 `arca.ArcaFormatosProveedor` y `arca.ArcaTiposProveedor`. Las equivalencias del proveedor no
@@ -362,8 +373,8 @@ host que referencie la DLL, sin una inicialización especial a cargo del shell.
 ## 11. Criterios de aceptación
 
 Estos casos describen la verificación de la futura implementación; no son pruebas ejecutadas.
-Los casos de propuestas P01–P06 y P08–P09 quedan sujetos a su revisión. El criterio de signos
-antes denominado P07 ya está confirmado como D20.
+Los casos de propuestas P01–P04, P06 y P08–P09 quedan sujetos a su revisión. Los criterios
+de signos y exclusión, antes P07/P05, están confirmados como D20/D21.
 
 | ID | Caso | Resultado esperado |
 |---|---|---|
@@ -397,14 +408,17 @@ antes denominado P07 ya está confirmado como D20.
 | A28 | Error de guardado o actualización concurrente | No informa guardado exitoso ni deja configuración/lista parcial. |
 | A29 | Abrir el módulo desde otro host y desde el shell | Ambos inicializan las estructuras necesarias sin pasos especiales. |
 | A30 | Repetir inicialización con perfiles existentes | No se pierden perfiles, directivas, listas ni formatos. |
+| A31 | Reporte mixto con REC/PAGO clasificados para excluir | Se cuentan y muestran como excluidos; no exigen campos fiscales ni participan en importación, conciliación o totales. |
+| A32 | Tipo desconocido en reporte mixto | Bloquea hasta confirmar tipo fiscal o exclusión; no se excluye silenciosamente. |
+| A33 | Reimportar otro archivo del mismo CUIT con REC/PAGO ya clasificados | Reutiliza automáticamente sus exclusiones y muestra la nueva cantidad excluida. |
 
 ## 12. Revisión solicitada y cierre de esta etapa
 
-Las decisiones D01–D20 recogen lo acordado. El tratamiento de signos, antes P07, quedó
-confirmado como D20. Las propuestas P01–P06 y P08–P09 completan aspectos de operación y diseño
-que no se aprobaron individualmente. Entre ellas deben revisarse los límites de formatos
-y el tratamiento de movimientos fuera de alcance de P04/P05. La confirmación de D20 no
-constituye aprobación general de estas propuestas ni autorización para programar.
+Las decisiones D01–D21 recogen lo acordado. Los signos y las exclusiones, antes P07/P05,
+quedaron confirmados como D20/D21. Las propuestas P01–P04, P06 y P08–P09 completan aspectos
+de operación y diseño que no se aprobaron individualmente, entre ellos los límites de
+formatos. Las confirmaciones puntuales no constituyen aprobación general de esas propuestas
+ni autorización para programar. El usuario sí solicitó las maquetas y el resumen para cliente.
 
 La revisión del código fue de solo lectura. No se cargaron archivos reales de proveedores,
 no se consultó la base y no se ejecutó una conciliación. Los formatos propuestos deben
@@ -412,3 +426,22 @@ contrastarse con ejemplos representativos antes de cerrar el alcance de implemen
 
 El entregable de esta etapa es esta especificación para revisión. No se inicia programación
 ni se considera aprobada la especificación por el solo hecho de guardarla o versionarla.
+
+<!-- Fecha: 05/10/2026 - TAREA: 00063 - Linea: 4 - El resumen comunica al cliente solo el alcance confirmado, sin presentar el desarrollo como realizado. -->
+<!-- Fecha: 05/10/2026 - TAREA: 00063 - Linea: 5 - Las pantallas son un artefacto de revisión separado de la aplicación. -->
+## 13. Resumen para cliente y diseño de pantallas
+
+La TAREA 00063 se encuentra reservada en el registro global y anotada en `docs/Historial.md`.
+Se mantiene el mismo número para el análisis y estos entregables; no se reserva otro número
+para una futura implementación que todavía no fue solicitada.
+
+- [Resumen para enviar al cliente en PDF](../../../output/pdf/TAREA-00063-resumen-cliente.pdf):
+  una página con las modalidades, previsualización, tipos y exclusiones, resultados y límites.
+- [Maqueta navegable de siete pantallas](../../Diseno/00063-conciliaciones/pantallas.html):
+  incluye modalidades, lista CUIT, selección de proveedor, formato, equivalencias/exclusiones,
+  validación bloqueada/válida y resultado.
+- [Guía de pantallas y recorridos](../../Diseno/00063-conciliaciones/guia-pantallas.md):
+  explica qué simula la maqueta y cómo revisar cada caso.
+
+La distribución visual es una propuesta para revisión. Los ejemplos son ficticios; no se
+procesan datos del cliente. El resumen está listo para adjuntar a un correo, pero no se envió.
