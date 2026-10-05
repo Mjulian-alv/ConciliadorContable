@@ -539,3 +539,43 @@ el control del operador que el usuario había agregado desde el diseñador, en l
 - El archivo nuevo trae `codigo` y `nombre` de la cuenta: se podría preseleccionar sola la cuenta
   al agregar el mayor, en vez de la primera libre. Quedó anotado, no implementado.
 
+
+
+<!-- Fecha: 05/10/2026 - TAREA: 00063 - Linea: 1 - Se registra el análisis del filtro por lista de CUIT sin implementar cambios. -->
+<!-- Fecha: 05/10/2026 - TAREA: 00063 - Linea: 2 - Se registra el diseño de importación de proveedor y se distinguen los acuerdos de las propuestas para revisión. -->
+## TAREA 00063 — 05/10/2026
+
+### Pedido
+
+1. Analizar conciliación contra ARCA con filtro por lista de CUIT asociado al perfil.
+2. Analizar conciliación contra comprobantes pendientes de un proveedor, con formato de archivo
+   guardado por CUIT. El usuario pidió actuar como analista y no modificar código.
+
+### Documentación elaborada
+
+Especificación: [Conciliación ARCA por CUIT y proveedor](superpowers/specs/2026-10-05-conciliacion-arca-cuits-proveedor-design.md).
+
+Consolida 19 decisiones del taller: modalidades excluyentes en el perfil, reemplazo de la
+lista CUIT, formato único por proveedor, CUIT agregado desde el contexto, importe sin
+interpretación de deuda, previsualización de solo lectura, equivalencias al catálogo existente
+con confirmación inicial, bloqueo total por errores y exportación de resultados sin PRESEA
+en modalidad proveedor. Mantiene directivas y fechas actuales.
+
+Incluye circuitos, modelo de información propuesto, impacto localizado y 30 criterios de
+aceptación futuros. Las propuestas P01–P09 se distinguen de las decisiones confirmadas;
+el tratamiento de signos P07 requiere revisión expresa. Estado: **para revisión**, no aprobado
+para implementación. No se creó un plan de implementación.
+
+### Verificación y límites
+
+Revisión de código y coherencia documental únicamente. Se identificaron el filtro de fechas
+previo al motor, el tratamiento actual de signos, la normalización de tipos del modo offline,
+las etiquetas ARCA en los exportadores y el riesgo del guardado de perfiles mediante borrado
+completo al incorporar relaciones hijas. No se modificó ninguno de esos comportamientos.
+No se consultó la base, no se ejecutaron pruebas funcionales ni se procesaron archivos reales.
+Los cambios de código que ya estaban presentes en el directorio quedaron fuera de esta tarea.
+
+### Correlativo
+
+`~/.codex/TAREAS.md` no existía. El registro histórico `~/.claude/TAREAS.md` llegaba a 00062;
+se registró 00063 allí y en la ruta requerida por AGENTS.md, dejando documentada la continuidad.
