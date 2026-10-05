@@ -15,6 +15,9 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
+    <!-- Fecha: 05/10/2026 - TAREA: 00064 - Linea: 1 - El motor pertenece al ensamblado común para evitar dos implementaciones. -->
+    <Compile Remove="Models/**/*.cs;Services/**/*.cs;AppServices.cs" />
+    <ProjectReference Include="../ArcaCliente.Core/ArcaCliente.Core.csproj" />
     <ProjectReference Include="..\Conciliador.Comun\Conciliador.Comun.csproj" />
   </ItemGroup>
   <ProjectExtensions>

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Fecha: 05/10/2026 - TAREA: 00064 - Linea: 1 - Ambos hosts compilan una sola implementación de los servicios existentes. -->
+  <PropertyGroup><TargetFramework>net8.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><NoWarn>$(NoWarn);CS8632;CS8618;CS8600;CS8601;CS8602;CS8603;CS8604;CS8625</NoWarn></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../ArcaCliente/Models/**/*.cs" Link="Models/%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="../ArcaCliente/Services/**/*.cs" Link="Services/%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="../ArcaCliente/AppServices.cs" Link="AppServices.cs" />
+    <ProjectReference Include="../Conciliador.Comun/Conciliador.Comun.csproj" />
+    <PackageReference Include="ClosedXML" Version="0.105.0" />
+    <PackageReference Include="ExcelDataReader" Version="3.8.0" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.2" />
+    <PackageReference Include="Dapper" Version="2.1.35" />
+  </ItemGroup>
+</Project>
