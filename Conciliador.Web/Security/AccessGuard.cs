@@ -13,4 +13,3 @@ public sealed class AccessGuard(AuthenticationStateProvider authentication,UserS
         if(user==null||!user.Allows(permission))throw new UnauthorizedAccessException("Tu usuario no tiene permiso para esta operación.");
     }
 }
-

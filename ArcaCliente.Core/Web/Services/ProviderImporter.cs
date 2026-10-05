@@ -9,16 +9,16 @@ public static class FiscalCatalog
 {
     public static IReadOnlyDictionary<string,string> All { get; } = TablaComprobanteDescripcionMapper.ObtenerTodosLosCodigos()
         .Select(x=>new KeyValuePair<string,string>(x,TablaComprobanteDescripcionMapper.ObtenerDescripcion(x)))
-        .Where(x=>x.Value.StartsWith("FACTURA")||x.Value.StartsWith("NOTA DE CREDITO")||x.Value.StartsWith("NOTA DE DEBITO")||x.Value.StartsWith("NOTAS DE CREDITO")||x.Value.StartsWith("NOTAS DE DEBITO"))
+        .Where(x=>x.Value.StartsWith("FACTURA")||x.Value.StartsWith("NOTA DE CREDITO")||x.Value.StartsWith("NOTA DE DEBITO")||x.Value.StartsWith("NOTAS DE CREDITO")||x.Value.StartsWith("NOTAS DE DEBITO")||x.Value.StartsWith("TIQUE FACTURA")||x.Value.StartsWith("TIQUE NOTA DE CREDITO")||x.Value.StartsWith("TIQUE NOTA DE DEBITO"))
         .ToDictionary(x=>x.Key,x=>x.Value);
     public static string Normalize(string s)=>int.TryParse(s.Trim(),out var n)?n.ToString("000"):s.Trim().ToUpperInvariant();
     public static int Sign(string s)=>All.TryGetValue(Normalize(s),out var d)&&d.Contains("CREDITO")?-1:1;
-    public static string Suggest(string value)=>value.Trim().ToUpperInvariant() switch { "FA" or "FC A"=>"001", "FB" or "FC B"=>"006", "FC" or "FC C"=>"011", "NCA"=>"003", "NCB"=>"008", "NCC"=>"013", "NDA"=>"002", "NDB"=>"007", "NDC"=>"012", _=>All.ContainsKey(Normalize(value))?Normalize(value):"" };
+    public static string Suggest(string value)=>value.Trim().ToUpperInvariant() switch { "FA" or "FC A"=>"001", "FB" or "FC B"=>"006", "FC C"=>"011", "NCA"=>"003", "NCB"=>"008", "NCC"=>"013", "NDA"=>"002", "NDB"=>"007", "NDC"=>"012", _=>All.ContainsKey(Normalize(value))?Normalize(value):"" };
 }
 public static class ProviderImporter
 {
     public static ImportPreview Preview(UploadedDocument file, ProviderConfiguration config) => Preview(file,config.Format,config.Cuit,config.Types,false);
-    public static ImportPreview Preview(UploadedDocument file, FileFormat f, string? assignedCuit=null, IReadOnlyDictionary<string,string>? types=null, bool canonical=true)
+    public static ImportPreview Preview(UploadedDocument file, FileFormat f, string? assignedCuit=null, IReadOnlyDictionary<string,string>? types=null, bool canonical=true, bool arcaDates=false)
     {
         var result=new ImportPreview();
         try {
@@ -41,7 +41,8 @@ public static class ProviderImporter
                 if(canonical && !FiscalCatalog.All.ContainsKey(mapped) && TablaComprobanteDescripcionMapper.ObtenerTodosLosCodigos().Contains(mapped)) { p.Excluded=true;continue; }
                 if(!FiscalCatalog.All.ContainsKey(mapped)) { p.Errors.Add("Tipo sin equivalencia fiscal o exclusión confirmada.");if(!result.UnknownTypes.Contains(raw))result.UnknownTypes.Add(raw);continue; }
                 if(row.Cells.Length!=table.Headers.Length) p.Errors.Add("Cantidad de columnas distinta de la cabecera.");
-                if(!DateTime.TryParseExact(At(date),f.DatePattern,CultureInfo.InvariantCulture,DateTimeStyles.None,out var parsedDate)) p.Errors.Add("Fecha inválida para el formato elegido.");
+                var datePatterns=arcaDates?new[]{"yyyy-MM-dd","dd/MM/yyyy"}:new[]{f.DatePattern};
+                if(!DateTime.TryParseExact(At(date),datePatterns,CultureInfo.InvariantCulture,DateTimeStyles.None,out var parsedDate)) p.Errors.Add("Fecha inválida para el formato elegido.");
                 string parsedCuit=assignedCuit??"";
                 if(assignedCuit==null) try{parsedCuit=CuitListImporter.Normalize(At(cuit));}catch(ImportException){p.Errors.Add("CUIT inválido.");}
                 string pv=At(point),num=At(number);

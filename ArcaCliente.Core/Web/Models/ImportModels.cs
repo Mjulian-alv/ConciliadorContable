@@ -47,6 +47,11 @@ public sealed class ProviderConfiguration
     public FileFormat Format { get; set; } = new();
     public Dictionary<string,string> Types { get; set; } = new();
     public string Version { get; set; } = "";
+    public string MappingFor(string raw)=>Types.FirstOrDefault(x=>x.Key.Equals(raw.Trim(),StringComparison.OrdinalIgnoreCase)).Value??"";
+    public void SetMapping(string raw,string target){
+        foreach(var existing in Types.Keys.Where(k=>k.Equals(raw.Trim(),StringComparison.OrdinalIgnoreCase)).ToList())Types.Remove(existing);
+        Types[raw.Trim().ToUpperInvariant()]=target;
+    }
 }
 public sealed record TabularRow(int Line, string[] Cells);
 public sealed record TabularDocument(string[] Headers, List<TabularRow> Rows);

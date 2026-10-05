@@ -69,6 +69,3 @@ const fs = require('node:fs');
  await context.close();await c2.close();await browser.close();
  assert.deepEqual(errors,[]);console.log('Navegador: 5 recorridos correctos, sin errores de página.');
 })().catch(e=>{console.error(e);process.exit(1);});
-
-
-

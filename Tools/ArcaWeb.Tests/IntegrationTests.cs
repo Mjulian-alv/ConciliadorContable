@@ -45,7 +45,7 @@ static class IntegrationTests
         test("Sesiones aisladas e invalidación de nueva carga",()=>{
             var store=new DemoConfigurationStorage();var auth=new Auth(new("test","Test","Admin",new()));var registry=new SessionRegistry();registry.Register(auth.Principal);var access=new AccessGuard(auth,new UserStorage(""),new WebMode(true),registry);
             var a=new Workspace(store,access);var b=new Workspace(store,access);var id=Wait(store.Profiles()).First(x=>x.Source==ReconciliationSource.Arca).Profile.Id;
-            a.Select(id).GetAwaiter().GetResult();a.UploadExternal(new(){DemoFiles.Arca}).GetAwaiter().GetResult();a.UploadSystem(DemoFiles.System).GetAwaiter().GetResult();a.Reconcile().GetAwaiter().GetResult();Check(a.Result!=null&&b.Result==null&&b.SystemFile==null);
+            a.Select(id).GetAwaiter().GetResult();a.UploadExternal(new(){DemoFiles.Arca}).GetAwaiter().GetResult();a.UploadSystem(DemoFiles.System).GetAwaiter().GetResult();a.From=new DateTime(2026,9,1);a.To=new DateTime(2026,9,30);a.Reconcile().GetAwaiter().GetResult();Check(a.Result!=null&&b.Result==null&&b.SystemFile==null);
             a.BeginExternalUpload();Check(a.Result==null&&a.External==null&&a.ExternalFiles.Count==0);
         });
         test("SQLite respeta contraseña, inactividad y permisos",()=>{
@@ -70,6 +70,3 @@ static class IntegrationTests
         }finally{SqlConnection.ClearAllPools();admin.Execute("DECLARE @sql nvarchar(max)='ALTER DATABASE '+QUOTENAME(@Name)+' SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE '+QUOTENAME(@Name);EXEC(@sql)",new{Name=name});}
     }
 }
-
-
-

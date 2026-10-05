@@ -44,7 +44,7 @@ public static class ReconciliationRunner
             string Find(params string[] aliases)=>table.Headers.FirstOrDefault(h=>aliases.Contains(Normalize(h)))??aliases[0];
             f.Date=Find("fechadeemision","fechaemision");f.Type=Find("tipodecomprobante");f.Point=Find("puntodeventa");f.Number=Find("numerodesde","nrodesde");
             f.Cuit=Find("nrodocemisor");f.Name=Find("denominacionemisor");f.Amount=Find("importetotal","imptotal");
-            return ProviderImporter.Preview(file,f);
+            return ProviderImporter.Preview(file,f,arcaDates:true);
         }catch(ImportException e){return new ImportPreview{Errors=new(){e.Message}};}
     }
 }

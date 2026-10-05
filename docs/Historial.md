@@ -626,7 +626,9 @@ se registró 00063 allí y en la ruta requerida por AGENTS.md, dejando documenta
 - Configuración SQL por entidad con control de versiones; autenticación con los usuarios SQLite
   actuales y permisos por acción. Archivos/resultados privados por circuito.
 - Demostración local explícita con datos sintéticos; sin acceso a la base productiva.
-- 17 pruebas automatizadas, integración con SQL Server LocalDB y recorrido de navegador.
+- 23 pruebas automatizadas, integración con SQL Server LocalDB y recorrido de navegador.
+- Revisión independiente corregida: fechas ISO, período original, tiques FC/NC/ND,
+  guardados fallidos y equivalencias ambiguas o con distinta capitalización.
 - Documentación de ejecución, límites, coexistencia y pruebas en `docs/ArcaWeb.md`.
 - Sin cambios en AgrupadorConceptos ni en el directorio de trabajo original.
 

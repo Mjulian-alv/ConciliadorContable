@@ -74,7 +74,8 @@ Antes de usarla con datos reales, configurar ese entorno y validar con archivos 
 - Importes comparados como magnitud con dos decimales. El resumen usa FC/ND positivo y NC negativo.
   No hay conversiones de moneda ni inferencias sobre pagos.
 - Se reutiliza `ConciliacionService`, con las directivas del perfil en el mismo orden.
-  Fecha opcional acota ambos archivos; no agrega la fecha como criterio de emparejamiento.
+  Período obligatorio, inicialmente desde el primer día del mes hasta hoy, como en escritorio.
+  Acota ambos archivos; la fecha sólo participa del emparejamiento si está en la directiva.
 - Estados: conciliado, diferencia de importe, solo ARCA/proveedor, solo sistema.
   Se muestra directiva y clave utilizada. Resumen por CUIT y Excel con el conjunto completo de resultados.
 - Cada carga/cambio invalida resultados. Se verifica la versión del perfil y del formato antes de conciliar
@@ -118,8 +119,9 @@ dotnet build ConciliadorContable/ConciliadorContable.csproj
 
 La prueba SQL crea una base aleatoria `ArcaWebTest_...` y la elimina al terminar;
 nunca usa la conexión configurada de la aplicación.
-17 pruebas de servicios/integración verificadas: motor y directivas, CSV/XLSX, validación completa,
-tipos desconocidos, exclusiones, CUIT, exportación, versiones, sesiones y autenticación.
+23 pruebas de servicios/integración verificadas: motor y directivas, CSV/XLSX, validación completa,
+tipos desconocidos, exclusiones, CUIT, exportación, versiones, sesiones y autenticación. Las regresiones de revisión cubren fechas ISO, período,
+  tiques FC/NC/ND, ambigüedad de FC, mayúsculas y guardados fallidos.
 SQL verificado con LocalDB 17 en Windows; no con la instalación del cliente.
 
 `Tools/ArcaWeb.Tests/browser-smoke.cjs` usa Playwright con el servidor Demo en 5084.
@@ -130,4 +132,3 @@ sesión independiente y pantalla móvil. Las capturas se guardan bajo `.superpow
 Referencias de arquitectura:
 [Seguridad de Blazor](https://learn.microsoft.com/en-us/aspnet/core/blazor/security/?view=aspnetcore-10.0)
 y [cargas de archivos](https://learn.microsoft.com/en-us/aspnet/core/blazor/file-uploads?view=aspnetcore-10.0).
-

@@ -18,4 +18,3 @@ public sealed class LoginModel(UserStorage users,WebMode mode,SessionRegistry se
         var principal=user.Principal(Demo);sessions.Register(principal);await HttpContext.SignInAsync("Cookies",principal);return LocalRedirect("/");
     }
 }
-

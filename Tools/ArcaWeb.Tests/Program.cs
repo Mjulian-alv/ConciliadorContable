@@ -5,7 +5,8 @@ using System.Globalization;
 
 CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("es-AR");
 var passed = 0;
-void Test(string name, Action action) { action(); Console.WriteLine("OK " + name); passed++; }
+var failed = 0;
+void Test(string name, Action action) { try { action(); Console.WriteLine("OK " + name); passed++; } catch(Exception ex) { failed++;Console.Error.WriteLine("ERROR " + name + ": " + ex.Message); } }
 void Equal<T>(T expected, T actual) { if (!EqualityComparer<T>.Default.Equals(expected, actual)) throw new Exception($"Esperado {expected}, obtenido {actual}"); }
 var engine = new ConciliacionService(() => throw new Exception("La prueba no usa SQL"), "");
 ComprobanteCsv External(string number, string total) => new() { NroDocEmisor = "30123456781", TipoComprobante = "001", PuntoVenta = "00005", NumeroDesde = number, ImpTotal = total, FechaEmision = "05/09/2026", DenominacionEmisor = "Ejemplo" };
@@ -24,5 +25,6 @@ Test("Directivas adicionales actúan sobre los pendientes", () => {
 });
 ImportTests.Run(Test);
 IntegrationTests.Run(Test);
+ReviewRegressionTests.Run(Test);
 Console.WriteLine($"{passed} pruebas correctas.");
-
+if(failed>0){Console.Error.WriteLine($"{failed} pruebas fallidas.");Environment.ExitCode=1;}

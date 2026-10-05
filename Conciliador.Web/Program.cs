@@ -37,4 +37,3 @@ app.Use(async(ctx,next)=>{ctx.Response.Headers["X-Content-Type-Options"]="nosnif
 app.UseAuthentication();app.UseAuthorization();app.UseRateLimiter();app.UseAntiforgery();
 app.MapStaticAssets();app.MapRazorPages().RequireRateLimiting("login");app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 app.Run();
-

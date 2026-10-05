@@ -26,4 +26,3 @@ public sealed class UserStorage(string path)
         return row.User!=null&&CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(hash),Encoding.ASCII.GetBytes(row.Hash.ToLowerInvariant()))?row.User:null;
     }
 }
-
