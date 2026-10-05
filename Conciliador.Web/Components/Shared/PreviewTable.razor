@@ -1,0 +1,20 @@
+@* Fecha: 05/10/2026 - TAREA: 00064 - Linea: 4 - La paginación es visual; se valida siempre el lote entero. *@
+@if(Preview!=null){
+<div class="preview-head"><h3>@Title</h3><span class="badge @(Preview.Ready?"ok":"warn")">@(Preview.Ready?"Listo para conciliar":"Revisar archivo")</span></div>
+<div class="counts"><span>@Preview.Rows.Count filas</span><span>@Preview.Included.Count válidas</span><span>@Preview.ExcludedCount excluidas</span><span>@Preview.Rows.Count(x=>x.Errors.Count>0) con errores</span></div>
+@foreach(var e in Preview.Errors){<p class="notice error" role="alert">@e</p>}
+<div class="toolbar"><label class="check"><input type="checkbox" @bind="onlyErrors" @bind:after="Reset" /> Mostrar sólo errores</label><span class="muted">Valores originales disponibles en cada fila</span></div>
+<div class="table-wrap"><table><thead><tr><th>Fila</th><th>Tipo original</th><th>Fecha</th><th>Comprobante normalizado</th><th>Importe original</th><th>Resultado de validación</th></tr></thead><tbody>
+@foreach(var r in Visible.Skip(page*30).Take(30)){
+<tr class="@(r.Excluded?"excluded":r.Errors.Count>0?"invalid":"")"><td>@r.Line</td><td>@r.RawType</td><td>@r.Document?.Fecha.ToString("dd/MM/yyyy")</td><td>@(r.Document==null?"—":r.Document.PuntoVenta+"-"+r.Document.Numero)<small>@r.Document?.Cuit · @r.Document?.TipoComprobante</small></td><td class="numeric">@r.RawAmount</td><td>@if(r.Excluded){<span class="badge neutral">Excluido</span>}else if(r.Errors.Count>0){<span class="error-text">@string.Join(" ",r.Errors)</span>}else{<span class="badge ok">Válido</span>}<details><summary>Ver fila original</summary><div class="raw-values">@string.Join(" | ",r.RawCells)</div></details></td></tr>}
+</tbody></table></div>
+<div class="pager"><button disabled="@(page==0)" @onclick="()=>page--">Anterior</button><span>Página @(page+1) · @Visible.Count() filas</span><button disabled="@((page+1)*30>=Visible.Count())" @onclick="()=>page++">Siguiente</button></div>
+}
+@code{
+    [Parameter]public ImportPreview? Preview{get;set;}
+    [Parameter]public string Title{get;set;}="";
+    int page;bool onlyErrors;ImportPreview? previous;
+    IEnumerable<PreviewRow> Visible=>(Preview?.Rows??new()).Where(x=>!onlyErrors||x.Errors.Count>0);
+    void Reset()=>page=0;
+    protected override void OnParametersSet(){if(!ReferenceEquals(previous,Preview)){page=0;previous=Preview;}}
+}

@@ -1,0 +1,133 @@
+# ArcaCliente web — TAREA 00064
+
+Primera entrega: conciliación offline contra ARCA y cuenta corriente de proveedor.
+No incluye percepciones/retenciones, conexión online ni exportación fiscal a PRESEA.
+
+## Ejecución local
+
+Requiere .NET SDK 10 (Core compartido apunta a .NET 8).
+Desde la raíz del worktree:
+
+```powershell
+dotnet restore Conciliador.Web.slnx --configfile Conciliador.Web/NuGet.Config
+dotnet run --project Conciliador.Web --launch-profile Demo
+```
+
+Abrir http://127.0.0.1:5084/account/login y elegir **Entrar a la demostración**.
+Seleccionar un perfil; para proveedor, usar CUIT ficticio **30-12345678-1**.
+**Cargar ejemplo** carga archivos sintéticos por el importador real.
+Confirmar FA→001, NCA→003, NDA→002; REC y PAGO→Excluir.
+Confirmar que el archivo contiene pendientes, y conciliar.
+
+Resultado esperado: 4 conciliados, 1 diferencia, 1 solo proveedor/ARCA y 1 solo sistema.
+Resumen con signo: fuente 261.500, sistema 276.400, diferencia -14.900.
+La demostración conserva perfiles y formatos en memoria hasta reiniciar; no abre SQL.
+Sólo se admite en Development y desde loopback. Los archivos y resultados no se comparten entre circuitos.
+
+## Entorno con datos reales
+
+El host requiere configuración explícita. No toma la conexión por defecto de `SqlDb`.
+Establecer mediante secretos del host o variables de entorno:
+
+- `ConnectionStrings__Arca`: conexión SQL Server a la misma base del módulo actual.
+- `Web__UsersDatabasePath`: ruta absoluta a `conciliador.db` del shell, accesible en modo lectura.
+- `Web__Demo=false` y `ASPNETCORE_ENVIRONMENT=Production`.
+- Configurar HTTPS con certificado válido y una URL del host. Las cookies reales requieren HTTPS.
+
+Arrancar con `dotnet run --project Conciliador.Web --launch-profile Configurado`,
+o publicar con `dotnet publish Conciliador.Web -c Release` y hospedar ASP.NET Core.
+
+El arranque auto-inicializa el esquema actual y las tablas complementarias:
+`arca.WebPerfiles`, `arca.WebPerfilCuits`, `arca.WebFormatosProveedor`.
+Agrega `WebVersion rowversion` a `arca.ArcaPerfilesOffline`.
+La identidad de SQL necesita permisos de DDL para el primer arranque y lectura/escritura
+sobre la configuración. Las migraciones se ejecutan en transacción y con bloqueo de aplicación.
+
+Los usuarios se validan con el mecanismo de contraseña del shell, sin alterar credenciales.
+Permisos: `ArcaOffline` para conciliar y configurar columnas del proveedor,
+`ArcaPerfiles` para perfiles/formato del sistema/listas/directivas,
+`ArcaEquivalencias` para equivalencias y exclusiones. Admin conserva acceso total.
+Las acciones verifican permisos actuales; sesión máxima de ocho horas.
+Cerrar sesión revoca los circuitos abiertos de ese ingreso. Reiniciar el host exige volver a ingresar.
+Esta primera entrega está preparada para **una instancia del servidor web**, sin balanceador.
+
+No se realizó despliegue ni conexión a la base de trabajo del cliente.
+Antes de usarla con datos reales, configurar ese entorno y validar con archivos representativos.
+
+## Reglas implementadas
+
+- Perfiles existentes se leen como ARCA sin filtro CUIT, conservando sus directivas.
+- Lista CUIT de una columna, cabecera CUIT opcional, normalización de guiones/espacios,
+  11 dígitos, deduplicación. La vista previa se confirma antes de reemplazar la lista completa.
+  Un error conserva la lista persistida. No se comprueba el dígito verificador.
+- Modo proveedor solicita CUIT antes de la pantalla. Lo asigna a sus filas y filtra el sistema.
+  El operador confirma que son pendientes de pago; no se infiere saldo ni importe original.
+- Un formato por CUIT, compartido entre perfiles: XLSX, CSV y TXT delimitado.
+  Separador, codificación, hoja, primera fila, cabecera/posiciones, fecha, decimal y columnas.
+  Punto y número separados, combinados por delimitador o por longitud del punto.
+- Los cambios válidos de formato se guardan automáticamente. Las sugerencias de equivalencia
+  requieren confirmación. Un tipo sin resolver bloquea el lote; las exclusiones se recuerdan.
+- Sólo FC, NC y ND del catálogo existente. Los recibos/pagos excluidos no necesitan campos fiscales.
+  Las filas fiscales inválidas no se pueden omitir individualmente.
+- Validación completa de todas las filas antes de conciliar. No hay edición de valores ni importación parcial.
+  Vista previa paginada con fila original y errores. El número original queda accesible en el detalle.
+- Importes comparados como magnitud con dos decimales. El resumen usa FC/ND positivo y NC negativo.
+  No hay conversiones de moneda ni inferencias sobre pagos.
+- Se reutiliza `ConciliacionService`, con las directivas del perfil en el mismo orden.
+  Fecha opcional acota ambos archivos; no agrega la fecha como criterio de emparejamiento.
+- Estados: conciliado, diferencia de importe, solo ARCA/proveedor, solo sistema.
+  Se muestra directiva y clave utilizada. Resumen por CUIT y Excel con el conjunto completo de resultados.
+- Cada carga/cambio invalida resultados. Se verifica la versión del perfil y del formato antes de conciliar
+  o exportar. Un conflicto exige recargar: nunca sobrescribe automáticamente otra versión.
+
+Límites: 20 MB por archivo, 20 MB en conjunto para hasta 10 archivos ARCA;
+50.000 filas y 256 columnas por archivo, y 50.000 filas ARCA en total;
+100 MB de contenido XLSX expandido. No se admiten PDF, XLS binario, TXT de ancho fijo ni fórmulas Excel.
+Exportar las fórmulas como valores. Fechas y separadores deben coincidir con la configuración.
+El sistema utiliza códigos fiscales del catálogo; las equivalencias de texto del proveedor se guardan por CUIT.
+Los archivos y resultados son transitorios: al recargar/cerrar la página se pierde el trabajo sin exportar.
+
+## Compatibilidad y aislamiento
+
+`ArcaCliente.Core` compila las mismas fuentes de Models/Services/AppServices del módulo actual.
+El proyecto WinForms referencia esa biblioteca; no se duplicó ni reescribió el algoritmo.
+La web no utiliza los usuarios, tokens o clientes API estáticos del escritorio.
+`Conciliador.Web.slnx` es independiente; no se modificó AgrupadorConceptos.
+
+La web actualiza perfiles individualmente y comprueba versiones, incluso ante cambios de escritorio.
+**El guardado masivo del escritorio sigue siendo el anterior**: una estación de escritorio con
+una lista antigua puede sobrescribir campos base de otros perfiles. Evitar editar perfiles simultáneamente
+desde escritorio y web hasta migrar ese guardado. La configuración complementaria de CUIT/proveedor
+está fuera de ese guardado masivo. Los modos nuevos se operan desde la web.
+
+El worktree parte de `30e6924`. Los cambios locales no confirmados del usuario en homologador
+y en `PerfilOffline`/`FormPerfilOfflineDetalle` no se copiaron ni se modificaron.
+La rama queda separada para revisar e integrar esos cambios posteriormente.
+
+## Verificación reproducible
+
+```powershell
+dotnet run --project Tools/ArcaWeb.Tests
+# Prueba SQL opcional, exclusivamente sobre la instancia local dedicada:
+SqlLocalDB create ArcaWeb00064 -s
+$env:ARCA_WEB_TEST_SQL='1'
+dotnet run --project Tools/ArcaWeb.Tests
+dotnet build ArcaCliente/ArcaCliente.csproj
+dotnet build ConciliadorContable/ConciliadorContable.csproj
+```
+
+La prueba SQL crea una base aleatoria `ArcaWebTest_...` y la elimina al terminar;
+nunca usa la conexión configurada de la aplicación.
+17 pruebas de servicios/integración verificadas: motor y directivas, CSV/XLSX, validación completa,
+tipos desconocidos, exclusiones, CUIT, exportación, versiones, sesiones y autenticación.
+SQL verificado con LocalDB 17 en Windows; no con la instalación del cliente.
+
+`Tools/ArcaWeb.Tests/browser-smoke.cjs` usa Playwright con el servidor Demo en 5084.
+Definir `PLAYWRIGHT_PATH` (módulo instalado) y, si corresponde, `EDGE_PATH` (ejecutable).
+Ejecutar con Node. Verifica proveedor, ARCA, Excel, error después de la muestra, lista CUIT,
+sesión independiente y pantalla móvil. Las capturas se guardan bajo `.superpowers/` (ignorado).
+
+Referencias de arquitectura:
+[Seguridad de Blazor](https://learn.microsoft.com/en-us/aspnet/core/blazor/security/?view=aspnetcore-10.0)
+y [cargas de archivos](https://learn.microsoft.com/en-us/aspnet/core/blazor/file-uploads?view=aspnetcore-10.0).
+

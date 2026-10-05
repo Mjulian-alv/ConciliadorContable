@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "Demo": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": false,
+      "applicationUrl": "http://127.0.0.1:5084",
+      "environmentVariables": { "ASPNETCORE_ENVIRONMENT": "Development", "Web__Demo": "true" }
+    },
+    "Configurado": { "commandName": "Project", "launchBrowser": false, "environmentVariables": { "ASPNETCORE_ENVIRONMENT": "Production", "Web__Demo": "false" } }
+  }
+}

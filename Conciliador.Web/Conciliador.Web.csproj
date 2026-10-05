@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+  </PropertyGroup>
+
+  <!-- Fecha: 05/10/2026 - TAREA: 00064 - Linea: 1 - Motor común y usuarios actuales. -->
+  <ItemGroup><ProjectReference Include="../ArcaCliente.Core/ArcaCliente.Core.csproj" /><PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" /><PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" /></ItemGroup>
+</Project>

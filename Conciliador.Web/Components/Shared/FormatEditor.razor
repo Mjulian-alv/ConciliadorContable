@@ -1,0 +1,29 @@
+@* Fecha: 05/10/2026 - TAREA: 00064 - Linea: 4 - Edita sólo interpretación y columnas, nunca celdas del archivo. *@
+<div class="format-grid">
+@if(!Provider){<label>Tipo de archivo del sistema<select @bind="Format.FileType" @bind:after="Changed"><option value="@TipoArchivoOffline.Csv">CSV</option><option value="@TipoArchivoOffline.Txt">TXT delimitado</option><option value="@TipoArchivoOffline.Xlsx">Excel XLSX</option></select></label>}
+<label>Separador de columnas<select @bind="Format.Separator" @bind:after="Changed"><option value=";">Punto y coma ;</option><option value=",">Coma ,</option><option value="&#9;">Tabulación</option><option value="|">Barra |</option></select></label>
+<label>Codificación<select @bind="Format.Encoding" @bind:after="Changed"><option>UTF-8</option><option>Latin-1</option></select></label>
+<label>Hoja Excel<input @bind="Format.Sheet" @bind:after="Changed" placeholder="Primera hoja" /></label>
+<label>Primera fila<input type="number" min="1" max="50000" @bind="Format.FirstRow" @bind:after="Changed" /></label>
+<label>Formato de fecha<select @bind="Format.DatePattern" @bind:after="Changed">@foreach(var p in new[]{"dd/MM/yyyy","d/M/yyyy","yyyy-MM-dd","dd-MM-yyyy","yyyyMMdd"}){<option>@p</option>}</select></label>
+<label>Separador decimal<select @bind="Format.DecimalSeparator" @bind:after="Changed"><option value=",">Coma · 1.234,56</option><option value=".">Punto · 1,234.56</option></select></label>
+<label class="check"><input type="checkbox" @bind="Format.Header" @bind:after="Changed" /> Incluye cabecera</label>
+<label>Número de comprobante<select @bind="Format.NumberMode" @bind:after="Changed"><option value="@NumberMode.Columns">Punto y número en columnas</option><option value="@NumberMode.Separated">Combinados con separador</option><option value="@NumberMode.Fixed">Combinados por posiciones</option></select></label>
+@if(Format.NumberMode==NumberMode.Separated){<label>Separador de punto y número<input @bind="Format.NumberSeparator" @bind:after="Changed" maxlength="3" /></label>}
+@if(Format.NumberMode==NumberMode.Fixed){<label>Dígitos del punto de venta<input type="number" min="1" max="5" @bind="Format.PointLength" @bind:after="Changed" /></label>}
+</div><p class="muted">@(Format.Header?"Escribí el nombre exacto de cada columna.":"Indicá la posición de cada columna, empezando en 1.") Los cambios válidos se guardan automáticamente.</p>
+<div class="format-grid mappings">
+<label>Tipo de comprobante<input @bind="Format.Type" @bind:after="Changed" /></label>
+<label>Fecha<input @bind="Format.Date" @bind:after="Changed" /></label>
+@if(Format.NumberMode==NumberMode.Columns){<label>Punto de venta<input @bind="Format.Point" @bind:after="Changed" /></label>}
+<label>@(Format.NumberMode==NumberMode.Columns?"Número":"Comprobante combinado")<input @bind="Format.Number" @bind:after="Changed" /></label>
+<label>Importe<input @bind="Format.Amount" @bind:after="Changed" /></label>
+@if(!Provider){<label>CUIT<input @bind="Format.Cuit" @bind:after="Changed" /></label>}
+<label>Nombre / razón social (opcional)<input @bind="Format.Name" @bind:after="Changed" /></label>
+</div>
+@code {
+    [Parameter,EditorRequired] public FileFormat Format{get;set;}=default!;
+    [Parameter]public bool Provider{get;set;}
+    [Parameter]public EventCallback OnChanged{get;set;}
+    Task Changed()=>OnChanged.InvokeAsync();
+}

@@ -608,3 +608,27 @@ de ejecución ni desbordes horizontales de página en 768, 850, 1280 y 1536 píx
 
 `~/.codex/TAREAS.md` no existía. El registro histórico `~/.claude/TAREAS.md` llegaba a 00062;
 se registró 00063 allí y en la ruta requerida por AGENTS.md, dejando documentada la continuidad.
+
+## TAREA 00064 — 05/10/2026 — ArcaCliente web
+
+### Pedido
+
+1. Trabajar en un worktree separado mientras se modifica el homologador.
+2. Reemplazar los formularios por una interfaz web basada en la maqueta, usando el mismo backend.
+3. Primera entrega limitada a conciliación ARCA y proveedores según TAREA 00063.
+
+### Implementación
+
+- `ArcaCliente.Core` compila las fuentes de servicios/modelos existentes. WinForms lo referencia.
+- `Conciliador.Web` y solución independiente: perfiles, lista CUIT reemplazable, CUIT contextual,
+  configuración automática por proveedor, equivalencias/exclusiones, vista previa estricta,
+  directivas, cuatro estados, resumen por CUIT y exportación del resultado a Excel.
+- Configuración SQL por entidad con control de versiones; autenticación con los usuarios SQLite
+  actuales y permisos por acción. Archivos/resultados privados por circuito.
+- Demostración local explícita con datos sintéticos; sin acceso a la base productiva.
+- 17 pruebas automatizadas, integración con SQL Server LocalDB y recorrido de navegador.
+- Documentación de ejecución, límites, coexistencia y pruebas en `docs/ArcaWeb.md`.
+- Sin cambios en AgrupadorConceptos ni en el directorio de trabajo original.
+
+Rama `codex/arca-web`, base `30e6924`; pendiente de revisión e integración por el usuario.
+No se desplegó en producción. PyR, conexión online y exportación fiscal PRESEA fuera de alcance.

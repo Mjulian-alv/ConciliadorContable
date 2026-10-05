@@ -1,0 +1,11 @@
+@page "/account/login"
+@model Conciliador.Web.Pages.Account.LoginModel
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@* Fecha: 05/10/2026 - TAREA: 00064 - Linea: 3 - Cookie emitida desde una solicitud con antiforgery. *@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ingresar · Conciliador</title><link rel="stylesheet" href="/app.css"></head>
+<body class="login-body"><main class="login-card"><div class="brand-mark">C</div><p class="eyebrow">CONCILIADOR CONTABLE</p><h1>Bienvenido</h1><p>Conciliación de comprobantes ARCA y proveedores.</p>
+@if(Model.Error!=null){<div class="notice error" role="alert">@Model.Error</div>}
+<form method="post">
+@if(Model.Demo){<div class="notice">Demostración local. Datos ficticios; configuración temporal hasta reiniciar.</div><button class="primary" type="submit">Entrar a la demostración</button>}
+else{<label>Usuario<input name="Username" autocomplete="username" required maxlength="100"></label><label>Contraseña<input name="Password" type="password" autocomplete="current-password" required maxlength="500"></label><button class="primary" type="submit">Ingresar</button>}
+</form><p class="muted">Primera entrega · ARCA / Proveedores</p></main></body></html>

@@ -1,0 +1,33 @@
+@* Fecha: 05/10/2026 - TAREA: 00064 - Linea: 4 - Reconexión en español. *@
+<script type="module" src="@Assets["Components/Layout/ReconnectModal.razor.js"]"></script>
+
+<dialog id="components-reconnect-modal" data-nosnippet>
+    <div class="components-reconnect-container">
+        <div class="components-rejoining-animation" aria-hidden="true">
+            <div></div>
+            <div></div>
+        </div>
+        <p class="components-reconnect-first-attempt-visible">
+            Restableciendo la conexión…
+        </p>
+        <p class="components-reconnect-repeated-attempt-visible">
+            Sin conexión. Nuevo intento en <span id="components-seconds-to-next-attempt"></span> segundos.
+        </p>
+        <p class="components-reconnect-failed-visible">
+            No se pudo recuperar la conexión.<br />Reintentá o recargá la página.
+        </p>
+        <button id="components-reconnect-button" class="components-reconnect-failed-visible">
+            Reintentar
+        </button>
+        <p class="components-pause-visible">
+            La sesión se encuentra pausada.
+        </p>
+        <p class="components-resume-failed-visible">
+            No se pudo recuperar la sesión.<br />Reintentá o recargá la página.
+        </p>
+        <button id="components-resume-button" class="components-pause-visible components-resume-failed-visible">
+            Continuar
+        </button>
+    </div>
+</dialog>
+
