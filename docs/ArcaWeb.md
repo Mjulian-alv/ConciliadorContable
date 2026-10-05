@@ -62,7 +62,10 @@ sin guardar contraseñas en el repositorio. La base `conciliador.db` de esa carp
 ./Tools/Start-ArcaWeb.ps1 -DesktopDirectory 'Y:\ConciliadorContable'
 ```
 
-Requiere compilación previa y certificado HTTPS local confiable. Acceso:
+Requiere restauración de paquetes previa y certificado HTTPS local confiable. El lanzador
+publica Release en `Conciliador.Web/bin/LocalHost` y ejecuta esa salida con su directorio de
+contenido, para servir también Blazor, los módulos JavaScript y los estilos generados.
+Antes de volver a ejecutarlo, detener su instancia anterior. Acceso:
 **https://localhost:5085/account/login**, con las credenciales habituales del escritorio.
 Escucha sólo en localhost; no es un despliegue para otras estaciones.
 
@@ -84,6 +87,11 @@ fila por fila con `LocalFileImporter` de WinForms. Con las directivas SQL existe
 24 pruebas automatizadas correctas sin LocalDB. Login HTTPS comprobado en navegador;
 el ingreso con contraseña real y la carga visual de estos archivos quedan para el usuario.
 Los archivos comerciales no se incorporaron al repositorio.
+
+Corrección del arranque local (misma tarea): ejecutar `dotnet run` bajo Production devolvía
+500 para Blazor, CSS aislado y el módulo de reconexión; el login por sí solo sí respondía.
+Con la salida publicada, login y los cinco recursos de pantalla comprobados responden 200.
+Formulario de ingreso abierto y revisado visualmente en el navegador integrado.
 
 ## Reglas implementadas
 

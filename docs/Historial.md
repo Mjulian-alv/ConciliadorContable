@@ -657,3 +657,8 @@ Se comprobó que el registro base del perfil quedó idéntico tras guardar la ex
 3.216 conciliados, 49 diferencias, 1.147 sólo ARCA y 43 sólo sistema.
 Login HTTPS verificado en navegador; ingreso con credenciales reales pendiente del usuario.
 Sin cambios en homologador ni en el checkout original. Sin archivos comerciales versionados.
+
+Corrección de arranque dentro de 00065: la instancia `dotnet run` en Production no servía
+Blazor, CSS aislado ni el módulo de reconexión (HTTP 500). El lanzador ahora publica Release
+en `bin/LocalHost` y ejecuta ese contenido completo. Login y cinco recursos verificados con
+HTTP 200; formulario de ingreso abierto y revisado visualmente. Conexión y perfil conservados.

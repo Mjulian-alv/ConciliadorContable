@@ -22,7 +22,12 @@ try{
     $env:Web__Demo='false'
     $env:ASPNETCORE_ENVIRONMENT='Production'
     $env:ASPNETCORE_URLS='https://localhost:5085;http://localhost:5084'
+    # Fecha: 05/10/2026 - TAREA: 00065 - Linea: 2 - Production necesita la salida publicada: dotnet run dejaba los recursos Blazor y CSS fuera del directorio servido.
+    $webProject=Join-Path $PSScriptRoot '../Conciliador.Web'
+    $publishRoot=[IO.Path]::GetFullPath((Join-Path $webProject 'bin/LocalHost'))
+    & dotnet publish $webProject --configuration Release --no-restore --output $publishRoot --verbosity quiet
+    if($LASTEXITCODE -ne 0){throw 'No se pudo preparar la aplicación web y sus recursos.'}
     Write-Host 'ArcaCliente web con configuración del escritorio: https://localhost:5085'
-    & dotnet run --project (Join-Path $PSScriptRoot '../Conciliador.Web') --no-build --no-launch-profile
+    & dotnet (Join-Path $publishRoot 'Conciliador.Web.dll') --contentRoot $publishRoot
     if($LASTEXITCODE -ne 0){throw 'El servidor web no pudo iniciar. Revisá el registro de arranque.'}
 }finally{foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$previous[$name],'Process')}}
