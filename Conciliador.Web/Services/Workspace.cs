@@ -46,7 +46,8 @@ public sealed class Workspace(IWebConfigurationStore store,AccessGuard access)
     public void Refresh(){
         Invalidate();
         if(Profile==null)return;
-        if(SystemFile!=null&&!systemFormatPending)System=ProviderImporter.Preview(SystemFile,Profile.SystemFormat);
+        // Fecha: 05/10/2026 - TAREA: 00065 - Linea: 1 - Aplica el perfil compartido y sus exclusiones sin reinterpretar las columnas del sistema.
+        if(SystemFile!=null&&!systemFormatPending)System=SystemFileImporter.Preview(SystemFile,Profile.SystemFormat,Profile.ExcludedSystemTypes);
         if(ExternalFiles.Count>0&&!providerFormatPending){
             External=new();
             foreach(var file in ExternalFiles){var p=Provider==null?ReconciliationRunner.Arca(file):ProviderImporter.Preview(file,Provider);External.Rows.AddRange(p.Rows);External.Errors.AddRange(p.Errors.Select(x=>file.Name+": "+x));External.UnknownTypes.AddRange(p.UnknownTypes);}

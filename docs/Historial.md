@@ -634,3 +634,26 @@ se registró 00063 allí y en la ruta requerida por AGENTS.md, dejando documenta
 
 Rama `codex/arca-web`, base `30e6924`; pendiente de revisión e integración por el usuario.
 No se desplegó en producción. PyR, conexión online y exportación fiscal PRESEA fuera de alcance.
+
+## TAREA 00065 — 05/10/2026 — Web con el perfil PRESEA existente
+
+1. Conectar la web a la misma configuración del escritorio y verificar la importación real.
+2. Excluir los dos registros con código AFIP 0, confirmados como no fiscales por el usuario.
+
+Se retiró el intento de detector de layout: la causa inicial era que la web estaba en Demo.
+Se verificó la aplicación activa en `Y:\ConciliadorContable`, su SQL Server y el perfil
+PRESEA en `arca.ArcaPerfilesOffline`. El lanzador `Tools/Start-ArcaWeb.ps1` reutiliza esa
+configuración y los usuarios SQLite actuales, sin copiar credenciales ni modificar el escritorio.
+Instancia local HTTPS en localhost:5085; se inicializaron las tablas web y rowversion.
+
+Además se reprodujo una diferencia de lectura: el perfil dice UTF-8, pero el archivo PRESEA
+contiene Latin-1. Adaptador del sistema con aviso visible y sin cambiar el perfil; conserva
+los campos fiscales/importes de WinForms. Se mantiene validación estricta para proveedores.
+Exclusión explícita `000` guardada sólo en `arca.WebPerfiles` del perfil PRESEA.
+Se comprobó que el registro base del perfil quedó idéntico tras guardar la exclusión.
+
+24 pruebas correctas. Archivos de septiembre verificados íntegramente: PRESEA 3.364 filas,
+3.362 válidas/2 excluidas; ARCA 4.448 filas, 4.412 válidas/36 excluidas. Con sus directivas:
+3.216 conciliados, 49 diferencias, 1.147 sólo ARCA y 43 sólo sistema.
+Login HTTPS verificado en navegador; ingreso con credenciales reales pendiente del usuario.
+Sin cambios en homologador ni en el checkout original. Sin archivos comerciales versionados.

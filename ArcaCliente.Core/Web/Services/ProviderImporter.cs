@@ -18,7 +18,8 @@ public static class FiscalCatalog
 public static class ProviderImporter
 {
     public static ImportPreview Preview(UploadedDocument file, ProviderConfiguration config) => Preview(file,config.Format,config.Cuit,config.Types,false);
-    public static ImportPreview Preview(UploadedDocument file, FileFormat f, string? assignedCuit=null, IReadOnlyDictionary<string,string>? types=null, bool canonical=true, bool arcaDates=false)
+    // Fecha: 05/10/2026 - TAREA: 00065 - Linea: 1 - Sólo se omiten códigos del sistema que el perfil excluye expresamente.
+    public static ImportPreview Preview(UploadedDocument file, FileFormat f, string? assignedCuit=null, IReadOnlyDictionary<string,string>? types=null, bool canonical=true, bool arcaDates=false, IReadOnlyCollection<string>? excludedTypes=null)
     {
         var result=new ImportPreview();
         try {
@@ -37,6 +38,8 @@ public static class ProviderImporter
                 string mapped="";
                 if(canonical) mapped=FiscalCatalog.Normalize(raw);
                 else if(types!=null) { var entry=types.FirstOrDefault(x=>x.Key.Equals(raw,StringComparison.OrdinalIgnoreCase));mapped=entry.Value??""; }
+                // Fecha: 05/10/2026 - TAREA: 00065 - Linea: 1 - La exclusión conserva la fila original para revisión y no se infiere del código cero.
+                if(canonical&&excludedTypes?.Contains(mapped)==true){p.Excluded=true;continue;}
                 if(mapped=="EXCLUIR") { p.Excluded=true;continue; }
                 if(canonical && !FiscalCatalog.All.ContainsKey(mapped) && TablaComprobanteDescripcionMapper.ObtenerTodosLosCodigos().Contains(mapped)) { p.Excluded=true;continue; }
                 if(!FiscalCatalog.All.ContainsKey(mapped)) { p.Errors.Add("Tipo sin equivalencia fiscal o exclusión confirmada.");if(!result.UnknownTypes.Contains(raw))result.UnknownTypes.Add(raw);continue; }

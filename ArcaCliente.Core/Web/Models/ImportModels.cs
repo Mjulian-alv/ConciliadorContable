@@ -40,6 +40,8 @@ public sealed class WebProfile
     public List<string> Cuits { get; set; } = new();
     public string Version { get; set; } = "";
     public FileFormat SystemFormat { get; set; } = new();
+    // Fecha: 05/10/2026 - TAREA: 00065 - Linea: 1 - Exclusiones confirmadas por perfil, independientes del formato existente de WinForms.
+    public List<string> ExcludedSystemTypes { get; set; } = new();
 }
 public sealed class ProviderConfiguration
 {
@@ -67,6 +69,8 @@ public sealed class PreviewRow
 }
 public sealed class ImportPreview
 {
+    // Fecha: 05/10/2026 - TAREA: 00065 - Linea: 1 - Una lectura compatible debe informar su interpretación sin ocultar errores fiscales.
+    public List<string> Warnings { get; set; } = new();
     public List<PreviewRow> Rows { get; set; } = new();
     public List<string> Errors { get; set; } = new();
     public List<string> UnknownTypes { get; set; } = new();

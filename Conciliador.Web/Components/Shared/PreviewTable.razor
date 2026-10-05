@@ -3,6 +3,8 @@
 <div class="preview-head"><h3>@Title</h3><span class="badge @(Preview.Ready?"ok":"warn")">@(Preview.Ready?"Listo para conciliar":"Revisar archivo")</span></div>
 <div class="counts"><span>@Preview.Rows.Count filas</span><span>@Preview.Included.Count válidas</span><span>@Preview.ExcludedCount excluidas</span><span>@Preview.Rows.Count(x=>x.Errors.Count>0) con errores</span></div>
 @foreach(var e in Preview.Errors){<p class="notice error" role="alert">@e</p>}
+@* Fecha: 05/10/2026 - TAREA: 00065 - Linea: 1 - Se informa la codificación efectiva sin cambiar el formato guardado del escritorio. *@
+@foreach(var warning in Preview.Warnings){<p class="notice" role="status">@warning</p>}
 <div class="toolbar"><label class="check"><input type="checkbox" @bind="onlyErrors" @bind:after="Reset" /> Mostrar sólo errores</label><span class="muted">Valores originales disponibles en cada fila</span></div>
 <div class="table-wrap"><table><thead><tr><th>Fila</th><th>Tipo original</th><th>Fecha</th><th>Comprobante normalizado</th><th>Importe original</th><th>Resultado de validación</th></tr></thead><tbody>
 @foreach(var r in Visible.Skip(page*30).Take(30)){

@@ -51,8 +51,39 @@ Las acciones verifican permisos actuales; sesión máxima de ocho horas.
 Cerrar sesión revoca los circuitos abiertos de ese ingreso. Reiniciar el host exige volver a ingresar.
 Esta primera entrega está preparada para **una instancia del servidor web**, sin balanceador.
 
-No se realizó despliegue ni conexión a la base de trabajo del cliente.
-Antes de usarla con datos reales, configurar ese entorno y validar con archivos representativos.
+### Conexión local al escritorio — TAREA 00065, 05/10/2026
+
+La instancia local se conectó a la misma base SQL Server que el escritorio ejecutado desde
+`Y:\ConciliadorContable`. Reutiliza `ConciliadorContable.dll.config` y su archivo externo,
+sin guardar contraseñas en el repositorio. La base `conciliador.db` de esa carpeta se abre
+únicamente para leer usuarios. El perfil SQL existente se llama **PRESEA**.
+
+```powershell
+./Tools/Start-ArcaWeb.ps1 -DesktopDirectory 'Y:\ConciliadorContable'
+```
+
+Requiere compilación previa y certificado HTTPS local confiable. Acceso:
+**https://localhost:5085/account/login**, con las credenciales habituales del escritorio.
+Escucha sólo en localhost; no es un despliegue para otras estaciones.
+
+El archivo PRESEA de septiembre usa Latin-1 aunque el perfil indica UTF-8. Para el archivo
+del sistema, si la decodificación UTF-8 estricta falla, se lee como Latin-1 y se muestra un
+aviso para revisar nombres. No se modifica la codificación ni las columnas del perfil.
+Los archivos del proveedor mantienen su validación de codificación configurada.
+
+El usuario confirmó que los dos registros PRESEA con código AFIP `0` son no fiscales.
+Se guardó `000` en `ExcludedSystemTypes` dentro de `arca.WebPerfiles` del perfil PRESEA.
+La lista es específica del perfil; un código desconocido sin exclusión sigue bloqueando.
+No se modificó el registro original de `arca.ArcaPerfilesOffline`, verificado antes/después
+del guardado de la exclusión. El arranque agregó las tablas y rowversion descritos arriba.
+
+Validación de septiembre: PRESEA 3.364 filas (3.362 válidas y 2 excluidas); ARCA 4.448
+(4.412 válidas y 36 excluidas). Fechas, CUIT, tipo, punto, número e importes PRESEA cotejados
+fila por fila con `LocalFileImporter` de WinForms. Con las directivas SQL existentes:
+3.216 conciliados, 49 diferencias, 1.147 sólo ARCA y 43 sólo sistema.
+24 pruebas automatizadas correctas sin LocalDB. Login HTTPS comprobado en navegador;
+el ingreso con contraseña real y la carga visual de estos archivos quedan para el usuario.
+Los archivos comerciales no se incorporaron al repositorio.
 
 ## Reglas implementadas
 

@@ -33,6 +33,9 @@ public static class ConfigurationValidator
     public static void Profile(WebProfile p) {
         if(string.IsNullOrWhiteSpace(p.Profile.Nombre)||p.Profile.Nombre.Length>200)throw new ImportException("Ingresá un nombre de hasta 200 caracteres.");
         TabularReader.ValidateFormat(p.SystemFormat);
+        // Fecha: 05/10/2026 - TAREA: 00065 - Linea: 1 - Impide ocultar comprobantes fiscales mediante una exclusión de tipos no fiscales.
+        p.ExcludedSystemTypes=p.ExcludedSystemTypes.Select(FiscalCatalog.Normalize).Distinct().ToList();
+        if(p.ExcludedSystemTypes.Any(t=>!System.Text.RegularExpressions.Regex.IsMatch(t,@"^[0-9]{3}$")||FiscalCatalog.All.ContainsKey(t)))throw new ImportException("Sólo pueden excluirse códigos numéricos no fiscales del sistema.");
         p.Cuits=p.Cuits.Select(CuitListImporter.Normalize).Distinct().Order().ToList();
         if(p.Source==ReconciliationSource.Arca && p.FilterCuits && p.Cuits.Count==0)throw new ImportException("Cargá una lista de CUIT antes de activar el filtro.");
         var directives=p.Profile.DirectivasConciliacion;

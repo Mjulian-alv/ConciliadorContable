@@ -26,5 +26,7 @@ Test("Directivas adicionales actúan sobre los pendientes", () => {
 ImportTests.Run(Test);
 IntegrationTests.Run(Test);
 ReviewRegressionTests.Run(Test);
+// Fecha: 05/10/2026 - TAREA: 00065 - Linea: 1 - Regresiones de lectura con perfiles compartidos del escritorio.
+DesktopImportTests.Run(Test);
 Console.WriteLine($"{passed} pruebas correctas.");
 if(failed>0){Console.Error.WriteLine($"{failed} pruebas fallidas.");Environment.ExitCode=1;}
