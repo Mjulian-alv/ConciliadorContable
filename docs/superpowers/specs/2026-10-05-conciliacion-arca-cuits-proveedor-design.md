@@ -40,6 +40,7 @@ corriente pendiente, no se concilian pagos ni se calcula deuda.
 | D17 | Los errores de importación bloquean la carga hasta corregirse. No se importan solamente las filas válidas. |
 | D18 | Las directivas y el tratamiento de fechas conservan su funcionamiento; no se agrega un criterio especial por tratarse de pendientes. |
 | D19 | En modalidad proveedor se exportan resultados, pero no se envían comprobantes a PRESEA. |
+| D20 | Se compara la magnitud del importe de FC, NC y ND; el resumen asigna el signo por tipo. El valor original se conserva en la previsualización. |
 
 ## 3. Límites funcionales
 
@@ -263,21 +264,22 @@ Se conserva el detalle de directiva aplicada y las explicaciones de emparejamien
 eliminan comprobantes repetidos como si fueran CUIT duplicados de una lista: son problemas
 distintos. Este cambio no redefine cómo el motor actual resuelve duplicados.
 
-### 7.1 Propuesta P07 — signos, a revisar expresamente
+<!-- Fecha: 05/10/2026 - TAREA: 00063 - Linea: 2 - La confirmación del usuario fija la comparación por magnitud y evita que una NC negativa invierta dos veces su signo en el resumen. -->
+### 7.1 Tratamiento de signos confirmado (D20; anteriormente P07)
 
 La lectura actual del sistema en `LocalFileImporter` elimina guiones y paréntesis del importe.
 La conciliación detallada resta los importes recibidos, mientras que el resumen por CUIT
 aplica signo negativo según el tipo NC. Por eso preservar sin más un importe negativo del
 proveedor podría producir una diferencia artificial o invertir dos veces el signo del resumen.
 
-Se propone que la nueva importación compare la magnitud del importe para FC, NC y ND,
+La nueva importación debe comparar la magnitud del importe para FC, NC y ND,
 conservando en la previsualización el valor original y mostrando el valor normalizado. El
 resumen conserva la asignación de signo por tipo que ya utiliza. No se cambia el importador
 actual ni se interpretan saldos. Ejemplo: una NC informada como `-1.000,00` se compara como
 `1.000,00` y aporta `-1.000,00` al resumen.
 
-Esta propuesta no está confirmada por el usuario y debe resolverse antes de implementar.
-La frase «comparar el importe que mandan» por sí sola no decide el tratamiento del signo.
+El usuario confirmó este criterio el 05/10/2026. FC y ND aportan magnitud positiva al resumen;
+NC aporta magnitud negativa, independientemente del signo con que figure en el archivo.
 
 ## 8. Pantalla y exportación
 
@@ -360,7 +362,8 @@ host que referencie la DLL, sin una inicialización especial a cargo del shell.
 ## 11. Criterios de aceptación
 
 Estos casos describen la verificación de la futura implementación; no son pruebas ejecutadas.
-Los casos de propuestas P01–P09 quedan sujetos a la revisión de esas propuestas.
+Los casos de propuestas P01–P06 y P08–P09 quedan sujetos a su revisión. El criterio de signos
+antes denominado P07 ya está confirmado como D20.
 
 | ID | Caso | Resultado esperado |
 |---|---|---|
@@ -390,17 +393,18 @@ Los casos de propuestas P01–P09 quedan sujetos a la revisión de esas propuest
 | A24 | Fecha en directiva y rango de pantalla | Se conserva el comportamiento actual, sin extensión automática del período. |
 | A25 | Exportar resultado proveedor | Identifica proveedor/CUIT y no usa títulos Solo ARCA o Total ARCA. |
 | A26 | Intentar enviar comprobantes de proveedor a PRESEA/QR | Acción no disponible y ejecución impedida. |
-| A27 | NC negativa según P07 | No hay doble inversión del signo ni diferencia artificial por magnitud. |
+| A27 | NC negativa según D20 | Se compara su magnitud y se resta en el resumen, sin doble inversión del signo. |
 | A28 | Error de guardado o actualización concurrente | No informa guardado exitoso ni deja configuración/lista parcial. |
 | A29 | Abrir el módulo desde otro host y desde el shell | Ambos inicializan las estructuras necesarias sin pasos especiales. |
 | A30 | Repetir inicialización con perfiles existentes | No se pierden perfiles, directivas, listas ni formatos. |
 
 ## 12. Revisión solicitada y cierre de esta etapa
 
-Las decisiones D01–D19 recogen lo acordado. Las propuestas P01–P09 completan aspectos de
-operación y diseño que no se aprobaron individualmente. La principal decisión funcional
-adicional es P07, tratamiento de signos; también deben revisarse los límites de formatos
-y el tratamiento de movimientos fuera de alcance de P04/P05.
+Las decisiones D01–D20 recogen lo acordado. El tratamiento de signos, antes P07, quedó
+confirmado como D20. Las propuestas P01–P06 y P08–P09 completan aspectos de operación y diseño
+que no se aprobaron individualmente. Entre ellas deben revisarse los límites de formatos
+y el tratamiento de movimientos fuera de alcance de P04/P05. La confirmación de D20 no
+constituye aprobación general de estas propuestas ni autorización para programar.
 
 La revisión del código fue de solo lectura. No se cargaron archivos reales de proveedores,
 no se consultó la base y no se ejecutó una conciliación. Los formatos propuestos deben

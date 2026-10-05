@@ -555,16 +555,21 @@ el control del operador que el usuario había agregado desde el diseñador, en l
 
 Especificación: [Conciliación ARCA por CUIT y proveedor](superpowers/specs/2026-10-05-conciliacion-arca-cuits-proveedor-design.md).
 
-Consolida 19 decisiones del taller: modalidades excluyentes en el perfil, reemplazo de la
+Consolida 20 decisiones del taller: modalidades excluyentes en el perfil, reemplazo de la
 lista CUIT, formato único por proveedor, CUIT agregado desde el contexto, importe sin
 interpretación de deuda, previsualización de solo lectura, equivalencias al catálogo existente
 con confirmación inicial, bloqueo total por errores y exportación de resultados sin PRESEA
 en modalidad proveedor. Mantiene directivas y fechas actuales.
 
 Incluye circuitos, modelo de información propuesto, impacto localizado y 30 criterios de
-aceptación futuros. Las propuestas P01–P09 se distinguen de las decisiones confirmadas;
-el tratamiento de signos P07 requiere revisión expresa. Estado: **para revisión**, no aprobado
+aceptación futuros. Las propuestas P01–P06 y P08–P09 se distinguen de las decisiones confirmadas;
+el tratamiento de signos P07 fue confirmado como D20. Estado: **para revisión**, no aprobado
 para implementación. No se creó un plan de implementación.
+
+<!-- Fecha: 05/10/2026 - TAREA: 00063 - Linea: 2 - Se registra la confirmación puntual de signos sin extenderla al resto de las propuestas. -->
+Actualización del taller: el usuario confirmó comparar la magnitud del importe y asignar el
+signo del resumen por tipo (FC/ND positivo, NC negativo), conservando el valor original en
+la previsualización. Se actualizó la especificación y el criterio A27; no se modificó código.
 
 ### Verificación y límites
 
