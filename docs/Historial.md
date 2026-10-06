@@ -729,3 +729,22 @@ La opción projectlessWorkspaceRoot de la configuración de Codex determina espa
 proyecto; no cambió la ubicación del worktree Git ya creado. La app no admite registrar
 el checkout trasladado como worktree administrado mediante attach_worktree, aunque Git
 lo reconoce correctamente. Los próximos comandos de este trabajo deben usar la ruta D:.
+
+## TAREA 00069 — 06/10/2026 — Continuidad del perfil de proveedor
+
+1. Conservar el perfil editado al pasar de Perfiles a Conciliación.
+
+El enlace «Continuar con este perfil» transmite su identificador y la pantalla de
+conciliación lo presenta seleccionado. En proveedor, el CUIT contextual se solicita
+allí, con regla visible de 11 dígitos, aviso junto al campo y botón Continuar
+habilitado sólo cuando es válido. La validación del servidor se mantiene. El texto
+de Perfiles indica correctamente que el CUIT se completa en el siguiente paso.
+
+Causa observada: el enlace anterior abría la conciliación con el selector vacío.
+El registro del intento del usuario muestra además una validación fallida de CUIT,
+que antes sólo aparecía después de pulsar Continuar. Recorrido reproducido en
+navegador desde nuevo perfil hasta la carga de archivos, con CUIT de ejemplo.
+28 pruebas de servicios correctas y compilación web sin errores. Captura de la
+validación: docs/Diseno/00069-perfil-proveedor/cuit-requerido.jpg.
+
+Salida Release actualizada en D:\Codex. Login HTTPS 200 en https://localhost:5085/account/login.

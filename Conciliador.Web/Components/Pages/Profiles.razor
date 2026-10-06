@@ -16,12 +16,14 @@
 <div class="subpanel"><label class="check"><input type="checkbox" @bind="editing.FilterCuits" @bind:after="Changed" /> Filtrar ambos archivos por lista de CUIT</label><p>La nueva lista reemplaza completamente a la anterior después de validarla.</p><label>Importar lista (una columna CUIT)<InputFile OnChange="ReadCuits" accept=".csv,.txt,.xlsx" /></label>
 @if(candidate!=null){<div class="notice"><strong>@candidate.Count CUIT válidos y únicos</strong><p>@string.Join(" · ",candidate.Take(10))@(candidate.Count>10?" …":"")</p><button @onclick="()=>Act(ReplaceCuits)">Reemplazar lista guardada</button><button @onclick="()=>candidate=null">Cancelar</button></div>}
 <details><summary>Lista actual · @editing.Cuits.Count CUIT</summary><div class="cuit-list">@foreach(var c in editing.Cuits){<span>@c</span>}</div></details></div>
-}else{<div class="notice">El CUIT se solicita antes de ingresar a la conciliación. El archivo del proveedor no necesita incluirlo.</div>}
+@* Fecha: 06/10/2026 - TAREA: 00069 - Linea: 1 - Aclara el paso donde se completa el CUIT contextual del proveedor. *@
+}else{<div class="notice">En el siguiente paso se solicita el CUIT del proveedor. El archivo del proveedor no necesita incluirlo.</div>}
 <details><summary>Formato del archivo del sistema</summary><FormatEditor Format="editing.SystemFormat" OnChanged="Changed" /></details>
 <div class="section-heading"><div><h2>Directivas de conciliación</h2><p>Se aplican en orden sobre los comprobantes que quedaron sin coincidencia.</p></div></div>
 @for(int index=0;index<editing.Profile.DirectivasConciliacion.Count;index++){var i=index;var d=editing.Profile.DirectivasConciliacion[i];<div class="directive"><div class="toolbar"><strong>@(i+1). @(i==0?"Directiva principal":d.Descripcion)</strong>@if(i>0){<div><button disabled="@(i==1)" @onclick="()=>Move(i,-1)">↑</button><button disabled="@(i==editing.Profile.DirectivasConciliacion.Count-1)" @onclick="()=>Move(i,1)">↓</button><button @onclick="()=>Remove(i)">Quitar</button></div>}</div>
 @if(i==0){<p>CUIT + Tipo de comprobante + Punto de venta + Número</p>}else{<label>Descripción<input @bind="d.Descripcion" @bind:after="Changed" /></label><div class="field-options">@foreach(var field in Enum.GetValues<CampoConciliacion>()){var f=field;<label class="check"><input type="checkbox" checked="@d.Campos.Contains(f)" @onchange="e=>FieldChanged(d,f,(bool)e.Value!)" /> @FieldName(f)</label>}</div>}</div>}
-<button @onclick="AddDirective">+ Agregar directiva</button><div class="form-footer"><a class="button primary" href="/">Ir a conciliar →</a></div></section>}
+@* Fecha: 06/10/2026 - TAREA: 00069 - Linea: 1 - Entrega el perfil editado para evitar otra selección al salir de configuración. *@
+<button @onclick="AddDirective">+ Agregar directiva</button><div class="form-footer"><a class="button primary" href="@($"/?perfil={editing.Profile.Id:D}")">Continuar con este perfil →</a></div></section>}
 </div></fieldset>
 @code{
     List<WebProfile> profiles=new();WebProfile? editing;List<string>? candidate;bool busy,saved;string? error;

@@ -14,9 +14,11 @@
 @if(Work.Profile==null){
 <section class="panel start-panel"><div class="section-heading"><span class="step-number">1</span><div><h2>Elegí cómo conciliar</h2><p>El perfil define la fuente, el formato del sistema y las directivas.</p></div></div>
 <div class="form-row"><label>Perfil<select @bind="selectedId"><option value="">Seleccionar perfil</option>@foreach(var p in profiles){<option value="@p.Profile.Id">@p.Profile.Nombre</option>}</select></label>
-@if(Selected?.Source==ReconciliationSource.Provider){<label>CUIT del proveedor<input @bind="cuit" placeholder="30-12345678-1" maxlength="20" /><small>Se asigna a todos los comprobantes de su archivo.</small></label>}</div>
+@* Fecha: 06/10/2026 - TAREA: 00069 - Linea: 1 - El proveedor no trae CUIT; se exige aquí y se explica antes de intentar abrir el circuito. *@
+@if(Selected?.Source==ReconciliationSource.Provider){<label>CUIT del proveedor<input @bind="cuit" @bind:event="oninput" placeholder="30-12345678-1" maxlength="20" aria-invalid="@(!ProviderCuitValid)" /><small>Obligatorio: 11 dígitos, con guiones o espacios opcionales. Se asignará a su archivo.</small>@if(!ProviderCuitValid){<small class="error-text">Ingresá un CUIT válido para continuar.</small>}</label>}</div>
 @if(Selected!=null){<div class="notice">@(Selected.Source==ReconciliationSource.Provider?"Se concilian FC, NC y ND pendientes de pago. El archivo debe traer un único importe por comprobante.":Selected.FilterCuits?$"Se aplicará la lista de {Selected.Cuits.Count} CUIT a ambos archivos.":"Se concilian los comprobantes ARCA sin filtro de CUIT.")</div>}
-<button class="primary" disabled="@(Selected==null)" @onclick="()=>Act(Start)">Continuar →</button>
+@* Fecha: 06/10/2026 - TAREA: 00069 - Linea: 1 - Evita un intento imposible y conserva la validación del servidor como última comprobación. *@
+<button class="primary" disabled="@(Selected==null||(Selected.Source==ReconciliationSource.Provider&&!ProviderCuitValid))" @onclick="()=>Act(Start)">Continuar →</button>
 </section>
 <div class="intro-grid"><div><span class="intro-number">01</span><h3>Prepará los archivos</h3><p>ARCA o cuenta corriente del proveedor, y el archivo de comprobantes de tu sistema.</p></div><div><span class="intro-number">02</span><h3>Revisá la vista previa</h3><p>Corregí el formato y confirmá equivalencias. Los datos originales permanecen intactos.</p></div><div><span class="intro-number">03</span><h3>Analizá las diferencias</h3><p>Consultá cada comprobante, el resumen por CUIT y descargá el resultado.</p></div></div>
 }else{
@@ -58,11 +60,15 @@ else{<p class="muted">Resumen con signo fiscal: FC y ND suman; NC resta. El empa
 }
 </fieldset>
 @code{
+    // Fecha: 06/10/2026 - TAREA: 00069 - Linea: 1 - Conserva el perfil elegido al volver desde configuración.
+    [SupplyParameterFromQuery(Name="perfil")] public Guid? PerfilInicial{get;set;}
     List<WebProfile> profiles=new();string selectedId="",cuit="",search="",state="";string? error;bool busy;int resultPage,tab;Dictionary<string,string> choices=new();
     WebProfile? Selected=>profiles.FirstOrDefault(x=>x.Profile.Id.ToString()==selectedId);
+    // Fecha: 06/10/2026 - TAREA: 00069 - Linea: 1 - Usa el mismo normalizador que valida el CUIT al iniciar la conciliación.
+    bool ProviderCuitValid {get{try{CuitListImporter.Normalize(cuit);return true;}catch(ImportException){return false;}}}
     string Source=>Work.Provider==null?"ARCA":"Proveedor";
     IEnumerable<ItemConciliacion> Filtered=>(Work.Result?.Items??new()).Where(x=>(state==""||x.Estado.ToString()==state)&&(search==""||((x.CuitProveedor??"")+" "+(x.NombreProveedor??"")+" "+x.Numero).Contains(search,StringComparison.OrdinalIgnoreCase)));
-    protected override async Task OnInitializedAsync()=>await Act(async()=>{await Access.Require("ArcaOffline");profiles=await Store.Profiles();});
+    protected override async Task OnInitializedAsync()=>await Act(async()=>{await Access.Require("ArcaOffline");profiles=await Store.Profiles();if(PerfilInicial.HasValue&&profiles.Any(p=>p.Profile.Id==PerfilInicial.Value))selectedId=PerfilInicial.Value.ToString();});
     async Task Act(Func<Task> action){if(busy)return;busy=true;error=null;try{await action();}catch(Exception e){Logger.LogWarning(e,"Operación de conciliación rechazada");error=e is ImportException or ConfigurationConflictException or UnauthorizedAccessException?e.Message:"No se pudo completar la operación. Revisá el archivo o recargá la configuración."; }finally{busy=false;}}
     async Task Start(){await Work.Select(Guid.Parse(selectedId),cuit);choices.Clear();state="";search="";resultPage=0;}
     async Task Restart(){Work.Clear();choices.Clear();profiles=await Store.Profiles();}
