@@ -685,7 +685,7 @@ comprobados en navegador. Captura de ejemplo en `docs/Diseno/00066-colores-expor
 La automatización del navegador no recibió el evento de descarga de Blob; no hubo errores
 de aplicación ni consola. El contenido Excel está verificado por las pruebas de servicios.
 
-Salida Release publicada localmente. El 06/10 la carpeta Y:\ConciliadorContable y su UNC
-\\192.168.7.103\Publico\ConciliadorContable no estaban accesibles; el servidor SMB no respondió.
-Por ello quedó pendiente iniciar la instancia con la conexión real cuando vuelva ese recurso.
+Salida Release publicada localmente. El 06/10 hubo una interrupción temporal de acceso a Y;
+tras recuperarse se inició la instancia con la configuración real del escritorio.
+Login HTTPS abierto en navegador y recursos web con HTTP 200 en https://localhost:5085.
 Se conservaron el lanzador, el perfil y los usuarios existentes. Checkout original sin cambios.

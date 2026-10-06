@@ -103,8 +103,9 @@ En el circuito de proveedor se adaptan las etiquetas ARCA a Proveedor.
 El resumen por CUIT sigue disponible en pantalla.
 
 26 pruebas correctas, incluyendo comparación celda/estilo contra WinForms y proveedor.
-El 06/10 la unidad Y y su recurso SMB no estuvieron accesibles para iniciar con datos reales;
-la salida local está publicada, pendiente de ejecutar el lanzador cuando vuelva la red.
+El 06/10 se recuperó el acceso a Y luego de una interrupción temporal. La salida Release
+está iniciada con la configuración del escritorio; login HTTPS verificado en navegador
+en https://localhost:5085/account/login y recursos web con HTTP 200.
 
 ## Reglas implementadas
 
