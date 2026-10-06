@@ -9,7 +9,8 @@ namespace ArcaCliente.Web.Services;
 public static class TabularReader
 {
     public const int MaxBytes=20*1024*1024, MaxRows=50000, MaxColumns=256;
-    public static TabularDocument Read(UploadedDocument file, FileFormat format)
+    // Fecha: 06/10/2026 - TAREA: 00067 - Linea: 1 - ARCA histórico puede incluir columnas sin nombre; el resto de importaciones sigue estricto.
+    public static TabularDocument Read(UploadedDocument file, FileFormat format,bool arcaHeaders=false)
     {
         ValidateFormat(format);
         if(file.Content.Length==0 || file.Content.Length>MaxBytes) throw new ImportException("Archivo vacío o mayor a 20 MB.");
@@ -54,6 +55,8 @@ public static class TabularReader
         }
         if(rows.Count==0) throw new ImportException("No hay filas para importar.");
         string[] headers=format.Header?rows[0].Cells.Select(x=>x.Trim()).ToArray():Enumerable.Range(1,rows.Max(r=>r.Cells.Length)).Select(x=>x.ToString()).ToArray();
+        // Fecha: 06/10/2026 - TAREA: 00067 - Linea: 1 - Asigna identificadores sólo a columnas vacías sin modificar ni desplazar sus valores originales.
+        if(arcaHeaders)headers=headers.Select((h,i)=>string.IsNullOrWhiteSpace(h)?$"__ARCA_SIN_CABECERA_{i}":h).ToArray();
         if(headers.Any(string.IsNullOrWhiteSpace) || headers.Distinct(StringComparer.OrdinalIgnoreCase).Count()!=headers.Length)
             throw new ImportException("La cabecera contiene columnas vacías o repetidas.");
         if(format.Header) rows.RemoveAt(0);

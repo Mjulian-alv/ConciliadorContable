@@ -12,6 +12,8 @@ CultureInfo.DefaultThreadCurrentCulture=CultureInfo.GetCultureInfo("es-AR");Cult
 bool demo=builder.Configuration.GetValue<bool>("Web:Demo");
 if(demo&&!builder.Environment.IsDevelopment())throw new InvalidOperationException("La demostración requiere Development y acceso local.");
 builder.Services.AddSingleton(new WebMode(demo));builder.Services.AddSingleton<SessionRegistry>();
+// Fecha: 06/10/2026 - TAREA: 00067 - Linea: 1 - Permite resolver la carpeta compartida cuando un perfil aún no tiene ubicación ARCA.
+builder.Services.AddSingleton(new ArcaFolderOptions(builder.Configuration["Web:ArcaDirectory"]??""));
 builder.Services.AddSingleton(new UserStorage(builder.Configuration["Web:UsersDatabasePath"]??""));
 if(demo)builder.Services.AddSingleton<IWebConfigurationStore,DemoConfigurationStorage>();
 else {

@@ -689,3 +689,28 @@ Salida Release publicada localmente. El 06/10 hubo una interrupción temporal de
 tras recuperarse se inició la instancia con la configuración real del escritorio.
 Login HTTPS abierto en navegador y recursos web con HTTP 200 en https://localhost:5085.
 Se conservaron el lanzador, el perfil y los usuarios existentes. Checkout original sin cambios.
+
+## TAREA 00067 — 06/10/2026 — Carpeta ARCA completa y rango desde sistema
+
+1. Recuperar la lectura de todos los CSV de la carpeta ARCA, como en WinForms.
+2. Obtener el rango inicial de la fecha mínima y máxima del archivo del sistema.
+
+La web usa la carpeta del perfil, con respaldo configurable en el lanzador. Reúne CSV
+sin subcarpetas; proveedor y sistema mantienen un único archivo. No limita el histórico
+completo a diez archivos o 50.000 filas agregadas. Cada CSV conserva sus límites de lectura.
+El período queda vacío hasta una importación válida del sistema, se recalcula si cambia
+el archivo/formato y conserva ajustes manuales al actualizar ARCA. Cargas fallidas invalidan
+entradas y resultados anteriores.
+
+Los históricos reales contienen columnas vacías y dos filas con una columna sobrante por
+la representación de moneda «&euro;». Se conserva el mapeo por posición del escritorio,
+con aviso en filas discrepantes y acceso a la fila original; no se cambian sus valores.
+Se mantienen las validaciones fiscales y la lectura estricta del proveedor/sistema.
+
+29 pruebas correctas. Carpeta real: 8 CSV y 75.595 filas. PRESEA determina 04/05/2026 a
+30/09/2026 y deja 53.744 ARCA fuera del filtro. Verificación en memoria sin escrituras SQL.
+Navegador: control de carpeta y rango 05/09 a 26/09 derivado del ejemplo comprobados.
+Captura: docs/Diseno/00067-carpeta-arca/ejemplo.jpg. Checkout original sin cambios.
+
+Salida Release actualizada e iniciada con configuración real del escritorio. Login HTTPS
+y recursos web HTTP 200; formulario abierto en navegador en https://localhost:5085/account/login.

@@ -127,21 +127,44 @@ en https://localhost:5085/account/login y recursos web con HTTP 200.
 - Importes comparados como magnitud con dos decimales. El resumen usa FC/ND positivo y NC negativo.
   No hay conversiones de moneda ni inferencias sobre pagos.
 - Se reutiliza `ConciliacionService`, con las directivas del perfil en el mismo orden.
-  Período obligatorio, inicialmente desde el primer día del mes hasta hoy, como en escritorio.
+  Período obligatorio, inicialmente desde la fecha mínima hasta la máxima del archivo del sistema.
   Acota ambos archivos; la fecha sólo participa del emparejamiento si está en la directiva.
 - Estados: conciliado, diferencia de importe, solo ARCA/proveedor, solo sistema.
   Se muestra directiva y clave utilizada. Resumen por CUIT y Excel con el conjunto completo de resultados.
 - Cada carga/cambio invalida resultados. Se verifica la versión del perfil y del formato antes de conciliar
   o exportar. Un conflicto exige recargar: nunca sobrescribe automáticamente otra versión.
 
-Límites: 20 MB por archivo, 20 MB en conjunto para hasta 10 archivos ARCA;
-50.000 filas y 256 columnas por archivo, y 50.000 filas ARCA en total;
+Límites: 20 MB, 50.000 filas y 256 columnas por archivo.
+La carpeta ARCA reúne todos los CSV del directorio, sin límite agregado de diez archivos o 50.000 filas;
 100 MB de contenido XLSX expandido. No se admiten PDF, XLS binario, TXT de ancho fijo ni fórmulas Excel.
 Exportar las fórmulas como valores. Fechas y separadores deben coincidir con la configuración.
 El sistema utiliza códigos fiscales del catálogo; las equivalencias de texto del proveedor se guardan por CUIT.
 Los archivos y resultados son transitorios: al recargar/cerrar la página se pierde el trabajo sin exportar.
 
 ## Compatibilidad y aislamiento
+
+### Carpeta ARCA y período del sistema — TAREA 00067, 06/10/2026
+
+En perfiles ARCA, usar **Cargar / actualizar carpeta ARCA**. La ubicación inicial proviene
+de `CarpetaCsvArca` del perfil del escritorio; si está vacía, del parámetro `ArcaDirectory`
+del lanzador (por defecto `Y:\ArcaCliente\ARCHIVOSARCA`). La ruta se puede ajustar para la sesión.
+Se leen todos los CSV del directorio, sin subcarpetas ni deduplicación automática, como en WinForms.
+Proveedor y sistema siguen recibiendo un único archivo cada uno.
+
+Las fechas quedan vacías hasta importar correctamente el sistema. Se toma la mínima y la
+máxima de sus comprobantes incluidos; pueden ajustarse manualmente. Actualizar ARCA no las
+reemplaza. Cambiar el sistema o corregir su formato vuelve a calcularlas. Una carga fallida
+descarta entradas anteriores y evita conciliar con resultados obsoletos.
+
+ARCA conserva el mapeo por posición del escritorio cuando hay columnas vacías o sobrantes.
+Los valores originales no se editan; diferencias de columnas con contenido generan un aviso
+para revisión. Los campos fiscales mantienen sus validaciones. Proveedor y sistema continúan
+con validación estricta de cabeceras y cantidad de columnas.
+
+Verificación: 29 pruebas correctas, incluida lectura real de 8 CSV (75.595 filas) y el archivo
+PRESEA de septiembre. Su rango efectivo es 04/05/2026 a 30/09/2026; 53.744 comprobantes ARCA
+quedan fuera del filtro. Recorrido y fechas derivados verificados también en navegador con
+datos de ejemplo; captura en `docs/Diseno/00067-carpeta-arca/ejemplo.jpg`.
 
 `ArcaCliente.Core` compila las mismas fuentes de Models/Services/AppServices del módulo actual.
 El proyecto WinForms referencia esa biblioteca; no se duplicó ni reescribió el algoritmo.

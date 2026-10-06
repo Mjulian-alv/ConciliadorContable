@@ -37,9 +37,63 @@ static class ReviewRegressionTests
             var iso=original.Replace("05/09/2026","2026-09-05");
             Check(ReconciliationRunner.Arca(new("arca.csv",Encoding.UTF8.GetBytes(iso))).Ready);
         });
-        test("Período inicial conserva primer día del mes a hoy",()=>{
+        // Fecha: 06/10/2026 - TAREA: 00067 - Linea: 1 - Los separadores vacíos sobrantes no alteran columnas fiscales ni relajan la cuenta corriente del proveedor.
+        test("ARCA conserva mapeo del escritorio con columnas sobrantes y avisa",()=>{
+            var lines=Encoding.UTF8.GetString(DemoFiles.Arca.Content).Split('\n');lines[0]+=";";lines[1]+=";;";
+            Check(ReconciliationRunner.Arca(new("historico.csv",Encoding.UTF8.GetBytes(string.Join('\n',lines)))).Ready);
+            var extra=Encoding.UTF8.GetString(DemoFiles.Arca.Content).Split('\n');extra[1]+=";valor";
+            var compatible=ReconciliationRunner.Arca(new("extra.csv",Encoding.UTF8.GetBytes(string.Join('\n',extra))));
+            Check(compatible.Ready&&compatible.Warnings.Count==1&&compatible.Included.First().Total==100000m&&compatible.Rows.First().RawCells.Last()=="valor");
+            extra[1]="05/09/2026;001;5;1234";Check(!ReconciliationRunner.Arca(new("incompleto.csv",Encoding.UTF8.GetBytes(string.Join('\n',extra)))).Ready);
+            var system=Encoding.UTF8.GetString(DemoFiles.System.Content).Split('\n');system[0]+=";";
+            Check(!ProviderImporter.Preview(new("proveedor.csv",Encoding.UTF8.GetBytes(string.Join('\n',system))),new FileFormat()).Ready);
+        });
+        // Fecha: 06/10/2026 - TAREA: 00067 - Linea: 2 - El archivo del sistema determina el período, aunque ARCA contenga otros meses.
+        test("Período inicial proviene del archivo del sistema",()=>{
             var store=new DemoConfigurationStorage();var work=Workspace(store);var id=store.Profiles().Result.First(x=>x.Source==ReconciliationSource.Arca).Profile.Id;work.Select(id).GetAwaiter().GetResult();
-            var today=DateTime.Today;Check(work.From==new DateTime(today.Year,today.Month,1)&&work.To==today);
+            Check(work.From==null&&work.To==null);
+            work.UploadSystem(DemoFiles.System).GetAwaiter().GetResult();
+            var dates=work.System!.Included.Select(x=>x.Fecha.Date).ToList();
+            Check(work.From==dates.Min()&&work.To==dates.Max());
+            work.From=new DateTime(2026,9,1);work.To=new DateTime(2026,9,30);
+            work.UploadExternal(new(){DemoFiles.Arca}).GetAwaiter().GetResult();
+            Check(work.From==new DateTime(2026,9,1)&&work.To==new DateTime(2026,9,30));
+        });
+        // Fecha: 06/10/2026 - TAREA: 00067 - Linea: 1 - Una carpeta ARCA no se limita a diez archivos ni incluye subcarpetas o archivos ajenos.
+        test("Carpeta ARCA reúne todos los CSV y descarta el lote anterior al fallar",()=>{
+            var store=new DemoConfigurationStorage();var work=Workspace(store);
+            work.Select(store.Profiles().Result.First(x=>x.Source==ReconciliationSource.Arca).Profile.Id).GetAwaiter().GetResult();
+            var method=typeof(Workspace).GetMethod("LoadArcaFolder")??throw new Exception("Falta lectura de carpeta ARCA");
+            var folder=Path.Combine(Path.GetTempPath(),"arca-test-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(folder);
+            try{
+                for(var i=0;i<12;i++)File.WriteAllBytes(Path.Combine(folder,$"{i:D2}.csv"),DemoFiles.Arca.Content);
+                File.WriteAllText(Path.Combine(folder,"ignorar.txt"),"No es ARCA");Directory.CreateDirectory(Path.Combine(folder,"subcarpeta"));File.WriteAllBytes(Path.Combine(folder,"subcarpeta","ignorar.csv"),DemoFiles.Arca.Content);
+                ((Task)method.Invoke(work,new object[]{folder})!).GetAwaiter().GetResult();
+                Check(work.ExternalFiles.Count==12&&work.External!.Ready);
+                Check(work.External.Rows.Count==12*ReconciliationRunner.Arca(DemoFiles.Arca).Rows.Count);
+                work.UploadSystem(DemoFiles.System).GetAwaiter().GetResult();work.Reconcile().GetAwaiter().GetResult();Check(work.Result!=null);
+                try{((Task)method.Invoke(work,new object[]{Path.Combine(folder,"ausente")})!).GetAwaiter().GetResult();throw new Exception("Aceptó carpeta inexistente");}catch(ImportException){}
+                Check(work.External==null&&work.ExternalFiles.Count==0&&work.Result==null);
+            }finally{Directory.Delete(folder,true);}
+        });
+        // Fecha: 06/10/2026 - TAREA: 00067 - Linea: 1-2 - Verificación opcional de los archivos compartidos, sin conexión ni escrituras SQL.
+        var actualFolder=Environment.GetEnvironmentVariable("ARCA_TEST_FOLDER");var actualSystem=Environment.GetEnvironmentVariable("ARCA_TEST_SYSTEM");
+        if(!string.IsNullOrWhiteSpace(actualFolder)&&!string.IsNullOrWhiteSpace(actualSystem))test("Carpeta real ARCA completa y rango real PRESEA",()=>{
+            var store=new DemoConfigurationStorage();var work=Workspace(store);work.Select(store.Profiles().Result.First(x=>x.Source==ReconciliationSource.Arca).Profile.Id).GetAwaiter().GetResult();
+            work.Profile!.SystemFormat=new(){Date="fecha",Amount="importe",Cuit="cuit",Type="codigoafip",Point="ptovta",Number="numero",Name="nombre",DecimalSeparator="."};work.Profile.ExcludedSystemTypes=new(){"000"};
+            work.LoadArcaFolder(actualFolder).GetAwaiter().GetResult();
+            Check(work.ExternalFiles.Count==Directory.GetFiles(actualFolder,"*.csv").Length);
+            if(!work.External!.Ready){
+                foreach(var file in work.ExternalFiles){var preview=ReconciliationRunner.Arca(file);foreach(var row in preview.Rows.Where(r=>r.Errors.Count>0).Take(3))Console.WriteLine($"Diagnóstico {file.Name[..7]} línea {row.Line}: {row.RawCells.Length} columnas; {string.Join("; ",row.Errors)}; cola vacía: {row.RawCells.LastOrDefault()==""}");}
+                throw new Exception(string.Join("; ",work.External.Errors.Take(3))+" errores de filas: "+string.Join("; ",work.External.Rows.SelectMany(r=>r.Errors).Distinct()));
+            }
+            work.UploadSystem(new(Path.GetFileName(actualSystem),File.ReadAllBytes(actualSystem))).GetAwaiter().GetResult();
+            if(!work.System!.Ready)throw new Exception("PRESEA no está listo: "+string.Join("; ",work.System.Errors));
+            var systemDates=work.System.Included.Select(x=>x.Fecha.Date).ToArray();
+            if(work.From!=systemDates.Min()||work.To!=systemDates.Max())throw new Exception($"Período incorrecto: {work.From:dd/MM/yyyy} a {work.To:dd/MM/yyyy}");
+            work.Reconcile().GetAwaiter().GetResult();
+            Check(work.Result!.ExternalOmitted>0&&work.Result.SystemOmitted==0);
+            Console.WriteLine($"Carpeta real: {work.ExternalFiles.Count} CSV, {work.External.Rows.Count} filas; período {work.From:dd/MM/yyyy} a {work.To:dd/MM/yyyy}; {work.Result.ExternalOmitted} ARCA fuera del filtro.");
         });
         test("Un formato no guardado no vuelve a habilitarse al subir otro archivo",()=>{
             var store=new FailingStore();var config=new ProviderConfiguration{Cuit="30123456781",Format=new(){NumberMode=NumberMode.Separated},Types=new(){["FA"]="001",["NCA"]="003",["NDA"]="002",["REC"]="EXCLUIR",["PAGO"]="EXCLUIR"}};

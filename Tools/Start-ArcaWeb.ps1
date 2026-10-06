@@ -1,5 +1,6 @@
 # Fecha: 05/10/2026 - TAREA: 00065 - Linea: 2 - Reutiliza la configuración del escritorio sin copiar secretos al repositorio ni a la línea de comandos.
-param([Parameter(Mandatory=$true)][string]$DesktopDirectory)
+# Fecha: 06/10/2026 - TAREA: 00067 - Linea: 1 - La ruta compartida es el respaldo cuando el perfil no define carpeta ARCA.
+param([Parameter(Mandatory=$true)][string]$DesktopDirectory,[string]$ArcaDirectory='Y:\ArcaCliente\ARCHIVOSARCA')
 $ErrorActionPreference='Stop'
 $desktopRoot=(Resolve-Path -LiteralPath $DesktopDirectory).Path
 $appConfigPath=Join-Path $desktopRoot 'ConciliadorContable.dll.config'
@@ -14,12 +15,15 @@ if($externalFile){
 if([string]::IsNullOrWhiteSpace($connection)){throw 'No se encontró la conexión SQL configurada del escritorio.'}
 $usersPath=Join-Path $desktopRoot 'conciliador.db'
 if(!(Test-Path -LiteralPath $usersPath -PathType Leaf)){throw 'No se encontró la base de usuarios del escritorio.'}
-$names=@('ConnectionStrings__Arca','Web__UsersDatabasePath','Web__Demo','ASPNETCORE_ENVIRONMENT','ASPNETCORE_URLS')
+# Fecha: 06/10/2026 - TAREA: 00067 - Linea: 1 - Restaura también la ubicación ARCA al terminar el lanzador.
+$names=@('ConnectionStrings__Arca','Web__UsersDatabasePath','Web__Demo','Web__ArcaDirectory','ASPNETCORE_ENVIRONMENT','ASPNETCORE_URLS')
 $previous=@{};foreach($name in $names){$previous[$name]=[Environment]::GetEnvironmentVariable($name,'Process')}
 try{
     $env:ConnectionStrings__Arca=$connection
     $env:Web__UsersDatabasePath=$usersPath
     $env:Web__Demo='false'
+    # Fecha: 06/10/2026 - TAREA: 00067 - Linea: 1 - El navegador no necesita subir uno por uno los CSV del histórico compartido.
+    $env:Web__ArcaDirectory=$ArcaDirectory
     $env:ASPNETCORE_ENVIRONMENT='Production'
     $env:ASPNETCORE_URLS='https://localhost:5085;http://localhost:5084'
     # Fecha: 05/10/2026 - TAREA: 00065 - Linea: 2 - Production necesita la salida publicada: dotnet run dejaba los recursos Blazor y CSS fuera del directorio servido.

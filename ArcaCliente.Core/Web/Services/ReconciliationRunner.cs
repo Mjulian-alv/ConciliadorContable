@@ -39,7 +39,8 @@ public static class ReconciliationRunner
                 string line=Encoding.UTF8.GetString(file.Content).Split('\n')[0];f.Separator=line.Contains(';')?";":",";
                 try{new UTF8Encoding(false,true).GetString(file.Content);}catch(DecoderFallbackException){f.Encoding="Latin-1";}
             }
-            var table=TabularReader.Read(file,f);
+            // Fecha: 06/10/2026 - TAREA: 00067 - Linea: 1 - El histórico ARCA admite columnas vacías ignoradas por el importador del escritorio.
+            var table=TabularReader.Read(file,f,arcaHeaders:true);
             string Normalize(string s)=>new(s.Normalize(NormalizationForm.FormD).Where(c=>CharUnicodeInfo.GetUnicodeCategory(c)!=UnicodeCategory.NonSpacingMark&&char.IsLetterOrDigit(c)).Select(char.ToLowerInvariant).ToArray());
             string Find(params string[] aliases)=>table.Headers.FirstOrDefault(h=>aliases.Contains(Normalize(h)))??aliases[0];
             f.Date=Find("fechadeemision","fechaemision");f.Type=Find("tipodecomprobante");f.Point=Find("puntodeventa");f.Number=Find("numerodesde","nrodesde");

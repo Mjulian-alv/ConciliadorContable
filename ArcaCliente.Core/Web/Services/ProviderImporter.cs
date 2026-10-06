@@ -24,7 +24,8 @@ public static class ProviderImporter
         var result=new ImportPreview();
         try {
             if(assignedCuit!=null) assignedCuit=CuitListImporter.Normalize(assignedCuit);
-            var table=TabularReader.Read(file,f);
+            // Fecha: 06/10/2026 - TAREA: 00067 - Linea: 1 - La tolerancia a columnas vacías corresponde sólo a archivos ARCA.
+            var table=TabularReader.Read(file,f,arcaHeaders:arcaDates);
             int Column(string name,bool required=true) {
                 int i=Array.FindIndex(table.Headers,x=>x.Equals(name.Trim(),StringComparison.OrdinalIgnoreCase));
                 if(i<0 && required) throw new ImportException($"No se encontró la columna «{name}».");return i;
@@ -43,7 +44,16 @@ public static class ProviderImporter
                 if(mapped=="EXCLUIR") { p.Excluded=true;continue; }
                 if(canonical && !FiscalCatalog.All.ContainsKey(mapped) && TablaComprobanteDescripcionMapper.ObtenerTodosLosCodigos().Contains(mapped)) { p.Excluded=true;continue; }
                 if(!FiscalCatalog.All.ContainsKey(mapped)) { p.Errors.Add("Tipo sin equivalencia fiscal o exclusión confirmada.");if(!result.UnknownTypes.Contains(raw))result.UnknownTypes.Add(raw);continue; }
-                if(row.Cells.Length!=table.Headers.Length) p.Errors.Add("Cantidad de columnas distinta de la cabecera.");
+                // Fecha: 06/10/2026 - TAREA: 00067 - Linea: 1 - ARCA replica el mapeo por posición de WinForms: valida campos fiscales y conserva las columnas sobrantes para revisión.
+                if(row.Cells.Length!=table.Headers.Length){
+                    if(!arcaDates)p.Errors.Add("Cantidad de columnas distinta de la cabecera.");
+                    else {
+                        bool emptyTail=row.Cells.Length>table.Headers.Length
+                            ?row.Cells.Skip(table.Headers.Length).All(string.IsNullOrWhiteSpace)
+                            :table.Headers.Skip(row.Cells.Length).All(h=>h.StartsWith("__ARCA_SIN_CABECERA_",StringComparison.Ordinal));
+                        if(!emptyTail)result.Warnings.Add($"Fila {row.Line}: cantidad de columnas distinta de la cabecera. Se aplicó el mapeo ARCA del escritorio; revisá la vista previa.");
+                    }
+                }
                 var datePatterns=arcaDates?new[]{"yyyy-MM-dd","dd/MM/yyyy"}:new[]{f.DatePattern};
                 if(!DateTime.TryParseExact(At(date),datePatterns,CultureInfo.InvariantCulture,DateTimeStyles.None,out var parsedDate)) p.Errors.Add("Fecha inválida para el formato elegido.");
                 string parsedCuit=assignedCuit??"";
