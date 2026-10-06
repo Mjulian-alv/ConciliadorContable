@@ -93,6 +93,19 @@ Corrección del arranque local (misma tarea): ejecutar `dotnet run` bajo Product
 Con la salida publicada, login y los cinco recursos de pantalla comprobados responden 200.
 Formulario de ingreso abierto y revisado visualmente en el navegador integrado.
 
+### Colores y planilla del escritorio — TAREA 00066, 06/10/2026
+
+Tarjetas y filas del resultado comparten `EstadoConciliacionColores` con WinForms: verde,
+amarillo, rosado y lavanda para los cuatro estados. La descarga utiliza directamente el
+exportador original de WinForms: una hoja, 14 columnas, detalle de directivas y resumen
+al pie, con sus mismos estilos. Se retiró la planilla web abreviada de dos hojas.
+En el circuito de proveedor se adaptan las etiquetas ARCA a Proveedor.
+El resumen por CUIT sigue disponible en pantalla.
+
+26 pruebas correctas, incluyendo comparación celda/estilo contra WinForms y proveedor.
+El 06/10 la unidad Y y su recurso SMB no estuvieron accesibles para iniciar con datos reales;
+la salida local está publicada, pendiente de ejecutar el lanzador cuando vuelva la red.
+
 ## Reglas implementadas
 
 - Perfiles existentes se leen como ARCA sin filtro CUIT, conservando sus directivas.

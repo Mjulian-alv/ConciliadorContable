@@ -662,3 +662,30 @@ Corrección de arranque dentro de 00065: la instancia `dotnet run` en Production
 Blazor, CSS aislado ni el módulo de reconexión (HTTP 500). El lanzador ahora publica Release
 en `bin/LocalHost` y ejecuta ese contenido completo. Login y cinco recursos verificados con
 HTTP 200; formulario de ingreso abierto y revisado visualmente. Conexión y perfil conservados.
+
+## TAREA 00066 — 05–06/10/2026 — Colores y exportación compatibles con WinForms
+
+1. Aplicar los cuatro colores de estado del escritorio a tarjetas y filas de la web.
+2. Conservar exactamente la planilla de conciliación exportada por WinForms.
+
+La pantalla consulta `EstadoConciliacionColores.Rgb`: conciliados verde (170,240,209),
+diferencias amarillo (254,240,186), sólo ARCA/proveedor rosado (255,205,210), sólo sistema
+lavanda (206,212,237). Texto oscuro y selección diferenciada con borde.
+
+El adaptador web reutiliza `ConciliacionExcelExporter.Exportar`, con un temporal independiente
+por descarga que se elimina al finalizar. Se recuperan la hoja original, sus 14 columnas,
+nombre del proveedor, descripción fiscal, intentos de directivas, título, resumen final,
+colores, bordes, anchos y encabezado congelado. El circuito proveedor cambia sólo las
+etiquetas de la fuente. Nombre de descarga igual al escritorio: Conciliacion_yyyyMMdd_HHmm.xlsx.
+El exportador original del escritorio no fue modificado.
+
+26 pruebas correctas. Regresión comparada celda por celda contra el exportador original,
+incluyendo tipos, estilos y estructura; variante de proveedor verificada. Colores CSS
+comprobados en navegador. Captura de ejemplo en `docs/Diseno/00066-colores-exportacion/colores.jpg`.
+La automatización del navegador no recibió el evento de descarga de Blob; no hubo errores
+de aplicación ni consola. El contenido Excel está verificado por las pruebas de servicios.
+
+Salida Release publicada localmente. El 06/10 la carpeta Y:\ConciliadorContable y su UNC
+\\192.168.7.103\Publico\ConciliadorContable no estaban accesibles; el servidor SMB no respondió.
+Por ello quedó pendiente iniciar la instancia con la conexión real cuando vuelva ese recurso.
+Se conservaron el lanzador, el perfil y los usuarios existentes. Checkout original sin cambios.

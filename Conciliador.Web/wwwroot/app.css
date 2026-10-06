@@ -5,3 +5,8 @@
 @media(max-width:760px){.sidebar{position:static;width:100%;padding:13px 18px}.brand{margin:0;font-size:16px}.brand-mark{width:30px;height:30px}.sidebar nav{display:flex;margin-top:13px}.sidebar nav a{padding:9px 12px}.sidebar-foot,.nav-caption{display:none}.app-shell{display:block}.main-shell{margin-left:0}.content{padding:18px 14px}.topbar{padding:12px 15px;height:auto;gap:10px}.topbar .muted{display:none}.demo-bar{padding:8px 15px}.page-heading{flex-direction:column;gap:12px}.page-heading h1{font-size:25px}.upload-grid,.profile-layout,.mode-options,.intro-grid{grid-template-columns:1fr}.stat-grid{grid-template-columns:1fr 1fr}.panel{padding:17px}.context-strip{flex-direction:column;align-items:flex-start}.steps span{padding-right:8px;font-size:11px}.form-row{align-items:stretch}.form-row>label{width:100%;flex:auto}.counts{gap:10px;flex-wrap:wrap}.toolbar{flex-wrap:wrap}.demo-actions{gap:12px}.intro-grid{gap:14px;margin:20px 0}.profile-list{margin-bottom:0}.format-grid{gap:12px}.login-card{padding:25px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
 h1:focus{outline:none}
+/* Fecha: 05/10/2026 - TAREA: 00066 - Linea: 1 - El fondo distingue los cuatro estados y el texto oscuro conserva la legibilidad sobre la paleta del escritorio. */
+.results .result-state,.results .result-state:hover{background:var(--state-color);color:#111}
+.results .result-state small,.results .result-state summary,.results .stat.result-state span,.results .stat.result-state strong{color:#24313b}
+.results .stat.result-state.selected{outline:2px solid #153445;outline-offset:2px;border-color:#153445}
+.results .state-label{color:#111;background:#ffffff70;border:1px solid #00000012}

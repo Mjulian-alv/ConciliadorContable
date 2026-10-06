@@ -25,7 +25,8 @@ static class IntegrationTests
             var a=ReconciliationRunner.Arca(DemoFiles.Arca);var b=ProviderImporter.Preview(DemoFiles.System,new FileFormat());Check(a.Ready&&b.Ready);
             var r=ReconciliationRunner.Run(new(),a,b,null);Check(r.Items.Count==7&&r.Items.Count(x=>x.Estado==ArcaCliente.Models.EstadoConciliacion.Conciliado)==4);
             Check(r.Summary.Single().External==261500&&r.Summary.Single().System==276400);
-            using var book=new XLWorkbook(new MemoryStream(ResultExporter.Export(r)));Check(book.Worksheet(1).Cell(1,7).GetString()=="ARCA");Check(book.Worksheet(1).Cell(2,7).DataType==XLDataType.Number);
+            // Fecha: 05/10/2026 - TAREA: 00066 - Linea: 2 - El contrato es ahora la planilla WinForms, con encabezado en fila 2 y total ARCA en columna 12.
+            using var book=new XLWorkbook(new MemoryStream(ResultExporter.Export(r)));Check(book.Worksheet(1).Cell(2,12).GetString()=="Total ARCA");
         });
         test("CUIT filtra ambos lados sin generar remanentes ajenos",()=>{
             var a=ReconciliationRunner.Arca(DemoFiles.Arca);var b=ProviderImporter.Preview(DemoFiles.System,new FileFormat());

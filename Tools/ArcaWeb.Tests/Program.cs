@@ -28,5 +28,7 @@ IntegrationTests.Run(Test);
 ReviewRegressionTests.Run(Test);
 // Fecha: 05/10/2026 - TAREA: 00065 - Linea: 1 - Regresiones de lectura con perfiles compartidos del escritorio.
 DesktopImportTests.Run(Test);
+// Fecha: 05/10/2026 - TAREA: 00066 - Linea: 2 - Verifica paridad con el exportador compartido.
+ExportCompatibilityTests.Run(Test);
 Console.WriteLine($"{passed} pruebas correctas.");
 if(failed>0){Console.Error.WriteLine($"{failed} pruebas fallidas.");Environment.ExitCode=1;}
