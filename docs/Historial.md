@@ -714,3 +714,18 @@ Captura: docs/Diseno/00067-carpeta-arca/ejemplo.jpg. Checkout original sin cambi
 
 Salida Release actualizada e iniciada con configuración real del escritorio. Login HTTPS
 y recursos web HTTP 200; formulario abierto en navegador en https://localhost:5085/account/login.
+
+## TAREA 00068 — 06/10/2026 — Traslado del worktree ArcaCliente a D:\Codex
+
+1. Trasladar el trabajo web aislado a D:\Codex y conservar rama e historial.
+
+El worktree Git está en D:\Codex\arca-web\ConciliadorContable, rama codex/arca-web,
+commit 5b46918. El worktree anterior se archivó después de verificar que no tenía
+cambios pendientes. El original D:\Sistemas\ConciliadorContable conserva su rama y
+checkout. Se restauraron las dependencias y se reinició el host web desde D:, con login
+HTTPS 200 en https://localhost:5085/account/login.
+
+La opción projectlessWorkspaceRoot de la configuración de Codex determina espacios sin
+proyecto; no cambió la ubicación del worktree Git ya creado. La app no admite registrar
+el checkout trasladado como worktree administrado mediante attach_worktree, aunque Git
+lo reconoce correctamente. Los próximos comandos de este trabajo deben usar la ruta D:.
