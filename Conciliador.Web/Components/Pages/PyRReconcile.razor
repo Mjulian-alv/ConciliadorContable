@@ -1,0 +1,65 @@
+@page "/pyr"
+@attribute [Authorize(Policy="ArcaPyR")]
+@inject IPyRProfileStore Store
+@inject PyRWorkspace Work
+@inject AccessGuard Access
+@inject WebMode Mode
+@inject IJSRuntime JS
+@inject ILogger<PyRReconcile> Logger
+@* Fecha: 06/10/2026 - TAREA: 00072 - Linea: 3,4 - El alcance se deriva de los mayores cargados como en TAREA 00041. *@
+<PageTitle>Percepciones y retenciones · Conciliador</PageTitle>
+<NavigationLock OnBeforeInternalNavigation="BeforeNavigate" ConfirmExternalNavigation="@directivesDirty" />
+<div class="page-heading"><div><p class="eyebrow">CONCILIACIÓN FISCAL</p><h1>Percepciones y retenciones</h1><p>ARCA contra los mayores de las cuentas seleccionadas.</p></div><a class="button" href="/pyr/perfiles">Administrar perfiles PyR</a></div>
+@if(error!=null){<div class="notice error" role="alert">@error</div>}
+@if(busy){<p class="save-state" role="status">Procesando…</p>}
+<fieldset disabled="@busy">
+@if(Work.Profile==null){<section class="panel"><h2>Elegí un perfil PyR</h2><label>Perfil<select @bind="selectedId"><option value="">Seleccionar…</option>@foreach(var p in profiles){<option value="@p.Profile.Id">@p.Profile.Nombre</option>}</select></label><p class="muted">Se recuperan sus cuentas, columnas y directivas existentes.</p><button class="primary" disabled="@(selectedId=="")" @onclick="()=>Act(Start)">Continuar →</button></section>}
+else{var profile=Work.Profile.Profile;
+<div class="context-strip"><span><strong>@profile.Nombre</strong> · @profile.Cuentas.Count cuentas configuradas</span><button @onclick="()=>Act(Restart)">Cambiar / recargar perfil</button></div>
+@if(Mode.Demo){<div class="demo-actions"><button @onclick="()=>Act(Example)">Cargar ejemplo PyR</button><span>Datos ficticios con diferencias, anulaciones y registros fuera de alcance.</span></div>}
+<section class="panel"><div class="section-heading"><span class="step-number">1</span><div><h2>Carpeta ARCA</h2><p>Se leen todos los XLS, XLSX y HTML de la carpeta, sin subcarpetas.</p></div></div>
+<label>Carpeta accesible desde el servidor<input value="@Work.DirectoryPath" @onchange="e=>Work.ChangeDirectory(e.Value?.ToString()??string.Empty)" placeholder="Ruta de la carpeta ARCA de PyR" /></label>
+<button @onclick="()=>Act(Work.LoadFolder)">Cargar / actualizar carpeta ARCA</button>
+@if(Work.Arca is {} load){<p class="save-state">@load.ArchivosLeidos.Count archivos leídos · @load.Registros.Count registros</p>
+@if(load.ArchivosRepetidos.Count>0 || load.ArchivosNoReconocidos.Count>0 || load.FilasNoReconocidas>0){<div class="notice"><strong>Avisos de lectura</strong><p>@load.FilasNoReconocidas filas con impuesto u operación no reconocidos.</p>@foreach(var a in load.ArchivosRepetidos){<p>@a.Archivo: repetido de @a.IgualA.</p>}@foreach(var a in load.ArchivosNoReconocidos){<p>@a.Archivo: @a.Motivo.</p>}</div>}
+<details><summary>Ver archivos leídos y registros ARCA</summary><p>@string.Join(" · ",load.ArchivosLeidos)</p><PyRPreview Arca="load.Registros" @key="load" /></details>}
+</section>
+<section class="panel"><div class="section-heading"><span class="step-number">2</span><div><h2>Mayores PRESEA</h2><p>Cargá un Excel por cuenta. Sólo se concilian los grupos correspondientes a las cuentas cargadas.</p></div></div>
+@if(profile.Cuentas.Count==0){<div class="notice">El perfil no tiene cuentas. Agregalas en Perfiles PyR y volvé a cargarlo.</div>}
+<div class="pyr-account-grid">@foreach(var account in profile.Cuentas){var a=account;var major=Work.Majors.SingleOrDefault(m=>m.Cuenta.Id==a.Id);
+<article class="subpanel" @key="a.Id"><h3>@a.Codigo — @a.Nombre</h3><p>@a.TipoTexto · @a.ImpuestoTexto</p>
+<label>@(major==null?"Cargar mayor Excel":"Reemplazar mayor Excel")<InputFile OnChange="e=>Upload(e,a.Id)" accept=".xls,.xlsx" /></label>
+@if(major!=null){<p><strong>@major.Archivo</strong> · @major.Filas movimientos</p><p>@major.FilasSinComprobante sin comprobante · @major.Registros.Count(r=>r.EsAnulacion) anulaciones</p><button @onclick="()=>Remove(a.Id)">Quitar mayor</button><details><summary>Previsualizar mayor</summary><PyRPreview Major="major" @key="major" /></details>}
+</article>}</div></section>
+<section class="panel"><details><summary>Directivas de conciliación · @profile.DirectivasConciliacion.Count</summary><p>Los cambios se guardan en este perfil y afectan la próxima conciliación.</p><PyRDirectives Items="directives" OnChanged="DirectivesChanged" /><div class="form-footer"><button disabled="@(!directivesDirty)" @onclick="()=>Act(SaveDirectives)">Guardar directivas</button></div></details>
+<div class="form-footer"><div class="reconcile-actions">@if(BlockReason!=null){<span role="status">@BlockReason</span>}<button class="primary" disabled="@(BlockReason!=null)" @onclick="()=>Act(Work.Reconcile)">Conciliar percepciones y retenciones →</button></div></div></section>
+@if(Work.Result is {} result){<PyRResults Result="result" OnExport="()=>Act(Export)" @key="result" />}
+}
+</fieldset>
+@code{
+    [SupplyParameterFromQuery(Name="perfil")]public Guid? PerfilInicial{get;set;}
+    List<WebPyRProfile> profiles=new();List<DirectivaPyR> directives=new();string selectedId="";bool busy,directivesDirty;string? error;
+    string? BlockReason=>directivesDirty?"Guardá las directivas para continuar.":Work.Arca?.Registros.Count is not >0?"Cargá la carpeta ARCA.":Work.Majors.Count==0?"Cargá al menos un mayor PRESEA.":null;
+    // Fecha: 06/10/2026 - TAREA: 00072 - Linea: 2,3 - Continuar desde Perfiles abre la versión recién guardada y no reutiliza la anterior.
+    protected override Task OnParametersSetAsync()=>Act(async()=>{
+        profiles=await Store.Profiles();var requested=profiles.SingleOrDefault(p=>p.Profile.Id==PerfilInicial);
+        if(requested!=null){selectedId=requested.Profile.Id.ToString();if(Work.Profile?.Profile.Id!=requested.Profile.Id || Work.Profile.Version!=requested.Version)await Work.Select(requested.Profile.Id);}
+        CopyDirectives();
+    });
+    async Task Act(Func<Task> action){if(busy)return;busy=true;error=null;try{await Access.Require("ArcaPyR");await action();}
+        catch(Exception e){Logger.LogWarning(e,"Operación PyR rechazada");error=e is ImportException or ConfigurationConflictException or UnauthorizedAccessException or ArcaCliente.Services.ColumnasFaltantesException or InvalidDataException or DirectoryNotFoundException?e.Message:"No se pudo completar la operación. Revisá el archivo, los permisos y la conexión.";}finally{busy=false;}}
+    void CopyDirectives(){directives=Work.Profile?.Profile.DirectivasConciliacion.Select(d=>d.Clonar()).ToList()??new();directivesDirty=false;}
+    async Task Start(){await Work.Select(Guid.Parse(selectedId));CopyDirectives();}
+    async Task Restart(){if((Work.Arca!=null || Work.Majors.Count>0 || directivesDirty) && !await JS.InvokeAsync<bool>("confirm","Se descartarán las fuentes cargadas y los cambios de esta conciliación. ¿Continuar?"))return;Work.Clear();CopyDirectives();profiles=await Store.Profiles();}
+    async Task Upload(InputFileChangeEventArgs e,Guid id)=>await Act(async()=>{
+        if(Work.Majors.Any(m=>m.Cuenta.Id==id) && !await JS.InvokeAsync<bool>("confirm","¿Reemplazar el mayor cargado de esta cuenta?"))return;
+        Work.RemoveMajor(id);using var ms=new MemoryStream();await e.File.OpenReadStream(TabularReader.MaxBytes).CopyToAsync(ms);
+        await Work.LoadMajor(new(Path.GetFileName(e.File.Name),ms.ToArray()),id);
+    });
+    async Task Remove(Guid id)=>await Act(()=>{Work.RemoveMajor(id);return Task.CompletedTask;});
+    void DirectivesChanged(){directivesDirty=true;Work.Invalidate();}
+    async Task SaveDirectives(){await Work.SaveDirectives(directives);CopyDirectives();}
+    async Task Example(){if(!Mode.Demo)return;await Work.Example();CopyDirectives();}
+    async Task BeforeNavigate(Microsoft.AspNetCore.Components.Routing.LocationChangingContext context){if(directivesDirty && !await JS.InvokeAsync<bool>("confirm","Hay directivas sin guardar. ¿Descartar los cambios?"))context.PreventNavigation();}
+    async Task Export(){var bytes=await Work.Export();using var stream=new MemoryStream(bytes);using var reference=new DotNetStreamReference(stream);await JS.InvokeVoidAsync("downloadFile",$"Conciliacion PyR {DateTime.Now:yyyy-MM-dd HHmm}.xlsx",reference);}
+}

@@ -1,0 +1,58 @@
+@page "/pyr/perfiles"
+@attribute [Authorize(Policy="ArcaPyR")]
+@inject IPyRProfileStore Store
+@inject AccessGuard Access
+@inject PyRWorkspace Work
+@inject IJSRuntime JS
+@inject ILogger<PyRProfiles> Logger
+@* Fecha: 06/10/2026 - TAREA: 00072 - Linea: 2 - Se guarda una edición completa para evitar cuentas o directivas parciales. *@
+<PageTitle>Perfiles PyR · Conciliador</PageTitle>
+<NavigationLock OnBeforeInternalNavigation="BeforeNavigate" ConfirmExternalNavigation="@dirty" />
+<div class="page-heading"><div><p class="eyebrow">PERCEPCIONES Y RETENCIONES</p><h1>Perfiles PyR</h1><p>Cuentas contables, formato de los mayores y reglas de conciliación.</p></div><button class="primary" disabled="@busy" @onclick="()=>Act(New)">+ Nuevo perfil PyR</button></div>
+@if(error!=null){<div class="notice error" role="alert">@error</div>}
+@if(saved){<p class="save-state" role="status">✓ Perfil guardado</p>}
+<fieldset disabled="@busy"><div class="profile-layout"><section class="panel profile-list"><h2>Perfiles disponibles</h2>
+@if(profiles.Count==0){<p>No hay perfiles PyR. Creá uno para configurar las cuentas.</p>}
+@foreach(var p in profiles){<button class="profile-choice @(editing?.Profile.Id==p.Profile.Id?"selected":"")" @onclick="()=>Act(()=>Choose(p))"><strong>@p.Profile.Nombre</strong><small>@p.Profile.Cuentas.Count cuentas</small></button>}
+<button @onclick="()=>Act(Reload)">Recargar perfiles</button></section>
+@if(editing is not null){var p=editing.Profile;
+<section class="panel"><h2>Configuración del perfil</h2><p class="muted">Los cambios se aplican al guardar el perfil.</p>
+<label>Nombre<input @bind="p.Nombre" @bind:after="Dirty" maxlength="200" /></label>
+<label>Carpeta de archivos ARCA<input @bind="p.CarpetaArca" @bind:after="Dirty" placeholder="Ruta accesible desde el servidor" maxlength="500" /></label>
+<details><summary>Formato del mayor PRESEA</summary><p>Excel XLS o XLSX. Sin cabecera, indicá posiciones de columna desde 1.</p>
+<div class="format-grid"><label>Hoja Excel (vacío = primera)<input @bind="p.HojaExcel" @bind:after="Dirty" /></label><label class="check"><input type="checkbox" @bind="p.TieneCabecera" @bind:after="Dirty" /> Tiene cabecera</label>
+<label>Fecha<input @bind="p.ColFecha" @bind:after="Dirty" /></label><label>Concepto<input @bind="p.ColConcepto" @bind:after="Dirty" /></label>
+<label>Debe<input @bind="p.ColDebe" @bind:after="Dirty" /></label><label>Haber<input @bind="p.ColHaber" @bind:after="Dirty" /></label>
+<label>Operador<input @bind="p.ColOperador" @bind:after="Dirty" /></label><label>Asiento (opcional)<input @bind="p.ColAsiento" @bind:after="Dirty" /></label>
+<label>Formato de fecha<input @bind="p.FormatoFecha" @bind:after="Dirty" /></label><label>Separador decimal<select @bind="p.SeparadorDecimal" @bind:after="Dirty"><option value=".">Punto</option><option value=",">Coma</option></select></label></div></details>
+<h2>Cuentas contables</h2><p>Se concilia únicamente contra las cuentas cuyo mayor se cargue.</p>
+@foreach(var account in p.Cuentas){var a=account;<div class="subpanel" @key="a.Id"><div class="format-grid">
+<label>Código<input @bind="a.Codigo" @bind:after="Dirty" /></label><label>Nombre de cuenta<input @bind="a.Nombre" @bind:after="Dirty" /></label>
+<label>Operación<select @bind="a.Tipo" @bind:after="Dirty">@foreach(var t in Enum.GetValues<TipoOperacionPyR>()){<option value="@t">@CuentaPyR.NombreTipo(t)</option>}</select></label>
+<label>Impuesto<select @bind="a.Impuesto" @bind:after="Dirty">@foreach(var t in Enum.GetValues<ImpuestoPyR>()){<option value="@t">@CuentaPyR.NombreImpuesto(t)</option>}</select></label></div>
+<button @onclick="()=>RemoveAccount(a)">Quitar cuenta</button></div>}
+<button @onclick="AddAccount">+ Agregar cuenta</button>
+<h2 class="pyr-section-title">Directivas de conciliación</h2><p>Se aplican en orden sobre los movimientos pendientes.</p><PyRDirectives Items="p.DirectivasConciliacion" OnChanged="Dirty" />
+<div class="form-footer pyr-profile-actions"><span role="status">@(dirty?"Hay cambios sin guardar":"")</span>
+@if(editing.Version!=""){<button @onclick="()=>Act(Delete)">Eliminar perfil</button>}
+<button class="primary" @onclick="()=>Act(Save)">Guardar perfil</button>
+@if(!dirty && editing.Version!=""){<a class="button" href="@($"/pyr?perfil={p.Id:D}")">Continuar a PyR →</a>}
+</div></section>}
+</div></fieldset>
+@code{
+    List<WebPyRProfile> profiles=new();WebPyRProfile? editing;bool busy,dirty,saved;string? error;
+    protected override Task OnInitializedAsync()=>Act(Load);
+    async Task Act(Func<Task> action){if(busy)return;busy=true;error=null;saved=false;try{await Access.Require("ArcaPyR");await action();}
+        catch(Exception e){Logger.LogWarning(e,"Operación de perfiles PyR rechazada");error=e is ImportException or ConfigurationConflictException or UnauthorizedAccessException?e.Message:"No se pudo guardar o leer el perfil. Revisá la conexión y recargá.";}finally{busy=false;}}
+    async Task Load(){profiles=await Store.Profiles();editing=profiles.FirstOrDefault()?.Copy();dirty=false;}
+    async Task<bool> CanDiscard()=>!dirty || await JS.InvokeAsync<bool>("confirm","Hay cambios sin guardar. ¿Descartarlos?");
+    async Task Reload(){if(await CanDiscard())await Load();}
+    async Task New(){if(!await CanDiscard())return;editing=new();dirty=true;}
+    async Task Choose(WebPyRProfile p){if(!await CanDiscard())return;editing=p.Copy();dirty=false;}
+    void Dirty(){dirty=true;saved=false;Work.Invalidate();}
+    void AddAccount(){editing!.Profile.Cuentas.Add(new());Dirty();}
+    void RemoveAccount(CuentaPyR a){editing!.Profile.Cuentas.Remove(a);Dirty();}
+    async Task Save(){if(editing==null)return;Work.Invalidate();editing=await Store.Save(editing);profiles=await Store.Profiles();dirty=false;saved=true;}
+    async Task Delete(){if(editing==null || !await JS.InvokeAsync<bool>("confirm",$"¿Eliminar el perfil {editing.Profile.Nombre}?"))return;await Store.Delete(editing);Work.Clear();await Load();}
+    async Task BeforeNavigate(Microsoft.AspNetCore.Components.Routing.LocationChangingContext context){if(!await CanDiscard())context.PreventNavigation();}
+}

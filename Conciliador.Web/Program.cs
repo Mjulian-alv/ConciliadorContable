@@ -15,25 +15,28 @@ builder.Services.AddSingleton(new WebMode(demo));builder.Services.AddSingleton<S
 // Fecha: 06/10/2026 - TAREA: 00067 - Linea: 1 - Permite resolver la carpeta compartida cuando un perfil aún no tiene ubicación ARCA.
 builder.Services.AddSingleton(new ArcaFolderOptions(builder.Configuration["Web:ArcaDirectory"]??""));
 builder.Services.AddSingleton(new UserStorage(builder.Configuration["Web:UsersDatabasePath"]??""));
-if(demo)builder.Services.AddSingleton<IWebConfigurationStore,DemoConfigurationStorage>();
+// Fecha: 06/10/2026 - TAREA: 00072 - Linea: 1,2 - PyR comparte identidad y conexión, con persistencia independiente de los perfiles fiscales.
+if(demo){builder.Services.AddSingleton<IWebConfigurationStore,DemoConfigurationStorage>();builder.Services.AddSingleton<IPyRProfileStore,DemoPyRProfileStorage>();}
 else {
     string connection=builder.Configuration.GetConnectionString("Arca")??throw new InvalidOperationException("Configurá ConnectionStrings:Arca o activá Web:Demo en Development.");
     if(string.IsNullOrWhiteSpace(builder.Configuration["Web:UsersDatabasePath"]))throw new InvalidOperationException("Configurá Web:UsersDatabasePath.");
     builder.Services.AddSingleton<IWebConfigurationStore>(new SqlConfigurationStorage(connection));
+    builder.Services.AddSingleton<IPyRProfileStore>(new SqlPyRProfileStorage(connection));
 }
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie(o=>{
     o.LoginPath="/account/login";o.AccessDeniedPath="/account/login";o.Cookie.Name="Conciliador.Web.Auth";o.Cookie.HttpOnly=true;o.Cookie.SameSite=SameSiteMode.Strict;o.Cookie.SecurePolicy=demo?CookieSecurePolicy.SameAsRequest:CookieSecurePolicy.Always;o.ExpireTimeSpan=TimeSpan.FromHours(8);o.SlidingExpiration=false;
     o.Events.OnValidatePrincipal=async context=>{if(!context.HttpContext.RequestServices.GetRequiredService<SessionRegistry>().IsActive(context.Principal!) || !demo && await context.HttpContext.RequestServices.GetRequiredService<UserStorage>().Find(context.Principal?.Identity?.Name??"")==null)context.RejectPrincipal();};
 });
 builder.Services.AddAuthorization(o=>{
-    foreach(var permission in new[]{"ArcaOffline","ArcaPerfiles","ArcaEquivalencias"})o.AddPolicy(permission,p=>p.RequireAuthenticatedUser().RequireAssertion(c=>c.User.IsInRole("Admin")||c.User.HasClaim("permission",permission)));
+    foreach(var permission in new[]{"ArcaOffline","ArcaPerfiles","ArcaEquivalencias","ArcaPyR"})o.AddPolicy(permission,p=>p.RequireAuthenticatedUser().RequireAssertion(c=>c.User.IsInRole("Admin")||c.User.HasClaim("permission",permission)));
 });
 builder.Services.AddCascadingAuthenticationState();builder.Services.AddScoped<AccessGuard>();builder.Services.AddScoped<Workspace>();
+builder.Services.AddScoped<PyRWorkspace>();
 builder.Services.AddRazorComponents().AddInteractiveServerComponents(o=>{o.DisconnectedCircuitRetentionPeriod=TimeSpan.FromMinutes(2);});
 builder.Services.AddRazorPages();
 builder.Services.AddRateLimiter(o=>{o.RejectionStatusCode=429;o.AddPolicy("login",context=>RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString()??"unknown",_=>new FixedWindowRateLimiterOptions{PermitLimit=10,Window=TimeSpan.FromMinutes(1),QueueLimit=0}));});
 var app=builder.Build();
-if(!demo){app.UseExceptionHandler("/Error");app.UseHsts();app.UseHttpsRedirection();await ((SqlConfigurationStorage)app.Services.GetRequiredService<IWebConfigurationStore>()).Initialize();}
+if(!demo){app.UseExceptionHandler("/Error");app.UseHsts();app.UseHttpsRedirection();await ((SqlConfigurationStorage)app.Services.GetRequiredService<IWebConfigurationStore>()).Initialize();await ((SqlPyRProfileStorage)app.Services.GetRequiredService<IPyRProfileStore>()).Initialize();}
 if(demo)app.Use(async(ctx,next)=>{if(ctx.Connection.RemoteIpAddress==null||!System.Net.IPAddress.IsLoopback(ctx.Connection.RemoteIpAddress)){ctx.Response.StatusCode=403;return;}await next();});
 app.Use(async(ctx,next)=>{ctx.Response.Headers["X-Content-Type-Options"]="nosniff";ctx.Response.Headers["X-Frame-Options"]="DENY";await next();});
 app.UseAuthentication();app.UseAuthorization();app.UseRateLimiter();app.UseAntiforgery();

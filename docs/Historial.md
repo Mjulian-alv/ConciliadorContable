@@ -748,3 +748,30 @@ navegador desde nuevo perfil hasta la carga de archivos, con CUIT de ejemplo.
 validación: docs/Diseno/00069-perfil-proveedor/cuit-requerido.jpg.
 
 Salida Release actualizada en D:\Codex. Login HTTPS 200 en https://localhost:5085/account/login.
+
+## TAREA 00072 — 06-07/10/2026 — Percepciones y retenciones en la web
+
+1. Permitir el acceso con permiso ArcaPyR y administrar los perfiles PyR existentes.
+2. Leer la carpeta ARCA y los mayores Excel por cuenta con los importadores del escritorio.
+3. Conciliar con las directivas originales y mostrar cinco estados, resumen y Excel compartido.
+4. Verificar compatibilidad, documentar y preparar una entrega piloto aislada.
+
+Se agregaron las pantallas de perfiles y conciliación PyR al host web. El perfil
+conserva cuentas, formato del mayor, carpeta y directivas de la tabla SQL existente.
+La web guarda por perfil y comprueba WebVersion para evitar sobrescribir una edición
+concurrente. Los usuarios con ArcaPyR pueden ingresar sin requerir ArcaOffline.
+
+La carpeta ARCA usa el importador original y informa duplicados/no reconocidos.
+Cada mayor XLS/XLSX se asocia a una cuenta y conserva Operador, Asiento opcional,
+conceptos sin comprobante y anulaciones. Las fuentes se previsualizan sin editar;
+los cambios de perfil, carpeta, mayor o directivas invalidan resultados anteriores.
+El motor y exportador de la TAREA 00041 producen el resultado y sus dos hojas Excel.
+No se incorporó la exportación fiscal a PRESEA, reservada para un motor compartido.
+
+Verificación del 07/10: compilación Release web y escritorio sin advertencias ni
+errores; 35 pruebas correctas con SQL LocalDB desechable. En navegador, el ejemplo
+recorrió selección, carga, cinco estados (1/1/1/2/2), exclusiones, resumen por
+cuenta y guardado/continuación de un perfil actualizado. La paridad de las celdas
+y estilos Excel se verificó por prueba automatizada. Captura:
+docs/Diseno/00072-pyr-web/resultados.jpg. Falta validar archivos PyR comerciales
+en la instalación del cliente antes de habilitarla a otros usuarios.

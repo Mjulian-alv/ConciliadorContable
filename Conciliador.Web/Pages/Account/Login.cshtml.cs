@@ -14,7 +14,8 @@ public sealed class LoginModel(UserStorage users,WebMode mode,SessionRegistry se
     public async Task<IActionResult> OnPostAsync(){
         WebUser? user=null;
         try{user=Demo?new WebUser("demo","Demostración local","Admin",new()):await users.ValidateAsync(Username.Trim(),Password);}catch(Exception ex){logger.LogError(ex,"No se pudo consultar la base de usuarios.");}
-        if(user==null||!user.Allows("ArcaOffline")){Error="No se pudo ingresar. Revisá tus credenciales y el permiso ARCA offline.";return Page();}
-        var principal=user.Principal(Demo);sessions.Register(principal);await HttpContext.SignInAsync("Cookies",principal);return LocalRedirect("/");
+        // Fecha: 06/10/2026 - TAREA: 00072 - Linea: 1 - Un usuario exclusivo de PyR debe poder ingresar sin permiso de comprobantes.
+        if(user==null||(!user.Allows("ArcaOffline")&&!user.Allows("ArcaPyR"))){Error="No se pudo ingresar. Revisá tus credenciales y el permiso ARCA offline o PyR.";return Page();}
+        var principal=user.Principal(Demo);sessions.Register(principal);await HttpContext.SignInAsync("Cookies",principal);return LocalRedirect(user.Allows("ArcaOffline")?"/":"/pyr");
     }
 }

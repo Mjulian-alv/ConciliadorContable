@@ -1,0 +1,21 @@
+@* Fecha: 06/10/2026 - TAREA: 00072 - Linea: 2,4 - El mismo editor conserva el orden y la directiva principal en ambos circuitos. *@
+@for(var index=0;index<Items.Count;index++)
+{
+    var i=index;var d=Items[i];
+    <div class="directive"><div class="toolbar"><strong>@(i+1). @(i==0?"Número completo (fija)":d.Descripcion)</strong>
+    @if(i>0){<div><button type="button" disabled="@(i==1)" @onclick="()=>Move(i,-1)">↑</button><button type="button" disabled="@(i==Items.Count-1)" @onclick="()=>Move(i,1)">↓</button><button type="button" @onclick="()=>Remove(i)">Quitar directiva</button></div>}</div>
+    @if(i==0){<p>Número completo</p>}else{
+        <label>Descripción<input @bind="d.Descripcion" @bind:after="Changed" /></label>
+        <div class="field-options">@foreach(var field in Enum.GetValues<CampoPyR>()){var f=field;<label class="check"><input type="checkbox" checked="@d.Campos.Contains(f)" @onchange="e=>Field(d,f,(bool)e.Value!)" />@DirectivaPyR.NombreCampoLargo(f)</label>}</div>
+    }</div>
+}
+<button type="button" @onclick="Add">+ Agregar directiva</button>
+@code {
+    [Parameter,EditorRequired] public List<DirectivaPyR> Items {get;set;}=new();
+    [Parameter] public EventCallback OnChanged {get;set;}
+    Task Changed()=>OnChanged.InvokeAsync();
+    async Task Move(int i,int step){(Items[i],Items[i+step])=(Items[i+step],Items[i]);await Changed();}
+    async Task Remove(int i){Items.RemoveAt(i);await Changed();}
+    async Task Field(DirectivaPyR d,CampoPyR field,bool selected){d.Campos.Remove(field);if(selected)d.Campos.Add(field);await Changed();}
+    async Task Add(){Items.Add(new(){Descripcion="Nueva directiva",Campos=new(){CampoPyR.Importe}});await Changed();}
+}

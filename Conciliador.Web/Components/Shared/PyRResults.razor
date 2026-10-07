@@ -1,0 +1,23 @@
+@* Fecha: 06/10/2026 - TAREA: 00072 - Linea: 4 - Los colores y nombres provienen del modelo común usado por la planilla de escritorio. *@
+<div class="page-heading"><div><p class="eyebrow">RESULTADOS</p><h2>Conciliación PyR</h2><p>@Result.Items.Count movimientos · @string.Join(" · ",Result.PorDirectiva.Select(x=>$"Directiva {x.Key}: {x.Value}"))</p></div><button class="primary" @onclick="OnExport">Descargar Excel ↓</button></div>
+<div class="stat-grid pyr-states">@foreach(var e in Enum.GetValues<EstadoConciliacionPyR>()){var s=e;<button class="stat @(state==s.ToString()?"selected":"")" style="@Style(s)" @onclick="()=>State(s)"><span>@ItemConciliacionPyR.NombreEstado(s)</span><strong>@Result.Items.Count(i=>i.Estado==s)</strong></button>}</div>
+@if(Result.FueraDeAlcance.Count>0 || Result.ArcaImporteCero>0){<div class="notice"><strong>Fuera de la conciliación</strong><p>@Result.ArcaImporteCero registros ARCA con importe cero.</p>@foreach(var x in Result.FueraDeAlcance){<p>@x.Key: @x.Value registros sin mayor cargado para ese grupo.</p>}</div>}
+<section class="panel"><div class="tabs"><button class="@(summary?"":"active")" @onclick="()=>summary=false">Detalle</button><button class="@(summary?"active":"")" @onclick="()=>summary=true">Resumen por cuenta</button></div>
+@if(summary){<div class="table-wrap"><table><thead><tr><th>Cuenta</th><th>Conciliados</th><th>Diferencias</th><th>Sólo ARCA</th><th>Sólo PRESEA</th><th>Anuladas</th><th>Total ARCA</th><th>Total PRESEA</th><th>Diferencia</th></tr></thead><tbody>@foreach(var r in Result.Resumen){<tr><td>@r.CuentaTexto</td><td>@r.Conciliados</td><td>@r.Diferencias</td><td>@r.SoloArca</td><td>@r.SoloPresea</td><td>@r.Anuladas</td><td>@r.TotalArca.ToString("N2")</td><td>@r.TotalPresea.ToString("N2")</td><td>@r.Diferencia.ToString("N2")</td></tr>}</tbody></table></div>}
+else{
+<div class="form-row"><label>Estado<select @bind="state" @bind:after="Reset"><option value="">Todos</option>@foreach(var e in Enum.GetValues<EstadoConciliacionPyR>()){<option value="@e">@ItemConciliacionPyR.NombreEstado(e)</option>}</select></label>
+<label>Cuenta<select @bind="account" @bind:after="Reset"><option value="">Todas</option>@foreach(var c in Result.Resumen){<option value="@c.Cuenta.Id">@c.CuentaTexto</option>}</select></label>
+<label>Buscar<input @bind="search" @bind:event="oninput" @bind:after="Reset" placeholder="Número, proveedor, CUIT, operador…" /></label></div>
+<div class="table-wrap"><table><thead><tr><th>Estado</th><th>Cuenta</th><th>Directiva</th><th>Fecha ARCA</th><th>CUIT / denominación</th><th>Tipo</th><th>Número ARCA</th><th>Importe ARCA</th><th>Fecha PRESEA</th><th>Asiento</th><th>Número PRESEA</th><th>Proveedor / concepto</th><th>Operador</th><th>Importe PRESEA</th><th>Diferencia</th></tr></thead><tbody>
+@foreach(var r in Filtered.Skip(page*50).Take(50)){<tr class="result-state" style="@Style(r.Estado)"><td>@r.EstadoTexto</td><td>@r.CuentaNombre</td><td><span title="@r.DescripcionDirectiva">@r.DirectivaTexto</span></td><td>@r.FechaArca?.ToString("dd/MM/yyyy")</td><td>@r.Cuit<small>@r.Denominacion</small></td><td>@r.Tipo</td><td>@r.NumeroArca</td><td>@r.ImporteArca?.ToString("N2")</td><td>@r.FechaPresea?.ToString("dd/MM/yyyy")</td><td>@r.Asiento</td><td>@r.NumeroPresea</td><td>@r.Proveedor</td><td>@r.Operador</td><td>@r.ImportePresea?.ToString("N2")</td><td>@r.Diferencia?.ToString("N2")</td></tr>}
+</tbody></table></div><div class="pager"><button disabled="@(page==0)" @onclick="()=>page--">Anterior</button><span>@Filtered.Count() movimientos · página @(page+1)</span><button disabled="@((page+1)*50>=Filtered.Count())" @onclick="()=>page++">Siguiente</button></div>
+}</section>
+@code{
+    [Parameter,EditorRequired] public ResultadoConciliacionPyR Result {get;set;}=new();
+    [Parameter] public EventCallback OnExport {get;set;}
+    string state="",account="",search="";int page;bool summary;
+    IEnumerable<ItemConciliacionPyR> Filtered=>Result.Items.Where(r=>(state==""||r.Estado.ToString()==state)&&(account==""||r.Cuenta.Id.ToString()==account)&&(search==""||$"{r.NumeroArca} {r.NumeroPresea} {r.Proveedor} {r.Denominacion} {r.Cuit} {r.Operador}".Contains(search,StringComparison.OrdinalIgnoreCase)));
+    void Reset()=>page=0;
+    void State(EstadoConciliacionPyR value){state=value.ToString();page=0;summary=false;}
+    public static string Style(EstadoConciliacionPyR state){var c=EstadoConciliacionPyRColores.Rgb(state);return $"--state-color:#{c.R:X2}{c.G:X2}{c.B:X2}";}
+}

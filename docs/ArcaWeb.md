@@ -1,7 +1,8 @@
 # ArcaCliente web — TAREA 00064
 
-Primera entrega: conciliación offline contra ARCA y cuenta corriente de proveedor.
-No incluye percepciones/retenciones, conexión online ni exportación fiscal a PRESEA.
+La primera entrega incluyó conciliación offline contra ARCA y cuenta corriente de proveedor.
+La TAREA 00072 agregó percepciones y retenciones (PyR). La conexión online y la
+exportación fiscal a PRESEA siguen fuera de esta entrega.
 
 ## Ejecución local
 
@@ -180,6 +181,41 @@ está fuera de ese guardado masivo. Los modos nuevos se operan desde la web.
 El worktree parte de `30e6924`. Los cambios locales no confirmados del usuario en homologador
 y en `PerfilOffline`/`FormPerfilOfflineDetalle` no se copiaron ni se modificaron.
 La rama queda separada para revisar e integrar esos cambios posteriormente.
+
+## Percepciones y retenciones — TAREA 00072, 06-07/10/2026
+
+La sección **Percepciones y retenciones** usa los perfiles existentes de
+`arca.ArcaPerfilesPyR` y requiere el permiso `ArcaPyR` (o Admin). Un usuario con
+este permiso puede ingresar aunque no tenga `ArcaOffline`. La ruta de trabajo es
+`/pyr` y la de configuración `/pyr/perfiles`.
+
+En **Perfiles PyR** se editan la carpeta ARCA, el formato Excel PRESEA, las cuentas
+y las directivas. Se guarda el perfil completo con **Guardar perfil**. La primera
+directiva, por número, permanece fija; las siguientes se pueden configurar y ordenar.
+El formato exige la columna Operador; Asiento es opcional. La lista de cuentas
+determina los grupos que se pueden conciliar.
+
+Para conciliar, elegir un perfil, leer su carpeta ARCA accesible desde el servidor
+y subir un mayor XLS/XLSX por cada cuenta que se quiera incluir. Se muestran los
+archivos y registros leídos, duplicados, no reconocidos, conceptos sin comprobante
+y anulaciones. Las vistas previas son sólo de lectura. Tras conciliar se pueden
+filtrar los cinco estados, ver el resumen por cuenta y descargar el Excel generado
+por el mismo exportador que usa WinForms. PyR conserva el alcance y tratamiento
+de importes del escritorio; no aplica el período de comprobantes de la otra pantalla.
+
+La carga de un mayor admite hasta 20 MB, 50.000 movimientos y 100 MB de contenido
+XLSX expandido. Cambiar carpeta, archivos, perfil o directivas invalida el resultado.
+Antes de conciliar y descargar se comprueba que el perfil SQL no haya cambiado.
+Los archivos cargados y el resultado viven en la sesión de navegador. Para compartir
+perfiles con WinForms se agrega `WebVersion` a la tabla PyR durante el primer arranque;
+requiere permiso SQL para esa modificación inicial. El guardado masivo de perfiles
+desde WinForms conserva la limitación de concurrencia documentada arriba.
+
+La demostración incluye **Cargar ejemplo PyR** con datos sintéticos. El paquete
+piloto se entrega sin conexiones ni credenciales; el administrador configura
+`ConnectionStrings:Arca` y `Web:UsersDatabasePath` en el host, igual que para
+comprobantes. La exportación fiscal a PRESEA se abordará en otro motor; esta
+sección descarga únicamente el resultado de la conciliación PyR.
 
 ## Verificación reproducible
 

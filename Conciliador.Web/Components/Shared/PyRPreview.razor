@@ -1,0 +1,13 @@
+@* Fecha: 06/10/2026 - TAREA: 00072 - Linea: 3 - La previsualización preserva concepto, anulaciones y operador sin editar valores. *@
+@if(Arca!=null){<div class="table-wrap"><table><thead><tr><th>Archivo</th><th>Fecha</th><th>Impuesto</th><th>Operación</th><th>CUIT / denominación</th><th>Comprobante</th><th>Certificado</th><th>Importe</th></tr></thead><tbody>
+@foreach(var r in Arca.Skip(page*50).Take(50)){<tr><td>@r.ArchivoOrigen</td><td>@r.Fecha?.ToString("dd/MM/yyyy")</td><td>@r.ImpuestoTexto</td><td>@r.OperacionTexto</td><td>@r.Cuit<small>@r.Denominacion</small></td><td>@r.TipoComprobante @r.Numero</td><td>@r.NumeroCertificado</td><td>@r.Importe.ToString("N2")</td></tr>}
+</tbody></table></div>}
+else if(Major!=null){<div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Asiento</th><th>Concepto original</th><th>Número</th><th>Proveedor</th><th>Operador</th><th>Importe</th><th>Lectura</th></tr></thead><tbody>
+@foreach(var r in Major.Registros.Skip(page*50).Take(50)){<tr class="@(r.SinComprobante?"pyr-unrecognized":"")"><td>@r.Fecha?.ToString("dd/MM/yyyy")</td><td>@r.Asiento</td><td>@r.ConceptoOriginal</td><td>@r.Numero</td><td>@r.Proveedor</td><td>@r.Operador</td><td>@r.Importe.ToString("N2")</td><td>@(r.SinComprobante?"Sin comprobante":r.EsAnulacion?"Anulación":"Comprobante")</td></tr>}
+</tbody></table></div>}
+<div class="pager"><button disabled="@(page==0)" @onclick="()=>page--">Anterior</button><span>@Count filas · página @(page+1)</span><button disabled="@((page+1)*50>=Count)" @onclick="()=>page++">Siguiente</button></div>
+@code{
+    [Parameter] public List<RegistroArcaPyR>? Arca {get;set;}
+    [Parameter] public MayorPreseaPyR? Major {get;set;}
+    int page;int Count=>Arca?.Count??Major?.Registros.Count??0;
+}

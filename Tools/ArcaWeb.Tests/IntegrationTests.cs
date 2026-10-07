@@ -68,6 +68,13 @@ static class IntegrationTests
             var stale=Wait(store.Profiles()).Single();Check(stale.Profile.Nombre=="Prueba SQL"&&stale.Cuits.Count==1);p.Profile.Nombre="Actualizado";Wait(store.Save(p));
             try{Wait(store.Save(stale));throw new Exception("No detectó conflicto SQL");}catch(ConfigurationConflictException){}
             var provider=Wait(store.Provider("30123456781"));provider.Types["FA"]="001";Wait(store.Save(provider));Check(Wait(store.Provider("30123456781")).Types["FA"]=="001");
+            // Fecha: 06/10/2026 - TAREA: 00072 - Linea: 2 - El perfil PyR conserva JSON y detecta versiones sin borrar otras entidades.
+            var pyr=new SqlPyRProfileStorage(master.Replace("Database=master","Database="+name));pyr.Initialize().GetAwaiter().GetResult();pyr.Initialize().GetAwaiter().GetResult();
+            var profile=Wait(pyr.Save(new WebPyRProfile()));var prior=Wait(pyr.Profiles()).Single();profile.Profile.Nombre="PyR actualizado";profile.Profile.ColAsiento="";
+            profile.Profile.Cuentas.Add(new(){Codigo="114105",Nombre="IVA"});profile=Wait(pyr.Save(profile));
+            Check(Wait(pyr.Profiles()).Single().Profile.Cuentas.Single().Codigo=="114105");
+            try{Wait(pyr.Save(prior));throw new Exception("No detectó conflicto PyR SQL");}catch(ConfigurationConflictException){}
+            var second=Wait(pyr.Save(new WebPyRProfile()));pyr.Delete(second).GetAwaiter().GetResult();Check(Wait(pyr.Profiles()).Count==1);
         }finally{SqlConnection.ClearAllPools();admin.Execute("DECLARE @sql nvarchar(max)='ALTER DATABASE '+QUOTENAME(@Name)+' SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE '+QUOTENAME(@Name);EXEC(@sql)",new{Name=name});}
     }
 }

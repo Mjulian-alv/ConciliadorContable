@@ -30,5 +30,7 @@ ReviewRegressionTests.Run(Test);
 DesktopImportTests.Run(Test);
 // Fecha: 05/10/2026 - TAREA: 00066 - Linea: 2 - Verifica paridad con el exportador compartido.
 ExportCompatibilityTests.Run(Test);
+// Fecha: 06/10/2026 - TAREA: 00072 - Linea: 1-4 - Regresiones del pase de la conciliación PyR al host web.
+PyRWebTests.Run(Test);
 Console.WriteLine($"{passed} pruebas correctas.");
 if(failed>0){Console.Error.WriteLine($"{failed} pruebas fallidas.");Environment.ExitCode=1;}
