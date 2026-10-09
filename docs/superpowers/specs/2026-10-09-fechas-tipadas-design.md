@@ -1,7 +1,8 @@
 # TAREA 00083 — Fechas tipadas en importación y migración de bancos
 
-Fecha: 09/10/2026. Estado: propuesta escrita para revisión; implementación y
-migración de datos pendientes. Dos trabajos coordinados, numerados por pedido.
+Fecha: 09/10/2026. Estado: diseño aprobado por el usuario el 09/10/2026 mediante
+«esta ok», incluyendo el criterio día/mes/año. Implementación y migración pendientes.
+Dos trabajos coordinados, numerados por pedido.
 
 ## Objetivo y decisiones del usuario
 
@@ -33,11 +34,10 @@ ni cambios de estructura o datos.
 
 Estos conteos son una fotografía y deben recalcularse al ejecutar la migración.
 La conversión admisible en SQL no demuestra por sí sola cuál era la intención del
-archivo de origen. La propuesta usa día/mes/año, coherente con los valores existentes
-en `fecha2` y el criterio prioritario actual. La respuesta del usuario indicó el uso
-de `fecha2`; no confirmó expresamente el orden día/mes para todos los archivos futuros.
-La aprobación de esta propuesta debe incluir ese criterio. Si hay fuentes mes/día,
-deberán distinguirse por origen antes de implementarlo; no se adivinará por fila.
+archivo de origen. El diseño aprobado usa día/mes/año, coherente con los valores existentes
+en `fecha2` y el criterio prioritario actual. El usuario aprobó expresamente la propuesta
+que incluía ese criterio. Si en el futuro se incorporan fuentes mes/día, deberán
+distinguirse por origen antes de admitirlas; no se adivinará por fila.
 
 El defecto empieza en `ImportacionService.Parsear`: convierte la celda de fecha a
 texto mediante `ToString()`, que puede depender de la cultura del equipo. Los modelos
