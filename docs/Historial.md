@@ -1004,6 +1004,17 @@ borrar. `codex/arca-web` (otro worktree, en `6226c55`, ya contenido en `main`) n
 `alvesu_pruebas` queda en el servidor a pedido del usuario; la app y la carpeta de prueba
 con credenciales se borraron.
 
+**Primer intento de corte en `alvesu` (13/10/2026): falló y se revirtió.** El usuario corrió el
+script con `@Aplicar = 1` y terminó con `Msg 468` (conflicto de intercalación entre
+`Modern_Spanish_CI_AS`, la de `tempdb`, y `SQL_Latin1_General_CP1_CI_AS`, la de `alvesu`) en la
+verificación final, que compara `FechaTextoOriginal` con el texto guardado en la tabla temporal
+`#F`. Por `XACT_ABORT` se revirtió todo: verificado en la base real, `Fecha` seguía `nvarchar`,
+`fecha2` seguía presente, 72.711 movimientos y 1.992 ítems, sin transacciones abiertas ni
+bloqueos. Causa: error mío; en LocalDB `tempdb` y la base compartían intercalación y la prueba
+no podía mostrarlo. Corrección: `Texto` de `#F` lleva `COLLATE DATABASE_DEFAULT`. Reproducido
+a propósito en LocalDB con intercalaciones distintas (mismo `Msg 468`) y probado el arreglo
+con ambas combinaciones. El corte queda pendiente de repetirse con el script corregido.
+
 ## TAREA 00084 — 09/10/2026 — Perfil en las grillas del extracto externo
 
 1. Mostrar el nombre del perfil en la grilla del extracto de Conciliación Externa,

@@ -89,8 +89,10 @@ UNION SELECT t.Tabla, N'Clave foránea sobre fecha: ' + OBJECT_NAME(f.constraint
 -- ---------------------------------------------------------------------------------------
 -- 2. Lectura e interpretación de las fechas (sólo lectura)
 -- ---------------------------------------------------------------------------------------
+-- Texto lleva COLLATE DATABASE_DEFAULT: una tabla temporal hereda la intercalación de tempdb, que puede
+-- diferir de la de esta base, y comparar ese texto con FechaTextoOriginal fallaba (Msg 468) al verificar.
 CREATE TABLE #F (
-    Tabla sysname NOT NULL, Id int NOT NULL, Texto nvarchar(max) NULL, Inter datetime2(0) NULL,
+    Tabla sysname NOT NULL, Id int NOT NULL, Texto nvarchar(max) COLLATE DATABASE_DEFAULT NULL, Inter datetime2(0) NULL,
     Interpretada date NULL, Motivo nvarchar(200) NULL,
     PRIMARY KEY (Tabla, Id));
 
