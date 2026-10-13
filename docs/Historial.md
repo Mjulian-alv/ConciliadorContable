@@ -983,6 +983,17 @@ identificado, ejecutables cerrados, un diagnóstico nuevo justo antes del corte 
 sigue recibiendo importaciones) y desplegar la versión nueva a la vez: los ejecutables
 anteriores no funcionan contra el esquema migrado. `alvesu_pruebas` queda en el servidor.
 
+**Script SQL para el corte.** `Tools/MigradorFechasBancos/migrar-fechas-bancos.sql` hace en
+T-SQL lo mismo que la herramienta, para correr en SSMS: con `@Aplicar = 0` sólo
+diagnostica; con `@Aplicar = 1` migra en una transacción y revierte ante cualquier
+diferencia. Probado en LocalDB con filas que cubren todos los formatos reales (también
+hora tardía, bisiesto y zona ISO) y con datos malos (fecha inexistente, `fecha2` que no
+coincide, texto vacío, mes/día invertido): aborta sin cambiar nada; segunda ejecución sin
+efecto. En la `alvesu` real corrió sólo en modo diagnóstico: 72.711 movimientos y 1.992
+ítems, 0 incidencias, mismo resultado que el migrador. La verificación final tenía un
+error (un `FULL JOIN` con el filtro por tabla en el `ON`) que el propio script detectó
+revirtiendo todo; ya está corregido. No se creó ninguna otra base en el servidor.
+
 ## TAREA 00084 — 09/10/2026 — Perfil en las grillas del extracto externo
 
 1. Mostrar el nombre del perfil en la grilla del extracto de Conciliación Externa,
