@@ -100,6 +100,8 @@ internal static class Program
             Probar("Selector amplio se construye", ConciliacionSeguraTests.ConstructorSelector);
             Probar("Pendientes internos protegen ambos estados", ConciliacionSeguraTests.PendientesInternos);
             Probar("Baja espera creación concurrente y revalida", ConciliacionSeguraTests.CarreraCreacionBaja);
+            // Fecha: 13/10/2026 - TAREA: 00096 - Linea: 1, 2, 3 - Archivos y selecciones de miles de movimientos, sin lista de IDs.
+            Probar("Baja de archivo y selección grandes, protegidas por pares", ConciliacionSeguraTests.BajaGrande);
             if (Environment.GetEnvironmentVariable("CONCILIACION_SEGURA_ONLY") == "1")
             {
                 Console.WriteLine($"{_pruebas} pruebas correctas.");

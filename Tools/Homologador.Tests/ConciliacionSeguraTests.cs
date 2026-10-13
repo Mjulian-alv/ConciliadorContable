@@ -214,6 +214,80 @@ internal static class ConciliacionSeguraTests
             "Movimiento interno protegido desapareció");
     }
 
+    // Fecha: 13/10/2026 - TAREA: 00096 - Linea: 1, 2, 3 - Un archivo real tiene miles de movimientos: SQL Server rechaza más de 2100 parámetros, así que la baja no puede armar una lista de IDs.
+    public static void BajaGrande()
+    {
+        const int Cantidad = 2500;
+        using var cn = SqlDb.GetConnection();
+        cn.Open();
+        int perfil = cn.QuerySingle<int>("SELECT TOP 1 Id FROM bancos.PerfilesBanco ORDER BY Id");
+        int Crear(string nombre, int cuantos)
+        {
+            int archivo = cn.QuerySingle<int>(@"INSERT bancos.ArchivosImportados(IdPerfilBanco, NombreArchivo, Fecha)
+                OUTPUT INSERTED.Id VALUES (@Perfil, @Nombre, @Fecha)", new { Perfil = perfil, Nombre = nombre, Fecha = new DateTime(2026, 10, 1) });
+            cn.Execute(@";WITH n AS (SELECT TOP (@Cuantos) ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS i FROM sys.all_objects a CROSS JOIN sys.all_objects b)
+                INSERT bancos.MovimientosArchivo(IdArchivo, Fecha, ConceptoOriginal, DescripcionOriginal, Debitos, Creditos, ConceptoEstandar, ConceptoFinal, CuentaFinal)
+                SELECT @Archivo, @Fecha, N'Masivo', N'Movimiento de prueba', 0, 0, N'Estándar', N'Masivo', N'00123' FROM n",
+                new { Cuantos = cuantos, Archivo = archivo, Fecha = new DateTime(2026, 10, 1) });
+            return archivo;
+        }
+        void Rechaza(Action accion, string fragmento)
+        {
+            try { accion(); }
+            catch (InvalidOperationException ex) when (ex.Message.Contains(fragmento, StringComparison.OrdinalIgnoreCase)) { return; }
+            throw new Exception("Se aceptó una baja que debía bloquearse (o el motivo no menciona '" + fragmento + "').");
+        }
+        int Cuenta(string tabla, string donde, object parametros) => cn.QuerySingle<int>($"SELECT COUNT(*) FROM {tabla} WHERE {donde}", parametros);
+
+        // 1) Archivo libre de miles de movimientos: se borra sin armar listas de IDs.
+        int libre = Crear("Masivo libre.xlsx", Cantidad);
+        EliminacionMovimientosService.EliminarArchivo(libre);
+        Igual(Cuenta("bancos.MovimientosArchivo", "IdArchivo = @Id", new { Id = libre }), 0, "Quedaron movimientos del archivo libre");
+        Igual(Cuenta("bancos.ArchivosImportados", "Id = @Id", new { Id = libre }), 0, "Quedó la cabecera del archivo libre");
+
+        // 2) Un par sobre un solo movimiento (el último) protege todo el archivo, aunque falte la sesión que lo originó.
+        int chico = Crear("Masivo chico.xlsx", 3);
+        int protegido = Crear("Masivo protegido.xlsx", Cantidad);
+        int ultimo = cn.QuerySingle<int>("SELECT MAX(Id) FROM bancos.MovimientosArchivo WHERE IdArchivo = @Id", new { Id = protegido });
+        var sesionExterna = ConciliacionExternService.CrearSesion("Sesión sobre otro archivo", new List<int> { chico }, new[] { "Masivo" },
+            new[] { new ConciliacionItemExterno { Fecha = new DateTime(2026, 10, 1), Importe = 1m, Detalle = "Ítem" } });
+        int item = ConciliacionExternService.ObtenerTodosItemsExternos(sesionExterna.Id).Single().Id;
+        cn.Execute(@"INSERT bancos.ConciliacionPares(IdSesion, IdItemExterno, IdMovimientoProcesado, TipoMatch, FechaConciliacion)
+            VALUES (@Sesion, @Item, @Mov, N'Manual', SYSDATETIME())", new { Sesion = sesionExterna.Id, Item = item, Mov = ultimo });
+        Rechaza(() => EliminacionMovimientosService.EliminarArchivo(protegido), "pares");
+        Igual(Cuenta("bancos.MovimientosArchivo", "IdArchivo = @Id", new { Id = protegido }), Cantidad, "La baja rechazada dejó el archivo incompleto");
+        cn.Execute("DELETE FROM bancos.ConciliacionPares WHERE IdMovimientoProcesado = @Mov", new { Mov = ultimo });
+
+        // 3) Lo mismo con un par interno, tanto del lado A como del lado B.
+        var sesionInterna = ConciliacionInternaService.CrearSesion("Interna sin alcance", new DateTime(2020, 1, 1), new DateTime(2020, 1, 31), new[] { "NoExiste" });
+        foreach (string lado in new[] { "IdMovimientoA", "IdMovimientoB" })
+        {
+            string otro = lado == "IdMovimientoA" ? "IdMovimientoB" : "IdMovimientoA";
+            cn.Execute($@"INSERT bancos.ConciliacionInternaPares(IdSesion, {lado}, {otro}, TipoMatch, FechaConciliacion)
+                VALUES (@Sesion, @Mov, @Otro, N'Manual', SYSDATETIME())", new { Sesion = sesionInterna.Id, Mov = ultimo, Otro = ultimo + 1_000_000 });
+            Rechaza(() => EliminacionMovimientosService.EliminarArchivo(protegido), "pares");
+            cn.Execute("DELETE FROM bancos.ConciliacionInternaPares WHERE IdSesion = @Sesion", new { Sesion = sesionInterna.Id });
+        }
+        EliminacionMovimientosService.EliminarArchivo(protegido);
+        Igual(Cuenta("bancos.MovimientosArchivo", "IdArchivo = @Id", new { Id = protegido }), 0, "No se borró el archivo ya sin pares");
+
+        // 4) Baja de una selección de miles de movimientos, y rechazo atómico si uno de ellos está tomado.
+        int seleccion = Crear("Masivo selección.xlsx", Cantidad);
+        var ids = cn.Query<int>("SELECT Id FROM bancos.MovimientosArchivo WHERE IdArchivo = @Id", new { Id = seleccion }).ToArray();
+        cn.Execute(@"INSERT bancos.ConciliacionPares(IdSesion, IdItemExterno, IdMovimientoProcesado, TipoMatch, FechaConciliacion)
+            VALUES (@Sesion, @Item, @Mov, N'Manual', SYSDATETIME())", new { Sesion = sesionExterna.Id, Item = item, Mov = ids[^1] });
+        Rechaza(() => EliminacionMovimientosService.EliminarSeleccion(seleccion, ids), "pares");
+        Igual(Cuenta("bancos.MovimientosArchivo", "IdArchivo = @Id", new { Id = seleccion }), Cantidad, "La selección rechazada se borró parcialmente");
+        cn.Execute("DELETE FROM bancos.ConciliacionPares WHERE IdMovimientoProcesado = @Mov", new { Mov = ids[^1] });
+        EliminacionMovimientosService.EliminarSeleccion(seleccion, ids);
+        Igual(Cuenta("bancos.MovimientosArchivo", "IdArchivo = @Id", new { Id = seleccion }), 0, "La selección grande no se borró");
+
+        ConciliacionExternService.EliminarSesion(sesionExterna.Id);
+        ConciliacionInternaService.EliminarSesion(sesionInterna.Id);
+        EliminacionMovimientosService.EliminarArchivo(chico);
+        EliminacionMovimientosService.EliminarArchivo(seleccion);
+    }
+
     // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 1 - Dos conexiones coordinadas prueban la relectura tras esperar el bloqueo.
     public static void CarreraCreacionBaja()
     {

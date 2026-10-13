@@ -45,9 +45,9 @@ namespace AgrupadorConceptos.Data
         }
 
         /// <summary>
-        /// Los movimientos se borran solos (FK ON DELETE CASCADE), pero si el archivo
-        /// tiene sesiones de conciliación asociadas la FK lo impide y SQL Server tira
-        /// SqlException: el llamador decide cómo informarlo.
+        /// Los movimientos se borran solos (FK ON DELETE CASCADE). Antes de borrar se valida que
+        /// ningún movimiento esté tomado por un par ni alcanzado por una sesión: si lo está,
+        /// lanza InvalidOperationException con el motivo. Un SqlException es un error de base de datos.
         /// </summary>
         public static void Eliminar(int id)
         {

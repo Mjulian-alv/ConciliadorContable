@@ -248,9 +248,10 @@ namespace AgrupadorConceptos
                     {
                         ArchivoImportadoStorage.Eliminar(archivo.Id);
                     }
-                    catch (Microsoft.Data.SqlClient.SqlException)
+                    // Fecha: 13/10/2026 - TAREA: 00096 - Linea: 2 - Un error de base de datos no significa que el archivo esté conciliado: la conciliación se informa con InvalidOperationException, más abajo; acá se muestra el motivo real.
+                    catch (Microsoft.Data.SqlClient.SqlException ex)
                     {
-                        MessageBox.Show("No se puede borrar: el archivo tiene sesiones de conciliación asociadas.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        MessageBox.Show("No se pudo borrar el archivo por un error de la base de datos:\r\n\r\n" + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return;
                     }
                     catch (InvalidOperationException ex)

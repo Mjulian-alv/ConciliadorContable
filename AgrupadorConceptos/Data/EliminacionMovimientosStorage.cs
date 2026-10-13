@@ -1,3 +1,4 @@
+// Fecha: 13/10/2026 - TAREA: 00096 - Linea: 1, 3 - La baja ya no arma listas de IDs: SQL Server admite 2100 parámetros y un archivo real tiene miles de movimientos.
 // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 1 - Una baja sólo se confirma si todos los movimientos siguen libres bajo el bloqueo compartido.
 using System;
 using System.Collections.Generic;
@@ -11,20 +12,29 @@ namespace AgrupadorConceptos.Data
 {
     internal static class EliminacionMovimientosStorage
     {
+        // Fecha: 13/10/2026 - TAREA: 00096 - Linea: 3 - Los IDs de la selección viajan como un único parámetro JSON, sin tope de cantidad.
+        private const string FiltroSeleccion = "m.Id IN (SELECT CAST([value] AS int) FROM OPENJSON(@Ids)) AND m.IdArchivo = @Archivo";
+        private const string FiltroArchivo = "m.IdArchivo = @Archivo";
+
         public static void EliminarMovimientos(int idArchivo, IReadOnlyCollection<int> ids)
         {
             if (ids == null || ids.Count == 0 || ids.Any(id => id <= 0) || ids.Distinct().Count() != ids.Count)
                 throw new ArgumentException("Seleccioná movimientos válidos y sin repetir.", nameof(ids));
+            string idsJson = JsonSerializer.Serialize(ids);
             using var cn = DatabaseHelper.Open();
             using var tx = cn.BeginTransaction();
             ConciliacionMutationStorage.Bloquear(cn, tx);
-            var movimientos = cn.Query<MovimientoProcesado>(
-                "SELECT * FROM bancos.MovimientosArchivo WHERE Id IN @Ids", new { Ids = ids }, tx).ToList();
-            if (movimientos.Count != ids.Count || movimientos.Any(m => m.IdArchivo != idArchivo))
+            // Fecha: 13/10/2026 - TAREA: 00096 - Linea: 3 - Se cuentan en el servidor, en vez de traer las filas completas sólo para contarlas.
+            var cuentas = cn.QuerySingle<(int Existentes, int EnElArchivo)>(@"
+                SELECT COUNT(*) AS Existentes, ISNULL(SUM(CASE WHEN IdArchivo = @Archivo THEN 1 ELSE 0 END), 0) AS EnElArchivo
+                FROM bancos.MovimientosArchivo WHERE Id IN (SELECT CAST([value] AS int) FROM OPENJSON(@Ids))",
+                new { Ids = idsJson, Archivo = idArchivo }, tx);
+            if (cuentas.Existentes != ids.Count || cuentas.EnElArchivo != ids.Count)
                 throw new InvalidOperationException("La selección cambió o contiene movimientos de otro archivo. Actualizá la grilla.");
-            ValidarLibres(cn, tx, movimientos, null);
-            int borrados = cn.Execute("DELETE FROM bancos.MovimientosArchivo WHERE Id IN @Ids AND IdArchivo = @Archivo",
-                new { Ids = ids, Archivo = idArchivo }, tx);
+            ValidarLibres(cn, tx, idArchivo, FiltroSeleccion, new { Ids = idsJson, Archivo = idArchivo });
+            int borrados = cn.Execute(@"DELETE FROM bancos.MovimientosArchivo
+                WHERE Id IN (SELECT CAST([value] AS int) FROM OPENJSON(@Ids)) AND IdArchivo = @Archivo",
+                new { Ids = idsJson, Archivo = idArchivo }, tx);
             if (borrados != ids.Count) throw new InvalidOperationException("La selección cambió. Actualizá la grilla.");
             tx.Commit();
         }
@@ -37,27 +47,26 @@ namespace AgrupadorConceptos.Data
             var archivo = cn.QuerySingleOrDefault<ArchivoImportado>(
                 "SELECT * FROM bancos.ArchivosImportados WHERE Id = @Id", new { Id = idArchivo }, tx);
             if (archivo == null) throw new InvalidOperationException("El archivo ya no existe. Actualizá la lista.");
-            var movimientos = cn.Query<MovimientoProcesado>(
-                "SELECT * FROM bancos.MovimientosArchivo WHERE IdArchivo = @Id", new { Id = idArchivo }, tx).ToList();
-            ValidarLibres(cn, tx, movimientos, idArchivo);
+            // Fecha: 13/10/2026 - TAREA: 00096 - Linea: 1 - Los movimientos del archivo ya no se cargan en memoria: la validación pregunta a la base.
+            ValidarLibres(cn, tx, idArchivo, FiltroArchivo, new { Archivo = idArchivo });
             int borrados = cn.Execute("DELETE FROM bancos.ArchivosImportados WHERE Id = @Id", new { Id = idArchivo }, tx);
             if (borrados != 1) throw new InvalidOperationException("El archivo cambió. Actualizá la lista.");
             tx.Commit();
         }
 
+        // Fecha: 13/10/2026 - TAREA: 00096 - Linea: 1, 3 - Los movimientos a dar de baja se describen con un filtro SQL (todo el archivo, o una selección dentro de él).
+        // El filtro es una constante de este archivo y usa sólo parámetros: no se interpola texto del usuario.
         private static void ValidarLibres(System.Data.IDbConnection cn, System.Data.IDbTransaction tx,
-            List<MovimientoProcesado> movimientos, int? idArchivo)
+            int idArchivo, string filtro, object parametros)
         {
-            var ids = movimientos.Select(m => m.Id).ToArray();
-            if (ids.Length > 0)
-            {
-                // Los pares históricos protegen aun cuando falte la sesión que los originó.
-                bool hayPares = cn.ExecuteScalar<int>(@"SELECT CASE WHEN EXISTS (
-                    SELECT 1 FROM bancos.ConciliacionPares WHERE IdMovimientoProcesado IN @Ids) OR EXISTS (
-                    SELECT 1 FROM bancos.ConciliacionInternaPares WHERE IdMovimientoA IN @Ids OR IdMovimientoB IN @Ids)
-                    THEN 1 ELSE 0 END", new { Ids = ids }, tx) != 0;
-                if (hayPares) throw new InvalidOperationException("Hay movimientos tomados por pares de conciliación. No se eliminó nada.");
-            }
+            // Los pares históricos protegen aun cuando falte la sesión que los originó.
+            bool hayPares = cn.ExecuteScalar<int>($@"SELECT CASE WHEN
+                EXISTS (SELECT 1 FROM bancos.ConciliacionPares p JOIN bancos.MovimientosArchivo m ON m.Id = p.IdMovimientoProcesado WHERE {filtro})
+                OR EXISTS (SELECT 1 FROM bancos.ConciliacionInternaPares p JOIN bancos.MovimientosArchivo m ON m.Id = p.IdMovimientoA WHERE {filtro})
+                OR EXISTS (SELECT 1 FROM bancos.ConciliacionInternaPares p JOIN bancos.MovimientosArchivo m ON m.Id = p.IdMovimientoB WHERE {filtro})
+                THEN 1 ELSE 0 END", parametros, tx) != 0;
+            if (hayPares) throw new InvalidOperationException("Hay movimientos tomados por pares de conciliación. No se eliminó nada.");
+
             var externas = cn.Query<ConciliacionSesion>(@"SELECT * FROM bancos.ConciliacionSesiones
                 WHERE Estado IN (N'EnProceso', N'Finalizada')", transaction: tx).ToList();
             foreach (var sesion in externas)
@@ -75,26 +84,29 @@ namespace AgrupadorConceptos.Data
                     throw new InvalidOperationException($"La sesión externa '{sesion.Nombre}' tiene archivos ilegibles. No se puede asegurar la baja.");
                 }
                 archivos.Add(sesion.IdArchivoImportado);
-                if ((idArchivo.HasValue && archivos.Contains(idArchivo.Value)) ||
-                    movimientos.Any(m => archivos.Contains(m.IdArchivo)))
+                // Todos los movimientos a dar de baja pertenecen a este archivo.
+                if (archivos.Contains(idArchivo))
                     throw new InvalidOperationException($"La sesión externa '{sesion.Nombre}' [{sesion.Estado}] utiliza este archivo. No se eliminó nada.");
             }
-            if (movimientos.Count == 0) return;
             var internas = cn.Query<ConciliacionInternaSesion>(@"SELECT * FROM bancos.ConciliacionInternaSesiones
                 WHERE Estado IN (N'EnProceso', N'Finalizada')", transaction: tx).ToList();
             foreach (var sesion in internas)
             {
-                List<string> conceptos;
-                try { conceptos = JsonSerializer.Deserialize<List<string>>(sesion.ConceptosJson) ?? throw new JsonException(); }
+                try { if (JsonSerializer.Deserialize<List<string>>(sesion.ConceptosJson) == null) throw new JsonException(); }
                 catch (JsonException)
                 { throw new InvalidOperationException($"La sesión interna '{sesion.Nombre}' tiene conceptos ilegibles. No se puede asegurar la baja."); }
-                foreach (var movimiento in movimientos.Where(m => conceptos.Contains(m.ConceptoFinal, StringComparer.OrdinalIgnoreCase)))
-                {
-                    // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Operar sobre días tipados evita reinterpretaciones culturales.
-                    var fecha = movimiento.Fecha.Date;
-                    if (fecha >= sesion.FechaDesde.Date && fecha <= sesion.FechaHasta.Date)
-                        throw new InvalidOperationException($"La sesión interna '{sesion.Nombre}' [{sesion.Estado}] alcanza movimientos seleccionados. No se eliminó nada.");
-                }
+                // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Operar sobre días tipados evita reinterpretaciones culturales.
+                // Fecha: 13/10/2026 - TAREA: 00096 - Linea: 1, 3 - El alcance de la sesión (conceptos y rango) se evalúa en SQL, sobre Fecha date.
+                var p = new DynamicParameters(parametros);
+                p.Add("Conceptos", sesion.ConceptosJson);
+                p.Add("Desde", sesion.FechaDesde.Date);
+                p.Add("Hasta", sesion.FechaHasta.Date);
+                bool alcanza = cn.ExecuteScalar<int>($@"SELECT CASE WHEN EXISTS (
+                    SELECT 1 FROM bancos.MovimientosArchivo m WHERE {filtro}
+                      AND m.Fecha >= @Desde AND m.Fecha <= @Hasta
+                      AND m.ConceptoFinal IN (SELECT [value] FROM OPENJSON(@Conceptos))) THEN 1 ELSE 0 END", p, tx) != 0;
+                if (alcanza)
+                    throw new InvalidOperationException($"La sesión interna '{sesion.Nombre}' [{sesion.Estado}] alcanza movimientos seleccionados. No se eliminó nada.");
             }
         }
     }
