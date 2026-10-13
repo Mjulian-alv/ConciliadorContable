@@ -1126,4 +1126,9 @@ las pruebas previas de protección de bajas. Los límites de este arreglo: proba
 base LocalDB, no sobre `alvesu`; el comportamiento en pantalla no se probó con la interfaz.
 
 **Revisión de Codex: omitida** por decisión del usuario (Codex sin saldo). Sin archivos en
-`Docs/Revisiones/`. La rama `feature/00096-baja-archivo-consulta` queda sin mergear.
+`Docs/Revisiones/`.
+
+**Integración (13/10/2026).** Mergeada a `main` con un commit de merge (`d013af5`) y subida a
+`origin/main`. Antes de subir, `main` compiló sin errores y `Homologador.Tests` dio 15 de 15. La rama
+`feature/00096-baja-archivo-consulta` se conserva. Pendiente: desplegar la versión nueva del ejecutable
+en los puestos para que el borrado de archivos grandes funcione.
