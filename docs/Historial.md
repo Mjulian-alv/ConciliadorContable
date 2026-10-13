@@ -994,6 +994,16 @@ efecto. En la `alvesu` real corrió sólo en modo diagnóstico: 72.711 movimient
 error (un `FULL JOIN` con el filtro por tabla en el `ON`) que el propio script detectó
 revirtiendo todo; ya está corregido. No se creó ninguna otra base en el servidor.
 
+**Integración (13/10/2026).** La rama `feature/00046-pyr-operador-formato` se mergeó a
+`main` con un commit de merge (`df41bc5`; antes, `f5d823c` con el trabajo y `773b82d` con
+el script SQL) y se subió a `origin/main`. `main` compiló sin errores antes del push. El
+avance directo era de 5 commits, pero `main` local tenía además 17 sin subir de otras
+tareas (00046, 00063 a 00066, 00069 y 00072: ARCA web), que salieron en el mismo push;
+antes se revisó que ninguno de los 22 commits contuviera credenciales. La rama se dejó sin
+borrar. `codex/arca-web` (otro worktree, en `6226c55`, ya contenido en `main`) no se tocó.
+`alvesu_pruebas` queda en el servidor a pedido del usuario; la app y la carpeta de prueba
+con credenciales se borraron.
+
 ## TAREA 00084 — 09/10/2026 — Perfil en las grillas del extracto externo
 
 1. Mostrar el nombre del perfil en la grilla del extracto de Conciliación Externa,
