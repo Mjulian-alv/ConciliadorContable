@@ -25,6 +25,13 @@
 USE [alvesu];   -- cambiar a [alvesu_pruebas] para ensayar sobre la copia
 GO
 
+-- Fecha: 13/10/2026 - TAREA: 00083 - Linea: 2 - Limpia las tablas temporales de una ejecución anterior en esta misma ventana.
+-- Si un intento falla antes de llegar al final, #F, #Tablas y #Dependencias quedan vivas en la sesión; al volver a
+-- ejecutar, SQL Server las encuentra al compilar y resuelve FechaTextoOriginal antes de que exista (Msg 207, sin
+-- imprimir nada). Tiene que ir en su propio lote, antes del que se compila con las tablas ya borradas.
+DROP TABLE IF EXISTS #F, #Tablas, #Dependencias;
+GO
+
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
 SET LANGUAGE Spanish;

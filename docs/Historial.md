@@ -1015,6 +1015,18 @@ no podía mostrarlo. Corrección: `Texto` de `#F` lleva `COLLATE DATABASE_DEFAUL
 a propósito en LocalDB con intercalaciones distintas (mismo `Msg 468`) y probado el arreglo
 con ambas combinaciones. El corte queda pendiente de repetirse con el script corregido.
 
+**Segundo intento: `Msg 207` por reejecutar en la misma ventana.** Al repetir el script en la
+misma ventana de SSMS dio `Msg 207` («FechaTextoOriginal no es válido», líneas 247 y 249) sin
+imprimir nada. Causa: el primer intento falló antes del `DROP` final y dejó vivas en la sesión
+`#F`, `#Tablas` y `#Dependencias`; al recompilar, SQL Server las encuentra ya creadas, no
+difiere la resolución de nombres y busca `FechaTextoOriginal` antes de que exista (además
+conservaban la intercalación vieja). `alvesu` seguía intacta, sin transacciones abiertas.
+Corrección: un lote propio, antes del principal, con `DROP TABLE IF EXISTS #F, #Tablas,
+#Dependencias`. Reproducido en una sola sesión de LocalDB (corrida 1 falla, 2 y 3 daban
+`Msg 207`) y comprobado el arreglo: la corrida 2 llega otra vez al aviso de datos
+inválidos y la 3, con datos corregidos, migra. Aun así conviene ejecutar el script en una
+ventana de consulta nueva.
+
 ## TAREA 00084 — 09/10/2026 — Perfil en las grillas del extracto externo
 
 1. Mostrar el nombre del perfil en la grilla del extracto de Conciliación Externa,
