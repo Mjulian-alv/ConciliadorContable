@@ -1080,3 +1080,50 @@ en ambas pestañas. Corrida final: 14 pruebas correctas con
 Build incremental Debug del shell correcto, cero errores y cero advertencias;
 el build previo de las pruebas mostró la advertencia preexistente CA2255.
 Ejecutable Debug actualizado. No se modificó la base operativa.
+
+## TAREA 00096 — 13/10/2026 — Baja de archivo sin lista de IDs
+
+Pedido del usuario (textual): «cuando quiero borrar un archivo da error porque dice que tiene
+muchos parametros y el mensaje en pantalla es que esta conciliado. ambos son errores. tenemos
+que cambiar el algoritmo de busqueda de items conciliados. con un query se puede hacer. no es
+necesario tener todos los ids y hay que chequear en dos archivos por ahora.
+conciliacioninternapares, idmovimientoa y b, y en conciliacionpares con el campo
+IdMovimientoPROCESADO». Numeración confirmada por el usuario:
+
+1. Reemplazar la lista de IDs por una consulta SQL por archivo, sobre las dos tablas de pares.
+2. Que el mensaje de pantalla deje de decir «conciliado» ante cualquier error de base de datos.
+3. Aplicar lo mismo a la baja de una selección de movimientos, que tenía el mismo límite.
+
+**Causa.** `EliminarArchivo` cargaba todas las filas del archivo y las pasaba como lista a
+`WHERE ... IN @Ids`. SQL Server admite 2.100 parámetros y un archivo real tiene miles de
+movimientos (error 8003, `EliminacionMovimientosStorage.ValidarLibres`). Además,
+`ProcesadorForm` capturaba cualquier `SqlException` y respondía «el archivo tiene sesiones de
+conciliación asociadas», de modo que un error técnico parecía un archivo conciliado.
+
+**Ítem 1.** La validación recibe un filtro de movimientos (todo el archivo, o una selección
+dentro de él) y pregunta con tres `EXISTS`: `ConciliacionPares.IdMovimientoProcesado`,
+`ConciliacionInternaPares.IdMovimientoA` y `IdMovimientoB`, unidos a `MovimientosArchivo`. Ya no
+se cargan los movimientos: el alcance de las sesiones internas (conceptos y rango de fechas) se
+evalúa también en SQL, sobre `Fecha date`, con los conceptos de la sesión pasados como JSON.
+Las reglas y los mensajes de bloqueo no cambian: los pares siguen protegiendo aunque falte la
+sesión, y las sesiones externas e internas en proceso o finalizadas siguen bloqueando.
+
+**Ítem 2.** Un `SqlException` al borrar un archivo muestra «No se pudo borrar el archivo por un
+error de la base de datos» con el motivo real. La conciliación se informa por
+`InvalidOperationException`, con su mensaje específico. Se corrige además el comentario de
+`ArchivoImportadoStorage.Eliminar`, que atribuía el bloqueo a una FK.
+
+**Ítem 3.** La baja de una selección envía los IDs como un único parámetro JSON
+(`OPENJSON`), tanto para contar, validar y borrar, sin tope de cantidad. Mantiene el rechazo
+atómico: si un solo movimiento está tomado, no se borra ninguno.
+
+**Prueba.** Nueva `BajaGrande` en `Homologador.Tests`, escrita antes del arreglo y fallando con
+el error 8003 en `ValidarLibres`: archivo libre de 2.500 movimientos (se borra), par externo
+sobre el último movimiento, par interno por el lado A y por el lado B (se rechaza con motivo
+de pares y sin borrar nada), archivo ya sin pares (se borra), y selección de 2.500 IDs con y
+sin un movimiento tomado. Resultado: 15 de 15 con `CONCILIACION_SKIP_LEGACY_UI=1`, incluidas
+las pruebas previas de protección de bajas. Los límites de este arreglo: probado sobre una
+base LocalDB, no sobre `alvesu`; el comportamiento en pantalla no se probó con la interfaz.
+
+**Revisión de Codex: omitida** por decisión del usuario (Codex sin saldo). Sin archivos en
+`Docs/Revisiones/`. La rama `feature/00096-baja-archivo-consulta` queda sin mergear.
