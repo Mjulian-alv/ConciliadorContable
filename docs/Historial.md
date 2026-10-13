@@ -1027,6 +1027,17 @@ Corrección: un lote propio, antes del principal, con `DROP TABLE IF EXISTS #F, 
 inválidos y la 3, con datos corregidos, migra. Aun así conviene ejecutar el script en una
 ventana de consulta nueva.
 
+**Corte en `alvesu` aplicado (13/10/2026).** Tercer intento con el script corregido: confirmado
+(`MIGRACIÓN CONFIRMADA`). Verificado en solo lectura: `Fecha` es `date NOT NULL` y
+`FechaTextoOriginal` `nvarchar(max) NULL` en `MovimientosArchivo` y `ConciliacionItemsExternos`,
+sin `fecha2`; 72.711 movimientos y 1.992 ítems, ninguna fecha nula, ninguno sin texto original,
+rangos 02/02–30/09/2026 y 04/05–31/08/2026. Contrastado con `alvesu_pruebas` (migrada por la
+herramienta C#, otro camino de código): las 72.711 fechas y textos, y los 1.992 ítems, son
+idénticos; no hay filas nuevas ni faltantes entre ambas. Relaciones sin cambios (80 archivos,
+4 sesiones externas con 2.076 pares, 3 internas con 347 pares, 15 perfiles), sin claves
+foráneas no confiables ni transacciones abiertas. Queda desplegar la versión nueva de los
+ejecutables en todos los puestos: los anteriores no funcionan contra el esquema migrado.
+
 ## TAREA 00084 — 09/10/2026 — Perfil en las grillas del extracto externo
 
 1. Mostrar el nombre del perfil en la grilla del extracto de Conciliación Externa,
