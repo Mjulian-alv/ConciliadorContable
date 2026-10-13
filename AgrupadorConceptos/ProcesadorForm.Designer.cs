@@ -246,6 +246,8 @@ namespace AgrupadorConceptos
             dgvDatos.MasterTemplate.EnableFiltering = true;
             dgvDatos.MasterTemplate.ViewDefinition = tableViewDefinition1;
             dgvDatos.Name = "dgvDatos";
+            // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Mantener el formato de fechas tipadas al renovar los datos.
+            dgvDatos.DataBindingComplete += Services.FechasPresentacion.AlEnlazar;
             dgvDatos.Size = new System.Drawing.Size(1000, 376);
             dgvDatos.TabIndex = 0;
             // 

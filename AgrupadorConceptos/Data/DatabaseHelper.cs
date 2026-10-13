@@ -42,6 +42,12 @@ namespace AgrupadorConceptos.Data
             if (_inicializada) return;
             using var cn = SqlDb.GetConnection();
             cn.Open();
+            // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Una base anterior requiere corte explícito antes de cualquier DDL lateral.
+            if (cn.ExecuteScalar<int>(@"SELECT COUNT(*) FROM sys.tables t
+                WHERE t.object_id IN (OBJECT_ID('bancos.MovimientosArchivo'),OBJECT_ID('bancos.ConciliacionItemsExternos'))
+                AND NOT EXISTS(SELECT 1 FROM sys.columns c WHERE c.object_id=t.object_id AND c.name='Fecha'
+                    AND TYPE_NAME(c.system_type_id)='date' AND c.is_nullable=0)") > 0)
+                throw new System.InvalidOperationException("La base requiere la migración de fechas. Ejecute MigradorFechasBancos antes de abrir el módulo.");
             try
             {
                 cn.Execute(SqlSchema.Ddl);

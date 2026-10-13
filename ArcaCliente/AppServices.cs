@@ -36,14 +36,16 @@ namespace ArcaCliente
         /// Obtiene o crea una instancia de <see cref="ArcaApiService"/> usando la URL del perfil especificado.
         /// Si el perfil no tiene URL configurada, usa <see cref="DefaultArcaApiUrl"/>.
         /// </summary>
-        /// <param name="perfil">Perfil fiscal con posible configuraci�n de <see cref="PerfilFiscal.ArcaApiUrl"/>.</param>
+        // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 3 - Se restauran los acentos que el archivo había perdido por un guardado con codificación equivocada (se veían como signo de reemplazo).
+        /// <param name="perfil">Perfil fiscal con posible configuración de <see cref="PerfilFiscal.ArcaApiUrl"/>.</param>
         public static ArcaApiService GetApiForPerfil(PerfilFiscal perfil)
         {
             string url = !string.IsNullOrWhiteSpace(perfil?.ArcaApiUrl)
                 ? perfil.ArcaApiUrl
                 : DefaultArcaApiUrl;
 
-            // Si la URL cambi�, recrear el servicio
+            // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 3 - Se restauran los acentos que el archivo había perdido por un guardado con codificación equivocada (se veían como signo de reemplazo).
+            // Si la URL cambió, recrear el servicio
             if (_api == null || _currentApiUrl != url)
             {
                 _api?.Dispose();
@@ -75,7 +77,8 @@ namespace ArcaCliente
         }
 
         /// <summary>
-        /// Elimina el token local y limpia la sesi�n en memoria.
+        // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 3 - Se restauran los acentos que el archivo había perdido por un guardado con codificación equivocada (se veían como signo de reemplazo).
+        /// Elimina el token local y limpia la sesión en memoria.
         /// </summary>
         public static void Logout()
         {

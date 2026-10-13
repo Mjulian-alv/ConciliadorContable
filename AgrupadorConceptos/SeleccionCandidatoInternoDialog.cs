@@ -1,4 +1,5 @@
-﻿// Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Desempate manual en la conciliacion interna
+// Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Operar sobre días tipados evita reinterpretaciones culturales.
+// Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Desempate manual en la conciliacion interna
 using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
@@ -38,7 +39,7 @@ namespace AgrupadorConceptos
 
             var lblInfo = new Label
             {
-                Text     = $"El movimiento  [{a.Fecha}  ${ComparadorConciliacion.ImporteEfectivo(a):N2}  {a.ConceptoFinal}]  " +
+                Text     = $"El movimiento  [{a.Fecha:dd/MM/yyyy}  ${ComparadorConciliacion.ImporteEfectivo(a):N2}  {a.ConceptoFinal}]  " +
                            $"del extracto \"{ExtractoDe(a)}\"  tiene {candidatosB.Count} candidatos.\n" +
                            "Seleccione a cuál asignarlo (o Omitir para dejarlo pendiente).",
                 Location = new Point(12, 10),
@@ -67,6 +68,8 @@ namespace AgrupadorConceptos
                 m.ConceptoFinal,
                 Extracto = ExtractoDe(m)
             });
+            // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Mantener el formato de fechas tipadas al renovar los datos.
+            dgv.CellFormatting += (sender, e) => { if(dgv.Columns[e.ColumnIndex].Name=="Fecha" && e.Value is System.DateTime fecha) {e.Value=fecha.ToString("dd/MM/yyyy",System.Globalization.CultureInfo.InvariantCulture);e.FormattingApplied=true;} };
             dgv.DataSource = display;
             dgv.CellDoubleClick += (s, e) => AsignarSeleccionado(candidatosB);
 

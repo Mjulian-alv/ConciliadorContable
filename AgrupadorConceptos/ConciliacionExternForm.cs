@@ -17,12 +17,16 @@ namespace AgrupadorConceptos
     public partial class ConciliacionExternForm : Form
     {
         private ConciliacionSesion _sesionActiva;
+        // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 4 - La selección persiste aunque el rango oculte un archivo.
+        private readonly HashSet<int> _idsArchivosSeleccionados = new();
+        private List<ConciliacionItemExterno> _itemsExternosLeidos;
+        private List<ExtractoCandidato> _candidatosVisibles = new();
 
         public ConciliacionExternForm()
         {
             InitializeComponent();
+            // Fecha: 09/10/2026 - TAREA: 00082 - Linea: 1 - El Designer concentra la composición visual y las suscripciones a eventos.
             Icon = AppIcon.GetIcon();
-            Load += OnLoad;
         }
 
         // ── Carga inicial ─────────────────────────────────────────────────────────
@@ -46,17 +50,122 @@ namespace AgrupadorConceptos
 
         private List<ArchivoImportado> _archivosDisponibles = new();
 
+        // Fecha: 09/10/2026 - TAREA: 00082 - Linea: 1 - Los eventos conservan la selección y el resumen sin construir controles fuera del Designer.
+        private void grillaArchivos_CellValueChanged(object sender, GridViewCellEventArgs e)
+        {
+            if (e.Row?.DataBoundItem is not ExtractoCandidato candidato || e.Column?.Name != "Seleccionado") return;
+            if (candidato.Seleccionado) _idsArchivosSeleccionados.Add(candidato.IdArchivo);
+            else _idsArchivosSeleccionados.Remove(candidato.IdArchivo);
+            CargarConceptosPorArchivos();
+            ActualizarEstadoArchivos();
+        }
+
+        private void FiltroArchivos_Changed(object sender, EventArgs e)
+        {
+            RefrescarArchivosPorRango();
+        }
+
+        private void SeleccionExtracto_Changed(object sender, EventArgs e)
+        {
+            ActualizarResumenSeleccion();
+        }
+
+        private void tabsPendExtracto_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            dgvExtractoPendiente.ClearSelection();
+            dgvExtractoSinConcepto.ClearSelection();
+            ActualizarResumenSeleccion();
+        }
+
+        private RadGridView GrillaExtractoActiva =>
+            tabsPendExtracto.SelectedTab == tabSinConcepto ? dgvExtractoSinConcepto : dgvExtractoPendiente;
+
+        private static IEnumerable<GridViewRowInfo> FilasDatosVisibles(IEnumerable<GridViewRowInfo> filas)
+        {
+            foreach (var fila in filas)
+            {
+                if (fila is GridViewGroupRowInfo grupo)
+                {
+                    foreach (var hija in FilasDatosVisibles(grupo.ChildRows)) yield return hija;
+                }
+                else if (fila is GridViewDataRowInfo) yield return fila;
+            }
+        }
+
+        private List<MovimientoProcesado> MovimientosSeleccionados() =>
+            FilasDatosVisibles(GrillaExtractoActiva.ChildRows)
+                .Where(f => f.IsSelected && f.DataBoundItem is MovimientoProcesado)
+                .Select(f => (MovimientoProcesado)f.DataBoundItem)
+                .DistinctBy(m => m.Id).ToList();
+
+        private void ActualizarResumenSeleccion()
+        {
+            var movimientos = MovimientosSeleccionados();
+            decimal total = movimientos.Sum(ComparadorConciliacion.ImporteEfectivo);
+            decimal externo = Math.Abs(_externoSeleccionado?.Importe ?? 0m);
+            _resumenSeleccion.Text = $"Seleccionados: {movimientos.Count}  ·  Total seleccionado: {total.ToString("N2", CulturaArgentina)}  ·  Importe externo: {externo.ToString("N2", CulturaArgentina)}  ·  Diferencia: {(externo - total).ToString("N2", CulturaArgentina)}";
+            btnConciliarManual.Enabled = _sesionActiva?.Estado == "EnProceso" && _externoSeleccionado != null &&
+                movimientos.Count > 0 && total == externo;
+        }
+
+        private static readonly System.Globalization.CultureInfo CulturaArgentina = new("es-AR");
+
+        private void FormatearCeldaConciliacion(object sender, CellFormattingEventArgs e)
+        {
+            string nombre = e.CellElement?.ColumnInfo?.Name;
+            if (nombre == null || e.CellElement.Value == null) return;
+            if (sender == dgvConciliados && nombre is "FechaExterno" or "ImporteExterno" or "DetalleExterno")
+            {
+                var par = e.Row.DataBoundItem as ConciliacionPar;
+                var primera = FilasDatosVisibles(dgvConciliados.ChildRows)
+                    .Select(f => f.DataBoundItem as ConciliacionPar)
+                    .FirstOrDefault(p => p?.IdSesion == par?.IdSesion && p?.IdItemExterno == par?.IdItemExterno);
+                if (primera?.Id != par?.Id) { e.CellElement.Text = ""; return; }
+            }
+            if (nombre is "Fecha" or "FechaExterno" or "FechaExtracto")
+            {
+                // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Operar sobre días tipados evita reinterpretaciones culturales.
+                if(e.CellElement.Value is DateTime fecha) e.CellElement.Text = fecha.ToString("dd/MM/yyyy", CulturaArgentina);
+            }
+            else if (nombre is "Importe" or "ImporteExterno" or "ImporteExtracto" or "Debitos" or "Creditos")
+            {
+                if (e.CellElement.Value is decimal numero)
+                    e.CellElement.Text = numero.ToString("N2", CulturaArgentina);
+            }
+        }
+
         private void CargarArchivosEnPanel()
         {
             _archivosDisponibles = ArchivoImportadoStorage.ObtenerTodos();
+            _idsArchivosSeleccionados.Clear();
+            clbConceptos.Items.Clear();
+            RefrescarArchivosPorRango();
+        }
 
-            clbArchivos.Items.Clear();
-            foreach (var a in _archivosDisponibles)
-                clbArchivos.Items.Add(a.DisplayName, false);
+        private void RefrescarArchivosPorRango()
+        {
+            if (_desdeArchivos.Value.Date > _hastaArchivos.Value.Date)
+            {
+                _estadoArchivos.Text = "Rango inválido: Desde es posterior a Hasta.";
+                return;
+            }
+            _candidatosVisibles = SelectorExtractosService.Obtener(_desdeArchivos.Value, _hastaArchivos.Value, _mostrarTodos.Checked);
+            foreach (var candidato in _candidatosVisibles)
+                candidato.Seleccionado = _idsArchivosSeleccionados.Contains(candidato.IdArchivo);
+            _grillaArchivos.DataSource = _candidatosVisibles;
+            // Fecha: 09/10/2026 - TAREA: 00082 - Linea: 1 - Las columnas se definen en el Designer y se conservan al renovar los datos.
+            ActualizarEstadoArchivos();
+        }
+
+        private void ActualizarEstadoArchivos()
+        {
+            int ocultos = _idsArchivosSeleccionados.Count(id => _candidatosVisibles.All(c => c.IdArchivo != id));
+            _estadoArchivos.Text = $"{_idsArchivosSeleccionados.Count} seleccionados, {ocultos} fuera del rango";
         }
 
         private void CargarConceptosPorArchivos()
         {
+            var marcados = clbConceptos.CheckedItems.Cast<string>().ToHashSet(StringComparer.OrdinalIgnoreCase);
             clbConceptos.Items.Clear();
             var seleccionados = ArchivosSeleccionados;
             if (seleccionados.Count == 0) return;
@@ -65,13 +174,11 @@ namespace AgrupadorConceptos
             var conceptos = MovimientoStorage.ObtenerConceptosFinalesDistintos(ids);
 
             foreach (var c in conceptos)
-                clbConceptos.Items.Add(c, false);
+                clbConceptos.Items.Add(c, marcados.Contains(c));
         }
 
         private List<ArchivoImportado> ArchivosSeleccionados =>
-            clbArchivos.CheckedIndices.Cast<int>()
-                .Select(i => _archivosDisponibles[i])
-                .ToList();
+            _archivosDisponibles.Where(a => _idsArchivosSeleccionados.Contains(a.Id)).ToList();
 
         // ── Selección en la lista de sesiones ────────────────────────────────────
 
@@ -86,6 +193,7 @@ namespace AgrupadorConceptos
 
         private void btnNuevaSesion_Click(object sender, EventArgs e)
         {
+            _itemsExternosLeidos = null;
             CargarArchivosEnPanel();
             txtArchivoExterno.Text = "";
             pnlConfigNueva.Visible = true;
@@ -105,7 +213,7 @@ namespace AgrupadorConceptos
             if (string.IsNullOrWhiteSpace(txtArchivoExterno.Text) || !File.Exists(txtArchivoExterno.Text))
             { MessageBox.Show("Cargue el archivo externo.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
 
-            var items = LeerArchivoExterno(txtArchivoExterno.Text);
+            var items = _itemsExternosLeidos;
             if (items == null || items.Count == 0)
             { MessageBox.Show("No se encontraron registros en el archivo externo.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
 
@@ -153,11 +261,6 @@ namespace AgrupadorConceptos
 
         // ── Cargar archivo externo ────────────────────────────────────────────────
 
-        private void clbArchivos_ItemCheck(object sender, ItemCheckEventArgs e)
-        {
-            BeginInvoke(() => CargarConceptosPorArchivos());
-        }
-
         private void btnCargarExterno_Click(object sender, EventArgs e)
         {
             using var dlg = new OpenFileDialog
@@ -166,7 +269,23 @@ namespace AgrupadorConceptos
                 Title  = "Seleccionar archivo externo"
             };
             if (dlg.ShowDialog() != DialogResult.OK) return;
+            var items = LeerArchivoExterno(dlg.FileName);
+            if (items == null) return;
+            _itemsExternosLeidos = items;
             txtArchivoExterno.Text = dlg.FileName;
+            var sugerencia = SelectorExtractosService.SugerirRango(items);
+            if (sugerencia.Desde.HasValue && sugerencia.Hasta.HasValue)
+            {
+                _desdeArchivos.Value = sugerencia.Desde.Value;
+                _hastaArchivos.Value = sugerencia.Hasta.Value;
+                _mostrarTodos.Checked = false;
+            }
+            else
+            {
+                _mostrarTodos.Checked = true;
+                MessageBox.Show("El archivo externo no tiene fechas interpretables; se muestran todos los extractos.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            RefrescarArchivosPorRango();
         }
 
         // ── Auto-conciliación ─────────────────────────────────────────────────────
@@ -202,6 +321,9 @@ namespace AgrupadorConceptos
         {
             if (dgvExternoPendiente.CurrentRow == null) return;
             _externoSeleccionado = dgvExternoPendiente.CurrentRow.DataBoundItem as ConciliacionItemExterno;
+            dgvExtractoPendiente.ClearSelection();
+            dgvExtractoSinConcepto.ClearSelection();
+            ActualizarResumenSeleccion();
             ResaltarCandidatosEnExtracto();
         }
 
@@ -240,18 +362,18 @@ namespace AgrupadorConceptos
             if (_sesionActiva == null || _externoSeleccionado == null)
             { MessageBox.Show("Seleccione un ítem del archivo externo.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
 
-            if (dgvExtractoPendiente.CurrentRow == null)
-            { MessageBox.Show("Seleccione un movimiento del extracto.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
-
-            var movimiento = dgvExtractoPendiente.CurrentRow.DataBoundItem as MovimientoProcesado;
-            if (movimiento == null) return;
-
-            bool fechaMatch   = ComparadorConciliacion.FechasIguales(_externoSeleccionado.Fecha, movimiento.Fecha);
-            bool importeMatch = Math.Abs(_externoSeleccionado.Importe) == ComparadorConciliacion.ImporteEfectivo(movimiento);
-            var tipoMatch = TipoMatch.Manual; //(fechaMatch && importeMatch) ? TipoMatch.FechaImporte : TipoMatch.SoloImporte;
-
-            ConciliacionExternService.ConciliarPar(
-                _sesionActiva.Id, _externoSeleccionado.Id, movimiento.Id, tipoMatch);
+            var movimientos = MovimientosSeleccionados();
+            if (movimientos.Count == 0)
+            { MessageBox.Show("Seleccione movimientos visibles del extracto.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+            try
+            {
+                ConciliacionExternService.ConciliarSeleccion(
+                    _sesionActiva.Id, _externoSeleccionado.Id, movimientos.Select(m => m.Id).ToArray(), TipoMatch.Manual);
+            }
+            catch (InvalidOperationException ex)
+            {
+                MessageBox.Show(ex.Message, "No se pudo conciliar", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
 
             _externoSeleccionado = null;
             RefrescarGrillas();
@@ -293,56 +415,43 @@ namespace AgrupadorConceptos
             var pendExt   = ConciliacionExternService.ObtenerItemsPendientes(_sesionActiva.Id);
             var pendExtr  = ConciliacionExternService.ObtenerMovimientosPendientes(_sesionActiva.Id);
 
-            using var wb = new XLWorkbook();
-            var wsCon = wb.Worksheets.Add("Conciliados");
-            wsCon.Cell(1,1).Value = "Fecha Externo"; wsCon.Cell(1,2).Value = "Importe Externo";
-            wsCon.Cell(1,3).Value = "Detalle";       wsCon.Cell(1,4).Value = "Fecha Extracto";
-            wsCon.Cell(1,5).Value = "Importe Extracto"; wsCon.Cell(1,6).Value = "Concepto Final";
-            wsCon.Cell(1,7).Value = "Tipo Match";
-            for (int i = 0; i < pares.Count; i++)
-            {
-                var p = pares[i]; int r = i + 2;
-                wsCon.Cell(r,1).Value = p.FechaExterno;   wsCon.Cell(r,2).Value = (double)p.ImporteExterno;
-                wsCon.Cell(r,3).Value = p.DetalleExterno; wsCon.Cell(r,4).Value = p.FechaExtracto;
-                wsCon.Cell(r,5).Value = (double)p.ImporteExtracto; wsCon.Cell(r,6).Value = p.ConceptoFinalExtracto;
-                wsCon.Cell(r,7).Value = p.TipoMatch;
-            }
-
-            var wsPend = wb.Worksheets.Add("Pendientes");
-            wsPend.Cell(1,1).Value = "Origen"; wsPend.Cell(1,2).Value = "Fecha";
-            wsPend.Cell(1,3).Value = "Importe"; wsPend.Cell(1,4).Value = "Detalle / Concepto";
-            int rp = 2;
-            foreach (var x in pendExt)
-            { wsPend.Cell(rp,1).Value="Externo"; wsPend.Cell(rp,2).Value=x.Fecha; wsPend.Cell(rp,3).Value=(double)x.Importe; wsPend.Cell(rp,4).Value=x.Detalle; rp++; }
-            foreach (var m in pendExtr)
-            { wsPend.Cell(rp,1).Value="Extracto"; wsPend.Cell(rp,2).Value=m.Fecha; wsPend.Cell(rp,3).Value=(double)ComparadorConciliacion.ImporteEfectivo(m); wsPend.Cell(rp,4).Value=m.ConceptoFinal; rp++; }
-
-            wb.SaveAs(dlg.FileName);
+            // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 2, 3 - Exportar grupos y valores tipados sin repetir importes externos.
+            ConciliacionExcelExporter.Exportar(pares, pendExt, pendExtr, dlg.FileName);
             MessageBox.Show("Exportado correctamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         // ── Helpers de UI ─────────────────────────────────────────────────────────
 
+        // Fecha: 09/10/2026 - TAREA: 00082 - Linea: 1 - El refresco actualiza datos; el ajuste fijo de columnas pertenece al Designer.
         private void RefrescarGrillas()
         {
             if (_sesionActiva == null) { LimpiarGrillas(); return; }
 
             // Tab pendientes — externo
             dgvExternoPendiente.DataSource = ConciliacionExternService.ObtenerItemsPendientes(_sesionActiva.Id);
-            dgvExternoPendiente.AutoSizeColumnsMode = GridViewAutoSizeColumnsMode.Fill;
+            OcultarIdentificadores(dgvExternoPendiente);
             // Tab pendientes — extracto
             dgvExtractoPendiente.DataSource = ConciliacionExternService.ObtenerMovimientosPendientes(_sesionActiva.Id);
-            dgvExtractoPendiente.AutoSizeColumnsMode = GridViewAutoSizeColumnsMode.Fill;
+            OcultarIdentificadores(dgvExtractoPendiente);
 
             // Pendientes sin concepto (restante del extracto)
             dgvExtractoSinConcepto.DataSource = ConciliacionExternService.ObtenerMovimientosSinConcepto(_sesionActiva.Id);
-            dgvExtractoSinConcepto.AutoSizeColumnsMode = GridViewAutoSizeColumnsMode.Fill;
+            OcultarIdentificadores(dgvExtractoSinConcepto);
 
             // Tab conciliados
             dgvConciliados.DataSource = ConciliacionExternService.ObtenerPares(_sesionActiva.Id);
-            dgvConciliados.AutoSizeColumnsMode = GridViewAutoSizeColumnsMode.Fill;
+            OcultarIdentificadores(dgvConciliados);
 
             ActualizarContadores();
+            ActualizarResumenSeleccion();
+        }
+
+        // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 2, 3 - Las claves de persistencia son operativas y no ayudan a comparar importes o fechas.
+        private static void OcultarIdentificadores(RadGridView grilla)
+        {
+            foreach (var columna in grilla.Columns)
+                if (columna.Name is "Id" or "IdSesion" or "IdArchivo" or "IdItemExterno" or "IdMovimientoProcesado")
+                    columna.IsVisible = false;
         }
 
         private void LimpiarGrillas()
@@ -365,18 +474,22 @@ namespace AgrupadorConceptos
 
             lblContadorPendExt.Text  = $"Externo: {pendExt} pendientes";
             lblContadorPendExtr.Text = $"Extracto: {pendExtr} pendientes";
-            lblContadorConcil.Text   = $"{concil} pares conciliados";
+            // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 2 - Una fila por movimiento no implica un externo distinto por fila.
+            int externos = dgvConciliados.Rows.Select(r => r.DataBoundItem as ConciliacionPar)
+                .Where(p => p != null).Select(p => p.IdItemExterno).Distinct().Count();
+            lblContadorConcil.Text   = $"{externos} externos / {concil} movimientos";
         }
 
         private void ActualizarEstadoSesion()
         {
             bool activa = _sesionActiva != null;
             lblSesionActiva.Text    = activa ? $"Sesión: {_sesionActiva.Nombre} [{_sesionActiva.Estado}]" : "Sin sesión activa";
-            btnAutoConciliar.Enabled  = activa;
-            btnConciliarManual.Enabled = activa;
-            btnDesconciliar.Enabled    = activa;
-            btnFinalizar.Enabled       = activa;
+            btnAutoConciliar.Enabled  = activa && _sesionActiva.Estado == "EnProceso";
+            btnConciliarManual.Enabled = false;
+            btnDesconciliar.Enabled    = activa && _sesionActiva.Estado == "EnProceso";
+            btnFinalizar.Enabled       = activa && _sesionActiva.Estado == "EnProceso";
             btnExportar.Enabled        = activa;
+            ActualizarResumenSeleccion();
         }
 
         // ── Lectura del archivo externo ───────────────────────────────────────────

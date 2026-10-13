@@ -322,6 +322,13 @@ namespace AgrupadorConceptos
             CargarDatos();
         }
 
+        // Fecha: 07/10/2026 - TAREA: 00073 - Linea: 1 - El quinto botón reutiliza la ventana iniciada por el usuario para consultar todos los perfiles.
+        private void btnConsultarMovimientos_Click(object sender, EventArgs e)
+        {
+            using var frm = new ConceptosListado();
+            frm.ShowDialog(this);
+        }
+
         // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 3 - Entrada al mantenimiento de conceptos
         private void btnConceptosEstandar_Click(object sender, EventArgs e)
         {

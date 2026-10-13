@@ -9,8 +9,40 @@ namespace AgrupadorConceptos
         private System.ComponentModel.IContainer components = null;
         protected override void Dispose(bool disposing) { if (disposing) components?.Dispose(); base.Dispose(disposing); }
 
+        // Fecha: 09/10/2026 - TAREA: 00082 - Linea: 1 - La composición queda serializable para poder editar el formulario desde el Designer.
         private void InitializeComponent()
         {
+            GridViewCheckBoxColumn gridViewCheckBoxColumn1 = new GridViewCheckBoxColumn();
+            GridViewTextBoxColumn gridViewTextBoxColumn1 = new GridViewTextBoxColumn();
+            GridViewTextBoxColumn gridViewTextBoxColumn2 = new GridViewTextBoxColumn();
+            // Fecha: 09/10/2026 - TAREA: 00084 - Linea: 1 - Las columnas de perfil quedan editables en el diseñador de ambas pestañas del extracto.
+            // Fecha: 09/10/2026 - TAREA: 00085 - Linea: 1 - Declarar el conjunto completo evita que la columna Perfil suprima la generación del resto del extracto.
+            GridViewDateTimeColumn columnaFechaPendiente = new GridViewDateTimeColumn();
+            GridViewTextBoxColumn columnaConceptoOriginalPendiente = new GridViewTextBoxColumn();
+            GridViewTextBoxColumn columnaDescripcionOriginalPendiente = new GridViewTextBoxColumn();
+            GridViewTextBoxColumn columnaConceptoEstandarPendiente = new GridViewTextBoxColumn();
+            GridViewDecimalColumn columnaDebitosPendiente = new GridViewDecimalColumn();
+            GridViewDecimalColumn columnaCreditosPendiente = new GridViewDecimalColumn();
+            GridViewTextBoxColumn columnaConceptoFinalPendiente = new GridViewTextBoxColumn();
+            GridViewTextBoxColumn columnaCuentaFinalPendiente = new GridViewTextBoxColumn();
+            GridViewDateTimeColumn columnaFechaResto = new GridViewDateTimeColumn();
+            GridViewTextBoxColumn columnaConceptoOriginalResto = new GridViewTextBoxColumn();
+            GridViewTextBoxColumn columnaDescripcionOriginalResto = new GridViewTextBoxColumn();
+            GridViewTextBoxColumn columnaConceptoEstandarResto = new GridViewTextBoxColumn();
+            GridViewDecimalColumn columnaDebitosResto = new GridViewDecimalColumn();
+            GridViewDecimalColumn columnaCreditosResto = new GridViewDecimalColumn();
+            GridViewTextBoxColumn columnaConceptoFinalResto = new GridViewTextBoxColumn();
+            GridViewTextBoxColumn columnaCuentaFinalResto = new GridViewTextBoxColumn();
+            GridViewTextBoxColumn columnaPerfilPendiente = new GridViewTextBoxColumn();
+            GridViewTextBoxColumn columnaPerfilResto = new GridViewTextBoxColumn();
+            GridViewDateTimeColumn gridViewDateTimeColumn1 = new GridViewDateTimeColumn();
+            GridViewDateTimeColumn gridViewDateTimeColumn2 = new GridViewDateTimeColumn();
+            GridViewDecimalColumn gridViewDecimalColumn1 = new GridViewDecimalColumn();
+            TableViewDefinition tableViewDefinition1 = new TableViewDefinition();
+            TableViewDefinition tableViewDefinition2 = new TableViewDefinition();
+            TableViewDefinition tableViewDefinition3 = new TableViewDefinition();
+            TableViewDefinition tableViewDefinition4 = new TableViewDefinition();
+            TableViewDefinition tableViewDefinition5 = new TableViewDefinition();
             pnlSesiones = new Panel();
             lblSesionesTitle = new Label();
             lbSesiones = new ListBox();
@@ -20,7 +52,16 @@ namespace AgrupadorConceptos
             lblSesionActiva = new Label();
             pnlConfigNueva = new Panel();
             lblArchivo = new Label();
-            clbArchivos = new CheckedListBox();
+            lblDesdeArchivos = new Label();
+            lblHastaArchivos = new Label();
+            _desdeArchivos = new DateTimePicker();
+            _hastaArchivos = new DateTimePicker();
+            _mostrarTodos = new CheckBox();
+            _estadoArchivos = new Label();
+            _avisoRango = new Label();
+            pnlSelectorArchivos = new Panel();
+            _splitArchivos = new SplitContainer();
+            _grillaArchivos = new RadGridView();
             lblConceptos = new Label();
             clbConceptos = new CheckedListBox();
             lblArchivoExterno = new Label();
@@ -28,6 +69,7 @@ namespace AgrupadorConceptos
             btnCargarExterno = new Button();
             btnConfirmarNueva = new Button();
             btnCancelarNueva = new Button();
+            _resumenSeleccion = new Label();
             pnlAcciones = new Panel();
             btnAutoConciliar = new Button();
             btnConciliarManual = new Button();
@@ -52,6 +94,13 @@ namespace AgrupadorConceptos
             dgvConciliados = new RadGridView();
             pnlSesiones.SuspendLayout();
             pnlConfigNueva.SuspendLayout();
+            pnlSelectorArchivos.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)_splitArchivos).BeginInit();
+            _splitArchivos.Panel1.SuspendLayout();
+            _splitArchivos.Panel2.SuspendLayout();
+            _splitArchivos.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)_grillaArchivos).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)_grillaArchivos.MasterTemplate).BeginInit();
             pnlAcciones.SuspendLayout();
             tabControl.SuspendLayout();
             tabPendientes.SuspendLayout();
@@ -61,13 +110,17 @@ namespace AgrupadorConceptos
             splitPendientes.SuspendLayout();
             pnlPendExt.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dgvExternoPendiente).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)dgvExternoPendiente.MasterTemplate).BeginInit();
             tabsPendExtracto.SuspendLayout();
             tabConConcepto.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dgvExtractoPendiente).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)dgvExtractoPendiente.MasterTemplate).BeginInit();
             tabSinConcepto.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dgvExtractoSinConcepto).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)dgvExtractoSinConcepto.MasterTemplate).BeginInit();
             tabConciliados.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dgvConciliados).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)dgvConciliados.MasterTemplate).BeginInit();
             SuspendLayout();
             // 
             // pnlSesiones
@@ -152,9 +205,14 @@ namespace AgrupadorConceptos
             // 
             pnlConfigNueva.BackColor = Color.FromArgb(255, 252, 230);
             pnlConfigNueva.Controls.Add(lblArchivo);
-            pnlConfigNueva.Controls.Add(clbArchivos);
-            pnlConfigNueva.Controls.Add(lblConceptos);
-            pnlConfigNueva.Controls.Add(clbConceptos);
+            pnlConfigNueva.Controls.Add(lblDesdeArchivos);
+            pnlConfigNueva.Controls.Add(lblHastaArchivos);
+            pnlConfigNueva.Controls.Add(_desdeArchivos);
+            pnlConfigNueva.Controls.Add(_hastaArchivos);
+            pnlConfigNueva.Controls.Add(_mostrarTodos);
+            pnlConfigNueva.Controls.Add(_estadoArchivos);
+            pnlConfigNueva.Controls.Add(_avisoRango);
+            pnlConfigNueva.Controls.Add(pnlSelectorArchivos);
             pnlConfigNueva.Controls.Add(lblArchivoExterno);
             pnlConfigNueva.Controls.Add(txtArchivoExterno);
             pnlConfigNueva.Controls.Add(btnCargarExterno);
@@ -164,7 +222,7 @@ namespace AgrupadorConceptos
             pnlConfigNueva.Location = new Point(0, 120);
             pnlConfigNueva.Name = "pnlConfigNueva";
             pnlConfigNueva.Padding = new Padding(10, 8, 10, 4);
-            pnlConfigNueva.Size = new Size(1200, 165);
+            pnlConfigNueva.Size = new Size(1200, 335);
             pnlConfigNueva.TabIndex = 2;
             pnlConfigNueva.Visible = false;
             // 
@@ -173,23 +231,158 @@ namespace AgrupadorConceptos
             lblArchivo.AutoSize = true;
             lblArchivo.Location = new Point(10, 10);
             lblArchivo.Name = "lblArchivo";
-            lblArchivo.Size = new Size(120, 15);
+            lblArchivo.Size = new Size(57, 15);
             lblArchivo.TabIndex = 0;
-            lblArchivo.Text = "Archivos importados:";
+            lblArchivo.Text = "Extractos:";
             // 
-            // clbArchivos
+            // lblDesdeArchivos
             // 
-            clbArchivos.CheckOnClick = true;
-            clbArchivos.Location = new Point(160, 7);
-            clbArchivos.Name = "clbArchivos";
-            clbArchivos.Size = new Size(380, 76);
-            clbArchivos.TabIndex = 1;
-            clbArchivos.ItemCheck += clbArchivos_ItemCheck;
+            lblDesdeArchivos.AutoSize = true;
+            lblDesdeArchivos.Location = new Point(10, 44);
+            lblDesdeArchivos.Name = "lblDesdeArchivos";
+            lblDesdeArchivos.Size = new Size(42, 15);
+            lblDesdeArchivos.TabIndex = 9;
+            lblDesdeArchivos.Text = "Desde:";
+            // 
+            // lblHastaArchivos
+            // 
+            lblHastaArchivos.AutoSize = true;
+            lblHastaArchivos.Location = new Point(250, 44);
+            lblHastaArchivos.Name = "lblHastaArchivos";
+            lblHastaArchivos.Size = new Size(40, 15);
+            lblHastaArchivos.TabIndex = 11;
+            lblHastaArchivos.Text = "Hasta:";
+            // 
+            // _desdeArchivos
+            // 
+            _desdeArchivos.CustomFormat = "dd/MM/yyyy";
+            _desdeArchivos.Format = DateTimePickerFormat.Custom;
+            _desdeArchivos.Location = new Point(110, 40);
+            _desdeArchivos.Name = "_desdeArchivos";
+            _desdeArchivos.Size = new Size(130, 23);
+            _desdeArchivos.TabIndex = 10;
+            _desdeArchivos.ValueChanged += FiltroArchivos_Changed;
+            // 
+            // _hastaArchivos
+            // 
+            _hastaArchivos.CustomFormat = "dd/MM/yyyy";
+            _hastaArchivos.Format = DateTimePickerFormat.Custom;
+            _hastaArchivos.Location = new Point(300, 40);
+            _hastaArchivos.Name = "_hastaArchivos";
+            _hastaArchivos.Size = new Size(130, 23);
+            _hastaArchivos.TabIndex = 12;
+            _hastaArchivos.ValueChanged += FiltroArchivos_Changed;
+            // 
+            // _mostrarTodos
+            // 
+            _mostrarTodos.AutoSize = true;
+            _mostrarTodos.Location = new Point(460, 42);
+            _mostrarTodos.Name = "_mostrarTodos";
+            _mostrarTodos.Size = new Size(100, 19);
+            _mostrarTodos.TabIndex = 13;
+            _mostrarTodos.Text = "Mostrar todos";
+            _mostrarTodos.CheckedChanged += FiltroArchivos_Changed;
+            // 
+            // _estadoArchivos
+            // 
+            _estadoArchivos.AutoSize = true;
+            _estadoArchivos.Location = new Point(600, 43);
+            _estadoArchivos.Name = "_estadoArchivos";
+            _estadoArchivos.Size = new Size(0, 15);
+            _estadoArchivos.TabIndex = 14;
+            // 
+            // _avisoRango
+            // 
+            _avisoRango.AutoSize = true;
+            _avisoRango.Location = new Point(10, 70);
+            _avisoRango.Name = "_avisoRango";
+            _avisoRango.Size = new Size(472, 15);
+            _avisoRango.TabIndex = 15;
+            _avisoRango.Text = "El rango filtra la lista de archivos; la sesión incluye los archivos seleccionados completos.";
+            // 
+            // pnlSelectorArchivos
+            // 
+            pnlSelectorArchivos.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            pnlSelectorArchivos.Controls.Add(_splitArchivos);
+            pnlSelectorArchivos.Location = new Point(10, 95);
+            pnlSelectorArchivos.Name = "pnlSelectorArchivos";
+            pnlSelectorArchivos.Size = new Size(1170, 195);
+            pnlSelectorArchivos.TabIndex = 16;
+            // 
+            // _splitArchivos
+            // 
+            _splitArchivos.Dock = DockStyle.Fill;
+            _splitArchivos.Location = new Point(0, 0);
+            _splitArchivos.Name = "_splitArchivos";
+            // 
+            // _splitArchivos.Panel1
+            // 
+            _splitArchivos.Panel1.Controls.Add(_grillaArchivos);
+            // 
+            // _splitArchivos.Panel2
+            // 
+            _splitArchivos.Panel2.Controls.Add(lblConceptos);
+            _splitArchivos.Panel2.Controls.Add(clbConceptos);
+            _splitArchivos.Size = new Size(1170, 195);
+            _splitArchivos.SplitterDistance = 790;
+            _splitArchivos.TabIndex = 0;
+            // 
+            // _grillaArchivos
+            // 
+            _grillaArchivos.Dock = DockStyle.Fill;
+            _grillaArchivos.Location = new Point(0, 0);
+            // 
+            // 
+            // 
+            _grillaArchivos.MasterTemplate.AllowAddNewRow = false;
+            _grillaArchivos.MasterTemplate.AllowDeleteRow = false;
+            _grillaArchivos.MasterTemplate.AutoGenerateColumns = false;
+            _grillaArchivos.MasterTemplate.AutoSizeColumnsMode = GridViewAutoSizeColumnsMode.Fill;
+            gridViewCheckBoxColumn1.FieldName = "Seleccionado";
+            gridViewCheckBoxColumn1.HeaderText = "Elegir";
+            gridViewCheckBoxColumn1.Name = "Seleccionado";
+            gridViewCheckBoxColumn1.Width = 109;
+            gridViewTextBoxColumn1.FieldName = "Perfil";
+            gridViewTextBoxColumn1.HeaderText = "Perfil";
+            gridViewTextBoxColumn1.Name = "Perfil";
+            gridViewTextBoxColumn1.ReadOnly = true;
+            gridViewTextBoxColumn1.Width = 109;
+            gridViewTextBoxColumn2.FieldName = "Archivo";
+            gridViewTextBoxColumn2.HeaderText = "Archivo";
+            gridViewTextBoxColumn2.Name = "Archivo";
+            gridViewTextBoxColumn2.ReadOnly = true;
+            gridViewTextBoxColumn2.Width = 109;
+            gridViewDateTimeColumn1.FieldName = "Desde";
+            gridViewDateTimeColumn1.FormatString = "{0:dd/MM/yyyy}";
+            gridViewDateTimeColumn1.HeaderText = "Desde";
+            gridViewDateTimeColumn1.Name = "Desde";
+            gridViewDateTimeColumn1.ReadOnly = true;
+            gridViewDateTimeColumn1.Width = 109;
+            gridViewDateTimeColumn2.FieldName = "Hasta";
+            gridViewDateTimeColumn2.FormatString = "{0:dd/MM/yyyy}";
+            gridViewDateTimeColumn2.HeaderText = "Hasta";
+            gridViewDateTimeColumn2.Name = "Hasta";
+            gridViewDateTimeColumn2.ReadOnly = true;
+            gridViewDateTimeColumn2.Width = 109;
+            gridViewDecimalColumn1.DataType = typeof(int);
+            gridViewDecimalColumn1.DecimalPlaces = 0;
+            gridViewDecimalColumn1.FieldName = "Cantidad";
+            gridViewDecimalColumn1.HeaderText = "Cantidad";
+            gridViewDecimalColumn1.Name = "Cantidad";
+            gridViewDecimalColumn1.ReadOnly = true;
+            gridViewDecimalColumn1.Width = 109;
+            _grillaArchivos.MasterTemplate.Columns.AddRange(new GridViewDataColumn[] { gridViewCheckBoxColumn1, gridViewTextBoxColumn1, gridViewTextBoxColumn2, gridViewDateTimeColumn1, gridViewDateTimeColumn2, gridViewDecimalColumn1 });
+            _grillaArchivos.MasterTemplate.ViewDefinition = tableViewDefinition1;
+            _grillaArchivos.Name = "_grillaArchivos";
+            _grillaArchivos.ShowGroupPanel = false;
+            _grillaArchivos.Size = new Size(790, 195);
+            _grillaArchivos.TabIndex = 0;
+            _grillaArchivos.CellValueChanged += grillaArchivos_CellValueChanged;
             // 
             // lblConceptos
             // 
             lblConceptos.AutoSize = true;
-            lblConceptos.Location = new Point(10, 98);
+            lblConceptos.Location = new Point(8, 4);
             lblConceptos.Name = "lblConceptos";
             lblConceptos.Size = new Size(67, 15);
             lblConceptos.TabIndex = 2;
@@ -197,10 +390,11 @@ namespace AgrupadorConceptos
             // 
             // clbConceptos
             // 
+            clbConceptos.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             clbConceptos.CheckOnClick = true;
-            clbConceptos.Location = new Point(160, 95);
+            clbConceptos.Location = new Point(8, 28);
             clbConceptos.Name = "clbConceptos";
-            clbConceptos.Size = new Size(380, 58);
+            clbConceptos.Size = new Size(340, 148);
             clbConceptos.TabIndex = 3;
             // 
             // lblArchivoExterno
@@ -232,7 +426,7 @@ namespace AgrupadorConceptos
             // btnConfirmarNueva
             // 
             btnConfirmarNueva.BackColor = Color.LightGreen;
-            btnConfirmarNueva.Location = new Point(680, 40);
+            btnConfirmarNueva.Location = new Point(920, 296);
             btnConfirmarNueva.Name = "btnConfirmarNueva";
             btnConfirmarNueva.Size = new Size(110, 28);
             btnConfirmarNueva.TabIndex = 7;
@@ -243,7 +437,7 @@ namespace AgrupadorConceptos
             // btnCancelarNueva
             // 
             btnCancelarNueva.BackColor = Color.MistyRose;
-            btnCancelarNueva.Location = new Point(800, 40);
+            btnCancelarNueva.Location = new Point(1040, 296);
             btnCancelarNueva.Name = "btnCancelarNueva";
             btnCancelarNueva.Size = new Size(110, 28);
             btnCancelarNueva.TabIndex = 8;
@@ -251,9 +445,19 @@ namespace AgrupadorConceptos
             btnCancelarNueva.UseVisualStyleBackColor = false;
             btnCancelarNueva.Click += btnCancelarNueva_Click;
             // 
+            // _resumenSeleccion
+            // 
+            _resumenSeleccion.Dock = DockStyle.Bottom;
+            _resumenSeleccion.Location = new Point(6, 44);
+            _resumenSeleccion.Name = "_resumenSeleccion";
+            _resumenSeleccion.Size = new Size(1188, 26);
+            _resumenSeleccion.TabIndex = 8;
+            _resumenSeleccion.TextAlign = ContentAlignment.MiddleLeft;
+            // 
             // pnlAcciones
             // 
             pnlAcciones.BackColor = Color.FromArgb(230, 235, 240);
+            pnlAcciones.Controls.Add(_resumenSeleccion);
             pnlAcciones.Controls.Add(btnAutoConciliar);
             pnlAcciones.Controls.Add(btnConciliarManual);
             pnlAcciones.Controls.Add(btnDesconciliar);
@@ -263,10 +467,10 @@ namespace AgrupadorConceptos
             pnlAcciones.Controls.Add(lblContadorPendExtr);
             pnlAcciones.Controls.Add(lblContadorConcil);
             pnlAcciones.Dock = DockStyle.Bottom;
-            pnlAcciones.Location = new Point(0, 708);
+            pnlAcciones.Location = new Point(0, 680);
             pnlAcciones.Name = "pnlAcciones";
             pnlAcciones.Padding = new Padding(6, 6, 6, 0);
-            pnlAcciones.Size = new Size(1200, 42);
+            pnlAcciones.Size = new Size(1200, 70);
             pnlAcciones.TabIndex = 1;
             // 
             // btnAutoConciliar
@@ -286,7 +490,7 @@ namespace AgrupadorConceptos
             btnConciliarManual.Name = "btnConciliarManual";
             btnConciliarManual.Size = new Size(155, 28);
             btnConciliarManual.TabIndex = 1;
-            btnConciliarManual.Text = "✔ Conciliar manual";
+            btnConciliarManual.Text = "Conciliar selección";
             btnConciliarManual.Click += btnConciliarManual_Click;
             // 
             // btnDesconciliar
@@ -351,10 +555,10 @@ namespace AgrupadorConceptos
             tabControl.Controls.Add(tabPendientes);
             tabControl.Controls.Add(tabConciliados);
             tabControl.Dock = DockStyle.Fill;
-            tabControl.Location = new Point(0, 285);
+            tabControl.Location = new Point(0, 455);
             tabControl.Name = "tabControl";
             tabControl.SelectedIndex = 0;
-            tabControl.Size = new Size(1200, 423);
+            tabControl.Size = new Size(1200, 225);
             tabControl.TabIndex = 0;
             // 
             // tabPendientes
@@ -362,7 +566,7 @@ namespace AgrupadorConceptos
             tabPendientes.Controls.Add(splitPendientes);
             tabPendientes.Location = new Point(4, 24);
             tabPendientes.Name = "tabPendientes";
-            tabPendientes.Size = new Size(1192, 395);
+            tabPendientes.Size = new Size(1192, 197);
             tabPendientes.TabIndex = 0;
             tabPendientes.Text = "⏳ Pendientes";
             // 
@@ -379,8 +583,8 @@ namespace AgrupadorConceptos
             // splitPendientes.Panel2
             // 
             splitPendientes.Panel2.Controls.Add(tabsPendExtracto);
-            splitPendientes.Size = new Size(1192, 395);
-            splitPendientes.SplitterDistance = 961;
+            splitPendientes.Size = new Size(1192, 197);
+            splitPendientes.SplitterDistance = 531;
             splitPendientes.TabIndex = 0;
             // 
             // pnlPendExt
@@ -390,18 +594,25 @@ namespace AgrupadorConceptos
             pnlPendExt.Dock = DockStyle.Fill;
             pnlPendExt.Location = new Point(0, 0);
             pnlPendExt.Name = "pnlPendExt";
-            pnlPendExt.Size = new Size(961, 395);
+            pnlPendExt.Size = new Size(531, 197);
             pnlPendExt.TabIndex = 0;
             // 
             // dgvExternoPendiente
             // 
             dgvExternoPendiente.Dock = DockStyle.Fill;
             dgvExternoPendiente.Location = new Point(0, 20);
+            // 
+            // 
+            // 
+            dgvExternoPendiente.MasterTemplate.AutoSizeColumnsMode = GridViewAutoSizeColumnsMode.Fill;
+            dgvExternoPendiente.MasterTemplate.ViewDefinition = tableViewDefinition2;
             dgvExternoPendiente.Name = "dgvExternoPendiente";
-            dgvExternoPendiente.Size = new Size(961, 375);
-            dgvExternoPendiente.TabIndex = 0;
+            // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Mantener el formato de fechas tipadas al renovar los datos.
+            dgvExternoPendiente.DataBindingComplete += Services.FechasPresentacion.AlEnlazar;
             dgvExternoPendiente.ReadOnly = true;
-            dgvExternoPendiente.MultiSelect = false;
+            dgvExternoPendiente.Size = new Size(531, 177);
+            dgvExternoPendiente.TabIndex = 0;
+            dgvExternoPendiente.CellFormatting += FormatearCeldaConciliacion;
             dgvExternoPendiente.SelectionChanged += dgvExternoPendiente_SelectionChanged;
             // 
             // lblPendExt
@@ -411,7 +622,7 @@ namespace AgrupadorConceptos
             lblPendExt.ForeColor = Color.DarkSlateBlue;
             lblPendExt.Location = new Point(0, 0);
             lblPendExt.Name = "lblPendExt";
-            lblPendExt.Size = new Size(961, 20);
+            lblPendExt.Size = new Size(531, 20);
             lblPendExt.TabIndex = 1;
             lblPendExt.Text = "Archivo externo — pendientes";
             // 
@@ -423,15 +634,16 @@ namespace AgrupadorConceptos
             tabsPendExtracto.Location = new Point(0, 0);
             tabsPendExtracto.Name = "tabsPendExtracto";
             tabsPendExtracto.SelectedIndex = 0;
-            tabsPendExtracto.Size = new Size(227, 395);
+            tabsPendExtracto.Size = new Size(657, 197);
             tabsPendExtracto.TabIndex = 0;
+            tabsPendExtracto.SelectedIndexChanged += tabsPendExtracto_SelectedIndexChanged;
             // 
             // tabConConcepto
             // 
             tabConConcepto.Controls.Add(dgvExtractoPendiente);
             tabConConcepto.Location = new Point(4, 24);
             tabConConcepto.Name = "tabConConcepto";
-            tabConConcepto.Size = new Size(219, 367);
+            tabConConcepto.Size = new Size(649, 169);
             tabConConcepto.TabIndex = 0;
             tabConConcepto.Text = "Con concepto seleccionado";
             // 
@@ -439,18 +651,80 @@ namespace AgrupadorConceptos
             // 
             dgvExtractoPendiente.Dock = DockStyle.Fill;
             dgvExtractoPendiente.Location = new Point(0, 0);
+            // 
+            // 
+            // 
+            dgvExtractoPendiente.MasterTemplate.AutoSizeColumnsMode = GridViewAutoSizeColumnsMode.Fill;
+            // Fecha: 09/10/2026 - TAREA: 00084 - Linea: 1 - Vincular el nombre del perfil identifica el origen de cada movimiento pendiente.
+            columnaPerfilPendiente.FieldName = "NombreBanco";
+            columnaPerfilPendiente.HeaderText = "Perfil";
+            columnaPerfilPendiente.Name = "NombreBanco";
+            columnaPerfilPendiente.ReadOnly = true;
+            columnaPerfilPendiente.Width = 120;
+            // Fecha: 09/10/2026 - TAREA: 00085 - Linea: 1 - Declarar el conjunto completo evita que la columna Perfil suprima la generación del resto del extracto.
+            dgvExtractoPendiente.MasterTemplate.AutoGenerateColumns = false;
+            columnaFechaPendiente.FieldName = "Fecha";
+            columnaFechaPendiente.HeaderText = "Fecha";
+            columnaFechaPendiente.Name = "Fecha";
+            // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Operar sobre días tipados evita reinterpretaciones culturales.
+            columnaFechaPendiente.FormatString = "{0:dd/MM/yyyy}";
+            columnaFechaPendiente.ReadOnly = true;
+            columnaFechaPendiente.Width = 100;
+            columnaConceptoOriginalPendiente.FieldName = "ConceptoOriginal";
+            columnaConceptoOriginalPendiente.HeaderText = "Concepto original";
+            columnaConceptoOriginalPendiente.Name = "ConceptoOriginal";
+            columnaConceptoOriginalPendiente.ReadOnly = true;
+            columnaConceptoOriginalPendiente.Width = 100;
+            columnaDescripcionOriginalPendiente.FieldName = "DescripcionOriginal";
+            columnaDescripcionOriginalPendiente.HeaderText = "Descripción";
+            columnaDescripcionOriginalPendiente.Name = "DescripcionOriginal";
+            columnaDescripcionOriginalPendiente.ReadOnly = true;
+            columnaDescripcionOriginalPendiente.Width = 100;
+            columnaConceptoEstandarPendiente.FieldName = "ConceptoEstandar";
+            columnaConceptoEstandarPendiente.HeaderText = "Concepto estándar";
+            columnaConceptoEstandarPendiente.Name = "ConceptoEstandar";
+            columnaConceptoEstandarPendiente.ReadOnly = true;
+            columnaConceptoEstandarPendiente.Width = 100;
+            columnaDebitosPendiente.FieldName = "Debitos";
+            columnaDebitosPendiente.HeaderText = "Débitos";
+            columnaDebitosPendiente.Name = "Debitos";
+            columnaDebitosPendiente.ReadOnly = true;
+            columnaDebitosPendiente.Width = 100;
+            columnaDebitosPendiente.DataType = typeof(decimal);
+            columnaDebitosPendiente.FormatString = "{0:N2}";
+            columnaCreditosPendiente.FieldName = "Creditos";
+            columnaCreditosPendiente.HeaderText = "Créditos";
+            columnaCreditosPendiente.Name = "Creditos";
+            columnaCreditosPendiente.ReadOnly = true;
+            columnaCreditosPendiente.Width = 100;
+            columnaCreditosPendiente.DataType = typeof(decimal);
+            columnaCreditosPendiente.FormatString = "{0:N2}";
+            columnaConceptoFinalPendiente.FieldName = "ConceptoFinal";
+            columnaConceptoFinalPendiente.HeaderText = "Concepto final";
+            columnaConceptoFinalPendiente.Name = "ConceptoFinal";
+            columnaConceptoFinalPendiente.ReadOnly = true;
+            columnaConceptoFinalPendiente.Width = 100;
+            columnaCuentaFinalPendiente.FieldName = "CuentaFinal";
+            columnaCuentaFinalPendiente.HeaderText = "Cuenta final";
+            columnaCuentaFinalPendiente.Name = "CuentaFinal";
+            columnaCuentaFinalPendiente.ReadOnly = true;
+            columnaCuentaFinalPendiente.Width = 100;
+            dgvExtractoPendiente.MasterTemplate.Columns.AddRange(new GridViewDataColumn[] { columnaFechaPendiente, columnaConceptoOriginalPendiente, columnaDescripcionOriginalPendiente, columnaConceptoEstandarPendiente, columnaDebitosPendiente, columnaCreditosPendiente, columnaConceptoFinalPendiente, columnaCuentaFinalPendiente, columnaPerfilPendiente });
+            dgvExtractoPendiente.MasterTemplate.MultiSelect = true;
+            dgvExtractoPendiente.MasterTemplate.ViewDefinition = tableViewDefinition3;
             dgvExtractoPendiente.Name = "dgvExtractoPendiente";
-            dgvExtractoPendiente.Size = new Size(219, 367);
-            dgvExtractoPendiente.TabIndex = 0;
             dgvExtractoPendiente.ReadOnly = true;
-            dgvExtractoPendiente.MultiSelect = false;
+            dgvExtractoPendiente.Size = new Size(649, 169);
+            dgvExtractoPendiente.TabIndex = 0;
+            dgvExtractoPendiente.CellFormatting += FormatearCeldaConciliacion;
+            dgvExtractoPendiente.SelectionChanged += SeleccionExtracto_Changed;
             // 
             // tabSinConcepto
             // 
             tabSinConcepto.Controls.Add(dgvExtractoSinConcepto);
             tabSinConcepto.Location = new Point(4, 24);
             tabSinConcepto.Name = "tabSinConcepto";
-            tabSinConcepto.Size = new Size(219, 367);
+            tabSinConcepto.Size = new Size(649, 367);
             tabSinConcepto.TabIndex = 1;
             tabSinConcepto.Text = "Resto del extracto";
             // 
@@ -458,11 +732,73 @@ namespace AgrupadorConceptos
             // 
             dgvExtractoSinConcepto.Dock = DockStyle.Fill;
             dgvExtractoSinConcepto.Location = new Point(0, 0);
+            // 
+            // 
+            // 
+            dgvExtractoSinConcepto.MasterTemplate.AutoSizeColumnsMode = GridViewAutoSizeColumnsMode.Fill;
+            // Fecha: 09/10/2026 - TAREA: 00084 - Linea: 1 - El resto del extracto debe mostrar el mismo origen que los pendientes por concepto.
+            columnaPerfilResto.FieldName = "NombreBanco";
+            columnaPerfilResto.HeaderText = "Perfil";
+            columnaPerfilResto.Name = "NombreBanco";
+            columnaPerfilResto.ReadOnly = true;
+            columnaPerfilResto.Width = 120;
+            // Fecha: 09/10/2026 - TAREA: 00085 - Linea: 1 - Declarar el conjunto completo evita que la columna Perfil suprima la generación del resto del extracto.
+            dgvExtractoSinConcepto.MasterTemplate.AutoGenerateColumns = false;
+            columnaFechaResto.FieldName = "Fecha";
+            columnaFechaResto.HeaderText = "Fecha";
+            columnaFechaResto.Name = "Fecha";
+            // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Operar sobre días tipados evita reinterpretaciones culturales.
+            columnaFechaResto.FormatString = "{0:dd/MM/yyyy}";
+            columnaFechaResto.ReadOnly = true;
+            columnaFechaResto.Width = 100;
+            columnaConceptoOriginalResto.FieldName = "ConceptoOriginal";
+            columnaConceptoOriginalResto.HeaderText = "Concepto original";
+            columnaConceptoOriginalResto.Name = "ConceptoOriginal";
+            columnaConceptoOriginalResto.ReadOnly = true;
+            columnaConceptoOriginalResto.Width = 100;
+            columnaDescripcionOriginalResto.FieldName = "DescripcionOriginal";
+            columnaDescripcionOriginalResto.HeaderText = "Descripción";
+            columnaDescripcionOriginalResto.Name = "DescripcionOriginal";
+            columnaDescripcionOriginalResto.ReadOnly = true;
+            columnaDescripcionOriginalResto.Width = 100;
+            columnaConceptoEstandarResto.FieldName = "ConceptoEstandar";
+            columnaConceptoEstandarResto.HeaderText = "Concepto estándar";
+            columnaConceptoEstandarResto.Name = "ConceptoEstandar";
+            columnaConceptoEstandarResto.ReadOnly = true;
+            columnaConceptoEstandarResto.Width = 100;
+            columnaDebitosResto.FieldName = "Debitos";
+            columnaDebitosResto.HeaderText = "Débitos";
+            columnaDebitosResto.Name = "Debitos";
+            columnaDebitosResto.ReadOnly = true;
+            columnaDebitosResto.Width = 100;
+            columnaDebitosResto.DataType = typeof(decimal);
+            columnaDebitosResto.FormatString = "{0:N2}";
+            columnaCreditosResto.FieldName = "Creditos";
+            columnaCreditosResto.HeaderText = "Créditos";
+            columnaCreditosResto.Name = "Creditos";
+            columnaCreditosResto.ReadOnly = true;
+            columnaCreditosResto.Width = 100;
+            columnaCreditosResto.DataType = typeof(decimal);
+            columnaCreditosResto.FormatString = "{0:N2}";
+            columnaConceptoFinalResto.FieldName = "ConceptoFinal";
+            columnaConceptoFinalResto.HeaderText = "Concepto final";
+            columnaConceptoFinalResto.Name = "ConceptoFinal";
+            columnaConceptoFinalResto.ReadOnly = true;
+            columnaConceptoFinalResto.Width = 100;
+            columnaCuentaFinalResto.FieldName = "CuentaFinal";
+            columnaCuentaFinalResto.HeaderText = "Cuenta final";
+            columnaCuentaFinalResto.Name = "CuentaFinal";
+            columnaCuentaFinalResto.ReadOnly = true;
+            columnaCuentaFinalResto.Width = 100;
+            dgvExtractoSinConcepto.MasterTemplate.Columns.AddRange(new GridViewDataColumn[] { columnaFechaResto, columnaConceptoOriginalResto, columnaDescripcionOriginalResto, columnaConceptoEstandarResto, columnaDebitosResto, columnaCreditosResto, columnaConceptoFinalResto, columnaCuentaFinalResto, columnaPerfilResto });
+            dgvExtractoSinConcepto.MasterTemplate.MultiSelect = true;
+            dgvExtractoSinConcepto.MasterTemplate.ViewDefinition = tableViewDefinition4;
             dgvExtractoSinConcepto.Name = "dgvExtractoSinConcepto";
-            dgvExtractoSinConcepto.Size = new Size(219, 367);
-            dgvExtractoSinConcepto.TabIndex = 0;
             dgvExtractoSinConcepto.ReadOnly = true;
-            dgvExtractoSinConcepto.MultiSelect = false;
+            dgvExtractoSinConcepto.Size = new Size(649, 367);
+            dgvExtractoSinConcepto.TabIndex = 0;
+            dgvExtractoSinConcepto.CellFormatting += FormatearCeldaConciliacion;
+            dgvExtractoSinConcepto.SelectionChanged += SeleccionExtracto_Changed;
             // 
             // tabConciliados
             // 
@@ -477,11 +813,18 @@ namespace AgrupadorConceptos
             // 
             dgvConciliados.Dock = DockStyle.Fill;
             dgvConciliados.Location = new Point(0, 0);
+            // 
+            // 
+            // 
+            dgvConciliados.MasterTemplate.AutoSizeColumnsMode = GridViewAutoSizeColumnsMode.Fill;
+            dgvConciliados.MasterTemplate.ViewDefinition = tableViewDefinition5;
             dgvConciliados.Name = "dgvConciliados";
+            // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Mantener el formato de fechas tipadas al renovar los datos.
+            dgvConciliados.DataBindingComplete += Services.FechasPresentacion.AlEnlazar;
+            dgvConciliados.ReadOnly = true;
             dgvConciliados.Size = new Size(1192, 395);
             dgvConciliados.TabIndex = 0;
-            dgvConciliados.ReadOnly = true;
-            dgvConciliados.MultiSelect = false;
+            dgvConciliados.CellFormatting += FormatearCeldaConciliacion;
             // 
             // ConciliacionExternForm
             // 
@@ -494,10 +837,19 @@ namespace AgrupadorConceptos
             Name = "ConciliacionExternForm";
             StartPosition = FormStartPosition.CenterScreen;
             Text = "Conciliación con Archivo Externo";
+            Load += OnLoad;
             pnlSesiones.ResumeLayout(false);
             pnlSesiones.PerformLayout();
             pnlConfigNueva.ResumeLayout(false);
             pnlConfigNueva.PerformLayout();
+            pnlSelectorArchivos.ResumeLayout(false);
+            _splitArchivos.Panel1.ResumeLayout(false);
+            _splitArchivos.Panel2.ResumeLayout(false);
+            _splitArchivos.Panel2.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)_splitArchivos).EndInit();
+            _splitArchivos.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)_grillaArchivos.MasterTemplate).EndInit();
+            ((System.ComponentModel.ISupportInitialize)_grillaArchivos).EndInit();
             pnlAcciones.ResumeLayout(false);
             pnlAcciones.PerformLayout();
             tabControl.ResumeLayout(false);
@@ -507,34 +859,19 @@ namespace AgrupadorConceptos
             ((System.ComponentModel.ISupportInitialize)splitPendientes).EndInit();
             splitPendientes.ResumeLayout(false);
             pnlPendExt.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)dgvExternoPendiente.MasterTemplate).EndInit();
             ((System.ComponentModel.ISupportInitialize)dgvExternoPendiente).EndInit();
             tabsPendExtracto.ResumeLayout(false);
             tabConConcepto.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)dgvExtractoPendiente.MasterTemplate).EndInit();
             ((System.ComponentModel.ISupportInitialize)dgvExtractoPendiente).EndInit();
             tabSinConcepto.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)dgvExtractoSinConcepto.MasterTemplate).EndInit();
             ((System.ComponentModel.ISupportInitialize)dgvExtractoSinConcepto).EndInit();
             tabConciliados.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)dgvConciliados).EndInit();
-            ((System.ComponentModel.ISupportInitialize)dgvExternoPendiente.MasterTemplate).EndInit();
-            ((System.ComponentModel.ISupportInitialize)dgvExtractoPendiente.MasterTemplate).EndInit();
-            ((System.ComponentModel.ISupportInitialize)dgvExtractoSinConcepto.MasterTemplate).EndInit();
             ((System.ComponentModel.ISupportInitialize)dgvConciliados.MasterTemplate).EndInit();
+            ((System.ComponentModel.ISupportInitialize)dgvConciliados).EndInit();
             ResumeLayout(false);
-        }
-
-        private static void ConfigBtn(Button btn, string texto, Point loc, System.EventHandler handler)
-        {
-            btn.Text     = texto;
-            btn.Location = loc;
-            btn.Size     = new Size(155, 28);
-            btn.Click   += handler;
-        }
-
-        private static void ConfigGrilla(RadGridView dgv)
-        {
-            dgv.ReadOnly    = true;
-            dgv.MultiSelect = false;
-            dgv.AutoSizeColumnsMode = Telerik.WinControls.UI.GridViewAutoSizeColumnsMode.Fill;
         }
 
         // ── Campos ───────────────────────────────────────────────────────────────
@@ -548,7 +885,18 @@ namespace AgrupadorConceptos
 
         private Panel           pnlConfigNueva;
         private Label           lblArchivo;
-        private CheckedListBox  clbArchivos;
+        // Fecha: 09/10/2026 - TAREA: 00082 - Linea: 1 - La composición queda serializable para poder editar el formulario desde el Designer.
+        private RadGridView _grillaArchivos;
+        private DateTimePicker _desdeArchivos;
+        private DateTimePicker _hastaArchivos;
+        private CheckBox _mostrarTodos;
+        private Label _estadoArchivos;
+        private Label _avisoRango;
+        private SplitContainer _splitArchivos;
+        private Panel pnlSelectorArchivos;
+        private Label lblDesdeArchivos;
+        private Label lblHastaArchivos;
+        private Label _resumenSeleccion;
         private Label           lblConceptos;
         private CheckedListBox  clbConceptos;
         private Label           lblArchivoExterno;

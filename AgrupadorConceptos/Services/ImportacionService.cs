@@ -6,6 +6,7 @@ using System.IO;
 using AgrupadorConceptos.Data;
 using AgrupadorConceptos.Models;
 using ExcelDataReader;
+using Conciliador.Comun.Services;
 
 namespace AgrupadorConceptos.Services
 {
@@ -69,11 +70,8 @@ namespace AgrupadorConceptos.Services
             progreso?.Invoke(new ProgresoImportacion(ProgresoImportacion.PasoGuardando, 0, movimientos.Count));
             swGuardado.Start();
 
-            int idArchivo = ArchivoImportadoStorage.Insertar(perfil.Id, Path.GetFileName(filePath), DateTime.Now);
-            foreach (var mov in movimientos)
-                mov.IdArchivo = idArchivo;
-
-            MovimientoStorage.InsertarLote(movimientos, (guardados, total) =>
+            // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Un fallo SQL tampoco debe dejar una importación parcial.
+            ImportacionStorage.GuardarArchivo(perfil.Id, Path.GetFileName(filePath), DateTime.Now, movimientos, (guardados, total) =>
                 progreso?.Invoke(new ProgresoImportacion(ProgresoImportacion.PasoGuardando, guardados, total)));
 
             swGuardado.Stop();
@@ -91,6 +89,8 @@ namespace AgrupadorConceptos.Services
             IDictionary<string, string> cuentasPorConcepto)
         {
             var movimientos = new List<MovimientoProcesado>();
+            // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Acumular incidencias sin perder el tipo original de la celda Excel.
+            var incidencias = new List<IncidenciaFechaImportacion>();
 
             using var stream = File.Open(filePath, FileMode.Open, FileAccess.Read);
             string ext = Path.GetExtension(filePath).ToLowerInvariant();
@@ -109,7 +109,7 @@ namespace AgrupadorConceptos.Services
             for (int i = 1; i < perfil.FilaEncabezado; i++)
                 reader.Read();
 
-            if (!reader.Read()) return movimientos;
+            if (!reader.Read()) throw new FechasImportacionException(new[] { FechasImportacionException.Incidencia(filePath, reader.Name, perfil.FilaEncabezado, null, "No se encontró el encabezado de fecha.") });
 
             var headers = new List<string>();
             for (int i = 0; i < reader.FieldCount; i++)
@@ -126,13 +126,22 @@ namespace AgrupadorConceptos.Services
                 throw new InvalidOperationException(
                     "No se encontró la columna del concepto en la fila especificada (verifique el perfil y el archivo).");
 
+            if (idxFecha == -1)
+                throw new FechasImportacionException(new[] { FechasImportacionException.Incidencia(filePath, reader.Name, perfil.FilaEncabezado, perfil.ColumnaFecha, "No se encontró la columna de fecha del perfil.") });
+            int fila = perfil.FilaEncabezado;
+
             while (reader.Read())
             {
+                fila++;
                 string concepto    = reader.GetValue(idxConcepto)?.ToString() ?? "";
                 string descripcion = idxDescripcion != -1 ? (reader.GetValue(idxDescripcion)?.ToString() ?? "") : concepto;
-                string fecha       = idxFecha != -1 ? (reader.GetValue(idxFecha)?.ToString() ?? "") : "";
 
                 if (string.IsNullOrWhiteSpace(concepto)) continue;
+                if (!FechaBancariaParser.TryParse(reader.GetValue(idxFecha), out var fecha))
+                {
+                    incidencias.Add(FechasImportacionException.Incidencia(filePath, reader.Name, fila, reader.GetValue(idxFecha)));
+                    continue;
+                }
 
                 decimal debitos = 0, creditos = 0;
                 if (perfil.TipoImporte == 1 && idxImporteUnico != -1)
@@ -172,6 +181,7 @@ namespace AgrupadorConceptos.Services
                 });
             }
 
+            if (incidencias.Count > 0) throw new FechasImportacionException(incidencias);
             return movimientos;
         }
 

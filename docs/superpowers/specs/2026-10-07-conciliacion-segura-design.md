@@ -2,7 +2,7 @@
 
 Fecha: 07/10/2026 - TAREA: 00076 - Linea: 1, 2, 3, 4 - Diseño para proteger movimientos y ampliar la conciliación externa.
 
-Estado: propuesta para revisión; no constituye aprobación de implementación. Diseño y plan preparados con Astra, esfuerzo medio. Implementación solicitada con Sol 6, esfuerzo medio, después de revisar estos documentos.
+Estado: diseño y plan aprobados por el usuario el 07/10/2026. Preparados con Astra, esfuerzo medio. Implementación en curso con Sol 6, esfuerzo medio, conforme al pedido.
 
 ## Objetivo y alcance
 

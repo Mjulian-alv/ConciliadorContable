@@ -1,4 +1,4 @@
-﻿namespace AgrupadorConceptos
+namespace AgrupadorConceptos
 {
     partial class ConciliacionInternaForm
     {
@@ -263,6 +263,8 @@
             dgvDebitos.MasterTemplate.AutoSizeColumnsMode = Telerik.WinControls.UI.GridViewAutoSizeColumnsMode.Fill;
             dgvDebitos.MasterTemplate.ViewDefinition = tableViewDefinition1;
             dgvDebitos.Name = "dgvDebitos";
+            // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Mantener el formato de fechas tipadas al renovar los datos.
+            dgvDebitos.DataBindingComplete += Services.FechasPresentacion.AlEnlazar;
             dgvDebitos.ReadOnly = true;
             dgvDebitos.Size = new System.Drawing.Size(548, 350);
             dgvDebitos.TabIndex = 0;
@@ -290,6 +292,8 @@
             dgvCreditos.MasterTemplate.AutoSizeColumnsMode = Telerik.WinControls.UI.GridViewAutoSizeColumnsMode.Fill;
             dgvCreditos.MasterTemplate.ViewDefinition = tableViewDefinition2;
             dgvCreditos.Name = "dgvCreditos";
+            // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Mantener el formato de fechas tipadas al renovar los datos.
+            dgvCreditos.DataBindingComplete += Services.FechasPresentacion.AlEnlazar;
             dgvCreditos.ReadOnly = true;
             dgvCreditos.Size = new System.Drawing.Size(600, 350);
             dgvCreditos.TabIndex = 0;
@@ -326,6 +330,8 @@
             dgvConciliados.MasterTemplate.AutoSizeColumnsMode = Telerik.WinControls.UI.GridViewAutoSizeColumnsMode.Fill;
             dgvConciliados.MasterTemplate.ViewDefinition = tableViewDefinition3;
             dgvConciliados.Name = "dgvConciliados";
+            // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Mantener el formato de fechas tipadas al renovar los datos.
+            dgvConciliados.DataBindingComplete += Services.FechasPresentacion.AlEnlazar;
             dgvConciliados.ReadOnly = true;
             dgvConciliados.Size = new System.Drawing.Size(1152, 372);
             dgvConciliados.TabIndex = 0;

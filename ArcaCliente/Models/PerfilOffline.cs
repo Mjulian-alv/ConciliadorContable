@@ -72,6 +72,13 @@ namespace ArcaCliente.Models
         /// </summary>
         public List<DirectivaConciliacion> DirectivasConciliacion { get; set; } = new();
 
+        public List<CuitProveedores> ListaCuits {  get; set; }  = new();
+
         public override string ToString() => Nombre ?? string.Empty;
+    }
+
+    public class CuitProveedores
+    {
+        public string CUIT { get; set; } = string.Empty;
     }
 }

@@ -1,9 +1,11 @@
+// Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Operar sobre días tipados evita reinterpretaciones culturales.
+using AgrupadorConceptos.Models;
+using Dapper;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
-using AgrupadorConceptos.Models;
-using Dapper;
+using Telerik.Windows.Documents.Spreadsheet.Expressions.Functions;
 
 namespace AgrupadorConceptos.Data
 {
@@ -35,8 +37,13 @@ namespace AgrupadorConceptos.Data
             if (ids.Count == 0) return new List<MovimientoProcesado>();
 
             using var cn = DatabaseHelper.Open();
+            // Fecha: 09/10/2026 - TAREA: 00084 - Linea: 1 - Identificar el perfil permite distinguir movimientos de varios extractos en una misma conciliación.
             return cn.Query<MovimientoProcesado>(
-                "SELECT * FROM bancos.MovimientosArchivo WHERE IdArchivo IN @Ids",
+                @"SELECT m.*, p.NombreBanco
+                  FROM bancos.MovimientosArchivo m
+                  LEFT JOIN bancos.ArchivosImportados a ON a.Id = m.IdArchivo
+                  LEFT JOIN bancos.PerfilesBanco p ON p.Id = a.IdPerfilBanco
+                  WHERE m.IdArchivo IN @Ids",
                 new { Ids = ids }).ToList();
         }
 
@@ -59,7 +66,11 @@ namespace AgrupadorConceptos.Data
         public static List<MovimientoProcesado> ObtenerTodos()
         {
             using var cn = DatabaseHelper.Open();
-            return cn.Query<MovimientoProcesado>("SELECT Id, IdArchivo,  TRY_CONVERT( NVARCHAR(30), TRY_CONVERT(DATE, fecha, 103) ) AS Fecha, ConceptoOriginal, DescripcionOriginal, Debitos, Creditos, ConceptoEstandar, ConceptoFinal, CuentaFinal FROM bancos.MovimientosArchivo").ToList();
+            return cn.Query<MovimientoProcesado>(@"SELECT mv.Id, mv.IdArchivo, mv.Fecha,
+                mv.ConceptoOriginal, mv.DescripcionOriginal, mv.Debitos, mv.Creditos, mv.ConceptoEstandar, mv.ConceptoFinal, mv.CuentaFinal, pf.NombreBanco
+               FROM bancos.MovimientosArchivo mv
+               left join bancos.archivosimportados ai on ai.id = mv.IdArchivo
+               left join bancos.perfilesbanco pf on pf.id = ai.IdPerfilBanco").ToList();
         }
 
         /// <summary>Conceptos finales distintos ya homologados, para elegir qué conciliar.</summary>
@@ -90,25 +101,29 @@ namespace AgrupadorConceptos.Data
 
             using var cn = DatabaseHelper.Open();
             using var tx = cn.BeginTransaction();
+            // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 1 - Insertar movimientos espera la decisión de baja de archivo.
+            ConciliacionMutationStorage.Bloquear(cn, tx);
 
-            int guardados = 0;
-            int total = movimientos.Count;
-
-            foreach (var mov in movimientos)
-            {
-                // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Persistir CuentaFinal tambien al insertar el lote
-                mov.Id = cn.QuerySingle<int>(@"
-                    INSERT INTO bancos.MovimientosArchivo
-                        (IdArchivo, Fecha, ConceptoOriginal, DescripcionOriginal, Debitos, Creditos, ConceptoEstandar, ConceptoFinal, CuentaFinal)
-                    OUTPUT INSERTED.Id
-                    VALUES (@IdArchivo, @Fecha, @ConceptoOriginal, @DescripcionOriginal, @Debitos, @Creditos, @ConceptoEstandar, @ConceptoFinal, @CuentaFinal);",
-                    mov, tx);
-
-                guardados++;
-                progreso?.Invoke(guardados, total);
-            }
-
+            var ids = InsertarLote(movimientos, cn, tx, null, progreso);
             tx.Commit();
+            for (int i=0;i<movimientos.Count;i++) movimientos[i].Id=ids[i];
+        }
+
+        // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Operar sobre días tipados evita reinterpretaciones culturales.
+        public static List<int> InsertarLote(List<MovimientoProcesado> movimientos, IDbConnection cn, IDbTransaction tx, int? idArchivo, Action<int,int> progreso = null)
+        {
+            var ids=new List<int>();
+            foreach(var mov in movimientos)
+            {
+                var p=new DynamicParameters(mov);
+                p.Add("IdArchivo", idArchivo ?? mov.IdArchivo);
+                p.Add("Fecha", mov.Fecha.Date, DbType.Date);
+                ids.Add(cn.QuerySingle<int>(@"INSERT INTO bancos.MovimientosArchivo
+                    (IdArchivo,Fecha,ConceptoOriginal,DescripcionOriginal,Debitos,Creditos,ConceptoEstandar,ConceptoFinal,CuentaFinal)
+                    OUTPUT INSERTED.Id VALUES (@IdArchivo,@Fecha,@ConceptoOriginal,@DescripcionOriginal,@Debitos,@Creditos,@ConceptoEstandar,@ConceptoFinal,@CuentaFinal)",p,tx));
+                progreso?.Invoke(ids.Count,movimientos.Count);
+            }
+            return ids;
         }
 
         /// <summary>
@@ -122,6 +137,8 @@ namespace AgrupadorConceptos.Data
 
             using var cn = DatabaseHelper.Open();
             using var tx = cn.BeginTransaction();
+            // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 1 - Cambiar conceptos puede alterar el alcance interno de una sesión.
+            ConciliacionMutationStorage.Bloquear(cn, tx);
 
             ActualizarConceptos(lista, cn, tx);
 
@@ -141,7 +158,8 @@ namespace AgrupadorConceptos.Data
         {
             var lista = movimientos?.ToList() ?? new List<MovimientoProcesado>();
             if (lista.Count == 0) return;
-
+            // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 1 - También los llamadores con transacción ajena respetan la decisión de baja.
+            ConciliacionMutationStorage.Bloquear(cn, tx);
             foreach (var mov in lista)
                 cn.Execute(UpdateConceptos, mov, tx);
         }
@@ -150,8 +168,12 @@ namespace AgrupadorConceptos.Data
         public static void ActualizarConceptoFinal(int id, string conceptoFinal)
         {
             using var cn = DatabaseHelper.Open();
+            // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 1 - La edición puntual también modifica el alcance interno.
+            using var tx = cn.BeginTransaction();
+            ConciliacionMutationStorage.Bloquear(cn, tx);
             cn.Execute("UPDATE bancos.MovimientosArchivo SET ConceptoFinal = @ConceptoFinal WHERE Id = @Id",
-                new { ConceptoFinal = conceptoFinal, Id = id });
+                new { ConceptoFinal = conceptoFinal, Id = id }, tx);
+            tx.Commit();
         }
 
         // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Edicion puntual de CuentaFinal desde la grilla

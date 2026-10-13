@@ -175,3 +175,17 @@ por separado dentro de esta tarea; un build correcto no equivale a una base migr
 
 Esta etapa deja diagnóstico y diseño. No se modificaron datos productivos ni código
 del sistema para esta tarea, y todavía no se ejecutaron pruebas de la implementación.
+
+## Estado de implementación (13/10/2026)
+
+Lo construido coincide con este diseño, con estas diferencias y agregados:
+
+- `ConciliacionItemsExternos` ya no está vacía: tiene 1.992 ítems y 4 sesiones externas.
+  La migración la cubría igualmente, como preveía el punto 6 de la aplicación.
+- Se retira el aviso «Los registros sin fecha válida quedan fuera del rango» de la
+  ventana de consulta de conceptos, como pedía la sección de consumidores.
+- Se suma el ítem 3 de la tarea: restaurar los acentos perdidos en 7 archivos (ver
+  Historial).
+- El ensayo se hizo en `alvesu_pruebas`, una copia de la base operativa en el mismo
+  servidor, además de la copia local. La migración real sigue pendiente de corte.
+- La revisión independiente no se hizo (sin saldo en Codex, decisión del usuario).

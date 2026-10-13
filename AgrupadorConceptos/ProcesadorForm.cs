@@ -19,10 +19,22 @@ namespace AgrupadorConceptos
         // archivo equivocado.
         private ArchivoImportado _archivoEnGrilla;
         private PerfilBanco _perfilEnGrilla;
+        // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 1 - Evitar bajas superpuestas mientras se confirma o refresca la grilla.
+        private bool _eliminandoMovimientos;
+        private readonly Button _btnEliminarMovimientos = new()
+        {
+            Name = "btnEliminarMovimientos", Text = "Eliminar movimientos seleccionados",
+            Location = new Point(700, 8), Size = new Size(280, 28), TabIndex = 16
+        };
 
         public ProcesadorForm()
         {
             InitializeComponent();
+            // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 1 - La acción queda junto a las herramientas de la grilla sin alterar el diseñador heredado.
+            pnlTop.Controls.Add(_btnEliminarMovimientos);
+            _btnEliminarMovimientos.Click += btnEliminarMovimientos_Click;
+            dgvDatos.MultiSelect = true;
+            dgvDatos.SelectionMode = GridViewSelectionMode.FullRowSelect;
             this.Icon = AppIcon.GetIcon();
             this.Load += ProcesadorForm_Load;
             this.dgvDatos.CellFormatting += DgvDatos_CellFormatting;
@@ -227,6 +239,7 @@ namespace AgrupadorConceptos
 
         private void btnBorrarSesion_Click(object sender, EventArgs e)
         {
+            if (pnlProgreso.Visible || _eliminandoMovimientos) return;
             if (cmbArchivos.SelectedItem is ArchivoImportado archivo)
             {
                 if (MessageBox.Show($"¿Desea borrar el archivo {archivo.NombreArchivo} y todos sus movimientos?", "Confirmar", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
@@ -240,9 +253,51 @@ namespace AgrupadorConceptos
                         MessageBox.Show("No se puede borrar: el archivo tiene sesiones de conciliación asociadas.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return;
                     }
+                    catch (InvalidOperationException ex)
+                    {
+                        MessageBox.Show(ex.Message, "No se puede borrar", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
                     CargarArchivosDelPerfil();
                     if (_archivoEnGrilla?.Id == archivo.Id) LimpiarSesion();
                 }
+            }
+        }
+
+        // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 1 - El conjunto confirmado sale del view visible y del archivo cargado, no del combo.
+        private void btnEliminarMovimientos_Click(object sender, EventArgs e)
+        {
+            if (_archivoEnGrilla == null || pnlProgreso.Visible || _eliminandoMovimientos) return;
+            var ids = AplanarFilasDelView(dgvDatos.ChildRows)
+                .Where(f => f.IsSelected && f.DataBoundItem is MovimientoProcesado)
+                .Select(f => ((MovimientoProcesado)f.DataBoundItem).Id)
+                .Distinct().ToList();
+            if (ids.Count == 0)
+            {
+                MessageBox.Show("Seleccioná al menos un movimiento visible.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            if (MessageBox.Show($"¿Eliminar definitivamente {ids.Count} movimiento(s) de '{_archivoEnGrilla.NombreArchivo}'?",
+                    "Confirmar", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
+            _eliminandoMovimientos = true;
+            _btnEliminarMovimientos.Enabled = false;
+            btnBorrarSesion.Enabled = false;
+            try
+            {
+                EliminacionMovimientosService.EliminarSeleccion(_archivoEnGrilla.Id, ids);
+                var movimientos = MovimientoStorage.ObtenerPorArchivo(_archivoEnGrilla.Id);
+                MostrarSesion(_archivoEnGrilla, _perfilEnGrilla, movimientos);
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or Microsoft.Data.SqlClient.SqlException)
+            {
+                MessageBox.Show(ex.Message, "No se puede borrar", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                RefrescarSesionDesdeBase();
+            }
+            finally
+            {
+                _eliminandoMovimientos = false;
+                _btnEliminarMovimientos.Enabled = !pnlProgreso.Visible;
+                btnBorrarSesion.Enabled = !pnlProgreso.Visible;
             }
         }
 
@@ -484,6 +539,9 @@ namespace AgrupadorConceptos
         {
             pnlProgreso.Visible = visible;
             btnCargarArchivo.Enabled = !visible;
+            // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 1 - Una importación no puede solaparse con ninguna de las dos bajas.
+            btnBorrarSesion.Enabled = !visible && !_eliminandoMovimientos;
+            _btnEliminarMovimientos.Enabled = !visible && !_eliminandoMovimientos;
             if (visible)
             {
                 // Configurar steps al inicio de cada importación

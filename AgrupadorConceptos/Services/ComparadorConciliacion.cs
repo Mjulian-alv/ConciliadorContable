@@ -16,39 +16,8 @@ namespace AgrupadorConceptos.Services
     /// </summary>
     public static class ComparadorConciliacion
     {
-        /// <summary>
-        /// Las fechas se guardan como texto (MovimientosArchivo.Fecha es NVARCHAR),
-        /// tal como vinieron del archivo del banco, así que hay que tolerar formatos.
-        /// </summary>
-        private static readonly string[] FormatosFecha =
-            { "dd/MM/yyyy", "yyyy-MM-dd", "d/M/yyyy", "MM/dd/yyyy", "dd-MM-yyyy" };
-
-        public static bool FechasIguales(string fechaExterno, string fechaExtracto)
-        {
-            if (string.IsNullOrWhiteSpace(fechaExterno) || string.IsNullOrWhiteSpace(fechaExtracto))
-                return false;
-
-            if (DateTime.TryParseExact(fechaExterno.Trim(), FormatosFecha, CultureInfo.InvariantCulture, DateTimeStyles.None, out var d1) &&
-                DateTime.TryParseExact(fechaExtracto.Trim(), FormatosFecha, CultureInfo.InvariantCulture, DateTimeStyles.None, out var d2))
-                return d1.Date == d2.Date;
-
-            // Si alguna no parsea con ningún formato conocido, comparamos el texto crudo.
-            return string.Equals(fechaExterno.Trim(), fechaExtracto.Trim(), StringComparison.OrdinalIgnoreCase);
-        }
-
-        // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Parseo reutilizable para filtrar por rango
-        /// <summary>
-        /// Parsea la fecha de un movimiento con los mismos formatos que <see cref="FechasIguales"/>,
-        /// o null si no matchea ninguno. La usa la conciliación interna para filtrar por rango.
-        /// </summary>
-        public static DateTime? ParsearFecha(string fecha)
-        {
-            if (string.IsNullOrWhiteSpace(fecha)) return null;
-
-            return DateTime.TryParseExact(fecha.Trim(), FormatosFecha, CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)
-                ? d.Date
-                : (DateTime?)null;
-        }
+        // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Operar sobre días tipados evita reinterpretaciones culturales.
+        public static bool FechasIguales(DateTime fechaExterno, DateTime fechaExtracto) => fechaExterno.Date == fechaExtracto.Date;
 
         /// <summary>
         /// El movimiento trae el importe en Debitos o en Creditos según el signo;

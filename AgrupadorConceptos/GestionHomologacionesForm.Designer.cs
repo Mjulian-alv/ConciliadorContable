@@ -24,6 +24,8 @@
             btnEliminar = new System.Windows.Forms.Button();
             // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 3 - Entrada al mantenimiento de conceptos
             btnConceptosEstandar = new System.Windows.Forms.Button();
+            // Fecha: 07/10/2026 - TAREA: 00073 - Linea: 1 - Quinta acción solicitada, sin agregar otro acceso en el menú principal.
+            btnConsultarMovimientos = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)dgvHomologaciones).BeginInit();
             ((System.ComponentModel.ISupportInitialize)dgvHomologaciones.MasterTemplate).BeginInit();
             SuspendLayout();
@@ -45,7 +47,8 @@
             cboPerfil.FormattingEnabled = true;
             cboPerfil.Location = new System.Drawing.Point(70, 14);
             cboPerfil.Name = "cboPerfil";
-            cboPerfil.Size = new System.Drawing.Size(602, 23);
+            // Fecha: 07/10/2026 - TAREA: 00073 - Linea: 1 - Aprovechar el ancho necesario para los cinco botones.
+            cboPerfil.Size = new System.Drawing.Size(802, 23);
             cboPerfil.TabIndex = 1;
             //
             // dgvHomologaciones
@@ -65,7 +68,8 @@
             dgvHomologaciones.MasterTemplate.ViewDefinition = tableViewDefinition1;
             dgvHomologaciones.Name = "dgvHomologaciones";
             dgvHomologaciones.ReadOnly = true;
-            dgvHomologaciones.Size = new System.Drawing.Size(660, 300);
+            // Fecha: 07/10/2026 - TAREA: 00073 - Linea: 1 - Mantener la grilla alineada con el nuevo ancho de la ventana.
+            dgvHomologaciones.Size = new System.Drawing.Size(860, 300);
             dgvHomologaciones.TabIndex = 2;
             //
             // btnNueva
@@ -104,7 +108,8 @@
             // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 3 - Entrada al mantenimiento de conceptos
             // btnConceptosEstandar
             //
-            btnConceptosEstandar.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right;
+            // Fecha: 07/10/2026 - TAREA: 00073 - Linea: 1 - Conservar la cuarta posición al redimensionar.
+            btnConceptosEstandar.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left;
             btnConceptosEstandar.Location = new System.Drawing.Point(480, 356);
             btnConceptosEstandar.Name = "btnConceptosEstandar";
             btnConceptosEstandar.Size = new System.Drawing.Size(186, 30);
@@ -115,7 +120,17 @@
             //
             // GestionHomologacionesForm
             //
-            ClientSize = new System.Drawing.Size(684, 397);
+            // Fecha: 07/10/2026 - TAREA: 00073 - Linea: 1 - El quinto botón queda después de Conceptos Estándar y no se superpone al reducir la ventana.
+            btnConsultarMovimientos.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right;
+            btnConsultarMovimientos.Location = new System.Drawing.Point(672, 356);
+            btnConsultarMovimientos.Name = "btnConsultarMovimientos";
+            btnConsultarMovimientos.Size = new System.Drawing.Size(200, 30);
+            btnConsultarMovimientos.TabIndex = 7;
+            btnConsultarMovimientos.Text = "Consultar movimientos...";
+            btnConsultarMovimientos.UseVisualStyleBackColor = true;
+            btnConsultarMovimientos.Click += btnConsultarMovimientos_Click;
+            ClientSize = new System.Drawing.Size(884, 397);
+            Controls.Add(btnConsultarMovimientos);
             Controls.Add(btnConceptosEstandar);
             Controls.Add(btnEliminar);
             Controls.Add(btnEditar);
@@ -123,7 +138,8 @@
             Controls.Add(dgvHomologaciones);
             Controls.Add(cboPerfil);
             Controls.Add(lblPerfil);
-            MinimumSize = new System.Drawing.Size(700, 400);
+            // Fecha: 07/10/2026 - TAREA: 00073 - Linea: 1 - Reservar espacio para las cinco acciones.
+            MinimumSize = new System.Drawing.Size(900, 436);
             Name = "GestionHomologacionesForm";
             StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             Text = "Gestión de Homologaciones";
@@ -141,5 +157,7 @@
         private System.Windows.Forms.Button btnEliminar;
         // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 3 - Entrada al mantenimiento de conceptos
         private System.Windows.Forms.Button btnConceptosEstandar;
+        // Fecha: 07/10/2026 - TAREA: 00073 - Linea: 1 - Acceso a la consulta recuperada.
+        private System.Windows.Forms.Button btnConsultarMovimientos;
     }
 }

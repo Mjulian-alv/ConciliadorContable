@@ -30,40 +30,10 @@ namespace AgrupadorConceptos.Services
         // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Un solo rango de fechas, sin perfil
         public static ConciliacionInternaSesion CrearSesion(
             string nombre, DateTime desde, DateTime hasta, IEnumerable<string> conceptos)
-        {
-            using var cn = DatabaseHelper.GetConnection();
-            cn.Open();
-
-            string conceptosJson = JsonSerializer.Serialize(conceptos.ToList());
-
-            var idSesion = cn.ExecuteScalar<int>(@"
-                INSERT INTO bancos.ConciliacionInternaSesiones
-                    (Nombre, FechaCreacion, FechaDesde, FechaHasta, ConceptosJson, Estado)
-                VALUES (@Nombre, @Fecha, @Desde, @Hasta, @Conceptos, 'EnProceso');
-                SELECT CAST(SCOPE_IDENTITY() AS INT);",
-                new { Nombre = nombre, Fecha = DateTime.Now, Desde = desde.Date, Hasta = hasta.Date, Conceptos = conceptosJson });
-
-            return cn.QuerySingle<ConciliacionInternaSesion>(
-                "SELECT * FROM bancos.ConciliacionInternaSesiones WHERE Id = @Id", new { Id = idSesion });
-        }
+            => ConciliacionInternaMutationStorage.CrearSesion(nombre, desde, hasta, conceptos);
 
         public static void EliminarSesion(int idSesion)
-        {
-            using var cn = DatabaseHelper.GetConnection();
-            cn.Open();
-            using var tx = cn.BeginTransaction();
-
-            cn.Execute("DELETE FROM bancos.ConciliacionInternaPares WHERE IdSesion = @Id", new { Id = idSesion }, tx);
-            cn.Execute("DELETE FROM bancos.ConciliacionInternaSesiones WHERE Id = @Id", new { Id = idSesion }, tx);
-
-            tx.Commit();
-        }
-
-        private static void MarcarFinalizada(int idSesion, IDbConnection cn, IDbTransaction tx)
-        {
-            cn.Execute("UPDATE bancos.ConciliacionInternaSesiones SET Estado = 'Finalizada' WHERE Id = @Id",
-                new { Id = idSesion }, tx);
-        }
+            => ConciliacionInternaMutationStorage.EliminarSesion(idSesion);
 
         // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Cierre: cuenta del perfil opuesto, resuelta por par
         /// <summary>
@@ -83,8 +53,6 @@ namespace AgrupadorConceptos.Services
             var resultado = new ResultadoFinalizacionInterna { Exito = true };
 
             var pares = ObtenerPares(idSesion);
-            if (pares.Count == 0) return resultado;
-
             var archivos = ArchivoImportadoStorage.ObtenerTodos().ToDictionary(a => a.Id);
             var perfilesCache = new Dictionary<int, PerfilBanco>();
             PerfilBanco PerfilDelArchivo(int idArchivo) =>
@@ -114,21 +82,8 @@ namespace AgrupadorConceptos.Services
 
             if (!resultado.Exito) return resultado;
 
-            using var cn = DatabaseHelper.GetConnection();
-            cn.Open();
-            using var tx = cn.BeginTransaction();
-
-            foreach (var (idA, cuentaA, idB, cuentaB) in cuentaPorPar)
-            {
-                cn.Execute("UPDATE bancos.MovimientosArchivo SET CuentaFinal = @Cuenta WHERE Id = @Id",
-                    new { Cuenta = cuentaA, Id = idA }, tx);
-                cn.Execute("UPDATE bancos.MovimientosArchivo SET CuentaFinal = @Cuenta WHERE Id = @Id",
-                    new { Cuenta = cuentaB, Id = idB }, tx);
-            }
-
-            MarcarFinalizada(idSesion, cn, tx);
-
-            tx.Commit();
+            // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 1 - Revalidar pares en almacenamiento bajo el bloqueo antes del cierre.
+            ConciliacionInternaMutationStorage.Finalizar(idSesion, cuentaPorPar);
             return resultado;
         }
 
@@ -198,7 +153,7 @@ namespace AgrupadorConceptos.Services
 
             // MovimientosArchivo.Fecha es NVARCHAR (texto tal como lo exporta cada banco), asi que
             // el filtro por rango se hace en memoria, igual que el resaltado de la conciliacion
-            // externa (ComparadorConciliacion.ParsearFecha), no en SQL.
+            // externa, sobre fechas tipadas.
             var todos = MovimientoStorage.ObtenerTodos()
                 .Where(m => conceptos.Contains(m.ConceptoFinal, StringComparer.OrdinalIgnoreCase)
                          && ComparadorConciliacionInterna.EstaEnRango(m.Fecha, sesion.FechaDesde, sesion.FechaHasta))
@@ -212,25 +167,8 @@ namespace AgrupadorConceptos.Services
 
         // ── Pares conciliados ────────────────────────────────────────────────────
 
-        public static List<ConciliacionInternaPar> ObtenerPares(int idSesion)
-        {
-            using var cn = DatabaseHelper.GetConnection();
-            cn.Open();
-            return cn.Query<ConciliacionInternaPar>(@"
-                SELECT p.*,
-                      TRY_CONVERT( NVARCHAR(30), TRY_CONVERT(DATE, a.fecha, 103) )  AS FechaA, CASE WHEN a.Debitos <> 0 THEN a.Debitos ELSE a.Creditos END AS ImporteA, a.ConceptoFinal AS ConceptoFinalA, a.IdArchivo AS IdArchivoA, pa.NombreBanco as NombreBancoA,
-                      TRY_CONVERT( NVARCHAR(30), TRY_CONVERT(DATE, b.fecha, 103) )  AS FechaB, CASE WHEN b.Debitos <> 0 THEN b.Debitos ELSE b.Creditos END AS ImporteB, b.ConceptoFinal AS ConceptoFinalB, b.IdArchivo AS IdArchivoB, pb.NombreBanco as NombreBancoB
-                FROM bancos.ConciliacionInternaPares p
-                JOIN bancos.MovimientosArchivo a ON p.IdMovimientoA = a.Id
-                JOIN bancos.MovimientosArchivo b ON p.IdMovimientoB = b.Id
-                JOIN bancos.ArchivosImportados ia on a.IdArchivo = ia.Id
-                JOIN bancos.ArchivosImportados ib on b.IdArchivo = ib.Id
-                join bancos.PerfilesBanco pa on pa.Id = ia.IdPerfilBanco
-                join bancos.PerfilesBanco pb on pb.Id = ib.IdPerfilBanco
-                WHERE p.IdSesion = @Id
-                ORDER BY p.FechaConciliacion",
-                new { Id = idSesion }).ToList();
-        }
+        // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Operar sobre días tipados evita reinterpretaciones culturales.
+        public static List<ConciliacionInternaPar> ObtenerPares(int idSesion) => ConciliacionInternaMutationStorage.ObtenerPares(idSesion);
 
         // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Bloquear un movimiento ya conciliado en OTRA sesion EnProceso
         // Fecha: 11/09/2026 - TAREA: 00021 - Linea: 5 - Backstop: indice unico para DENTRO de esta misma sesion
@@ -252,38 +190,10 @@ namespace AgrupadorConceptos.Services
         /// explicando por qué no se pudo (distinto según el caso, ver el cuerpo del método).
         /// </summary>
         public static string ConciliarPar(int idSesion, int idMovimientoA, int idMovimientoB, TipoMatch tipoMatch)
-        {
-            string sesionConflicto = ObtenerSesionEnProcesoDelMovimiento(idMovimientoA, idSesion)
-                                   ?? ObtenerSesionEnProcesoDelMovimiento(idMovimientoB, idSesion);
-            if (sesionConflicto != null)
-                return $"Uno de los dos movimientos ya está conciliado en la sesión \"{sesionConflicto}\", " +
-                       "todavía en proceso. Cerrala o desconcilialo ahí antes de continuar.";
-
-            using var cn = DatabaseHelper.GetConnection();
-            cn.Open();
-            try
-            {
-                cn.Execute(@"
-                    INSERT INTO bancos.ConciliacionInternaPares (IdSesion, IdMovimientoA, IdMovimientoB, TipoMatch, FechaConciliacion)
-                    VALUES (@IdSesion, @IdMovimientoA, @IdMovimientoB, @TipoMatch, @Fecha)",
-                    new { IdSesion = idSesion, IdMovimientoA = idMovimientoA, IdMovimientoB = idMovimientoB,
-                          TipoMatch = tipoMatch.ToString(), Fecha = DateTime.Now });
-            }
-            catch (SqlException ex) when (ex.Number is 2601 or 2627)
-            {
-                return "Uno de los dos movimientos ya quedó conciliado con otro par en esta misma sesión " +
-                       "(la lista que se estaba mostrando había quedado desactualizada). Actualizá la pantalla e intentá de nuevo.";
-            }
-
-            return null;
-        }
+            => ConciliacionInternaMutationStorage.ConciliarPar(idSesion, idMovimientoA, idMovimientoB, tipoMatch);
 
         public static void DesconciliarPar(int idPar)
-        {
-            using var cn = DatabaseHelper.GetConnection();
-            cn.Open();
-            cn.Execute("DELETE FROM bancos.ConciliacionInternaPares WHERE Id = @Id", new { Id = idPar });
-        }
+            => ConciliacionInternaMutationStorage.DesconciliarPar(idPar);
 
         // ── Auto-conciliación ────────────────────────────────────────────────────
 

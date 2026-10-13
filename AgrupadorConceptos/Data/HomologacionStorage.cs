@@ -74,6 +74,8 @@ namespace AgrupadorConceptos.Data
         {
             using var cn = DatabaseHelper.Open();
             using var tx = cn.BeginTransaction();
+            // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 1 - Tomar el bloqueo antes de modificar reglas o movimientos.
+            ConciliacionMutationStorage.Bloquear(cn, tx);
 
             cn.Execute("DELETE FROM bancos.HomologacionConceptos WHERE Id = @Id",
                 new { Id = idHomologacion }, tx);
@@ -95,6 +97,8 @@ namespace AgrupadorConceptos.Data
         {
             using var cn = DatabaseHelper.Open();
             using var tx = cn.BeginTransaction();
+            // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 1 - El orden de bloqueos evita una baja concurrente con una edición de regla.
+            ConciliacionMutationStorage.Bloquear(cn, tx);
 
             int idConcepto = ObtenerOCrearConcepto(cn, tx, nombreConcepto);
 

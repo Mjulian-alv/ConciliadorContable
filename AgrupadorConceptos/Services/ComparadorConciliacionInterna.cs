@@ -1,4 +1,4 @@
-﻿// Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Criterio de matching de la conciliacion interna
+// Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Criterio de matching de la conciliacion interna
 using System;
 using AgrupadorConceptos.Models;
 
@@ -25,10 +25,10 @@ namespace AgrupadorConceptos.Services
 
         // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Filtro por rango para armar cada lado de la sesion
         /// <summary>True si la fecha del movimiento cae dentro del rango, inclusive.</summary>
-        public static bool EstaEnRango(string fecha, DateTime desde, DateTime hasta)
+        public static bool EstaEnRango(DateTime fecha, DateTime desde, DateTime hasta)
         {
-            var d = ComparadorConciliacion.ParsearFecha(fecha);
-            return d.HasValue && d.Value >= desde.Date && d.Value <= hasta.Date;
+            // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Operar sobre días tipados evita reinterpretaciones culturales.
+            return fecha.Date >= desde.Date && fecha.Date <= hasta.Date;
         }
     }
 }

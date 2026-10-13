@@ -775,3 +775,253 @@ cuenta y guardado/continuación de un perfil actualizado. La paridad de las celd
 y estilos Excel se verificó por prueba automatizada. Captura:
 docs/Diseno/00072-pyr-web/resultados.jpg. Falta validar archivos PyR comerciales
 en la instalación del cliente antes de habilitarla a otros usuarios.
+
+## TAREA 00073 — 07/10/2026 — Consulta de movimientos del homologador WinForms
+
+1. Completar la ventana ConceptosListado iniciada por el usuario y abrirla desde el
+   quinto botón de Gestión de Homologaciones, después de Conceptos Estándar.
+2. Consultar por fecha del movimiento (desde/hasta inclusivos) y uno o varios conceptos
+   finales, de todos los perfiles, únicamente al presionar Consultar.
+3. Exportar a Excel las filas consultadas, con fechas e importes tipados y formato uniforme.
+
+La selección con casillas sigue el manejo de la conciliación interna. Se muestran las
+nueve columnas funcionales: Fecha, Concepto original, Descripción original, Débitos,
+Créditos, Concepto estándar, Concepto final, Cuenta final y Perfil. Id e IdArchivo no
+se exponen. Se conservan importes nulos y las cuentas como texto (incluidos ceros iniciales).
+La grilla usa dd/MM/yyyy y cultura es-AR con miles y dos decimales; Excel conserva
+fechas reales dd/mm/yyyy y números con formato #,##0.00 mediante TablaExcelExporter.
+
+El catálogo carga al abrir, sin traer movimientos. La consulta y la exportación corren
+fuera del hilo de interfaz. Cambiar cualquier filtro limpia los resultados y deshabilita
+la exportación hasta volver a consultar. La consulta SQL parametrizada usa la fecha
+histórica de texto: prioriza día/mes, admite ISO y horas; valores vacíos o inválidos
+quedan fuera del rango (aviso visible). No se alteró el almacenamiento ni la conciliación
+interna, que tenían cambios locales previos. Se agregaron storage, modelo y servicio
+específicos para preservar nulos y evitar que IDs aparezcan por autogeneración de columnas.
+
+Verificación: build Debug del shell WinForms correcto, cero errores y siete advertencias
+preexistentes en inicialización del módulo, nulabilidad y DPI. Ocho pruebas ejecutables
+correctas contra una base SQL LocalDB temporal: auto-inicialización, validación, extremos,
+fechas mixtas, varios perfiles/conceptos, apóstrofes parametrizados, Excel, disparo manual,
+invalidez de resultados y posición del quinto botón. La instancia automática MSSQLLocalDB
+no inicia en este equipo; se utilizó ArcaWeb00064 y se eliminó sólo la base temporal creada
+para las pruebas. No se consultaron movimientos de la base productiva.
+
+Pruebas: `dotnet run --project Tools/Homologador.Tests/Homologador.Tests.csproj`.
+Ejecutable actualizado: `ConciliadorContable/bin/Debug/net10.0-windows/ConciliadorContable.exe`.
+
+## TAREA 00074 — 07/10/2026 — Débitos y créditos absolutos en la consulta
+
+1. Aplicar valor absoluto a ambas columnas de la consulta de movimientos.
+
+ConsultaMovimientosService normaliza Débitos y Créditos después de leerlos, conservando
+los nulos. Grilla, totales y Excel reciben los mismos valores absolutos. La base mantiene
+los signos originales. Se ajustaron las pruebas de SQL y Excel para comprobar negativos,
+positivos, cero, nulos y preservación de los valores almacenados.
+
+Verificación: compilación Debug del shell correcta, sin advertencias ni errores en la
+compilación incremental. Ocho pruebas correctas contra SQL LocalDB temporal. Dos intentos
+previos agotaron la espera de 20 segundos de la segunda consulta en la prueba de ventana;
+el recorrido completo pasó al repetir con diagnóstico adicional, sin modificar la lógica
+ni aumentar el límite. Queda registrado ese comportamiento intermitente del ensayo UI.
+Ejecutable Debug actualizado.
+
+## TAREA 00075 — 07/10/2026 — Diferencia entre débitos y créditos en el pie
+
+1. Agregar la diferencia Débitos − Créditos junto a los totales de la consulta.
+
+El pie de ConceptosListado incluye «Diferencia (D − C)» calculada con los mismos
+importes absolutos que alimentan los totales visibles. La diferencia conserva su signo
+y usa cultura es-AR con separadores de miles y dos decimales.
+
+Verificación: compilación Debug del shell correcta, cero errores y la advertencia
+preexistente CA2255 del inicializador del módulo. Ejecutable Debug actualizado.
+
+## TAREA 00076 — 07/10/2026 — Borrado protegido y mejoras de conciliación externa
+
+1. Borrar filas de movimientos desde ProcesadorForm, impidiendo borrar movimientos
+   tomados para conciliaciones internas o externas en curso o finalizadas.
+2. Conciliar un registro externo contra varios movimientos de extracto: el usuario
+   confirmó que la suma de los importes debe coincidir exactamente.
+3. Homogeneizar fechas e importes de la conciliación externa y su exportación.
+4. Ampliar la selección de extractos y sugerirlos por rango editable, inicialmente
+   obtenido de las fechas del archivo externo.
+
+Estado: diseño y plan preparados con Astra, razonamiento medio, y aprobados por
+el usuario el 07/10/2026. Implementación en curso con Sol 6, razonamiento medio.
+Los cambios locales anteriores se preservan; la verificación usa datos de prueba.
+
+Documentos: docs/superpowers/specs/2026-10-07-conciliacion-segura-design.md y
+docs/superpowers/plans/2026-10-07-conciliacion-segura.md.
+
+La propuesta protege también pendientes dentro del alcance guardado de sesiones,
+rechaza completo un lote con movimientos bloqueados, exige suma decimal exacta,
+desconcilia grupos completos y evita duplicar importes externos en Excel. El selector
+amplio usa fechas originales de movimientos y conserva las selecciones al filtrar.
+No se ejecutaron pruebas ni compilaciones en esta etapa documental.
+
+## TAREA 00082 — 09/10/2026 — Conciliación externa editable desde el Designer
+
+1. Trasladar a `ConciliacionExternForm.Designer.cs` los controles y la configuración
+   visual incorporados por código: fechas, Mostrar todos, estado y aviso del rango,
+   panel y divisor de extractos/conceptos, grilla y columnas del selector, resumen
+   inferior, selección múltiple, tamaños, posiciones y texto del botón de conciliación.
+
+Los controles se declaran como campos y se inicializan en `InitializeComponent`, con
+los ciclos BeginInit/EndInit de Telerik y SplitContainer. Los eventos se conectan a
+métodos del `.cs`, que conserva la carga de datos, la selección persistente, el resumen
+y el formato dependiente de los registros. Se elimina la lista de archivos oculta
+reemplazada por la grilla y los helpers visuales sin uso. Se preservan los demás cambios
+locales que ya estaban pendientes.
+
+Verificación: build Debug del shell correcto, cero errores y cuatro advertencias
+preexistentes (CA2255, dos CS8632 y WFO0003). Las 13 pruebas existentes seleccionadas con
+`CONCILIACION_SEGURA_ONLY=1` pasan, incluida la construcción del formulario, carga de
+extractos, selección de casillas, conservación fuera del rango y recuperación al mostrar
+todos. Datos en una base SQL LocalDB temporal; captura del formulario revisada visualmente.
+`git diff --check` correcto para los dos archivos del formulario. No se abrió el diseñador
+de Visual Studio en esta sesión.
+
+## TAREA 00083 — 09/10/2026 — Fechas tipadas y migración con Fecha2
+
+1. Adaptar importación, modelos y consumidores para que la fecha operativa sea un
+   valor tipado y se persista como SQL `date`, validándola al entrar.
+2. Acomodar la base existente usando la columna `fecha2` que creó el usuario como
+   intermedia y conservando el texto original.
+
+Decisiones expresas: rechazar el archivo completo si alguna fecha importable falta
+u ofrece un valor inválido, informando filas; utilizar `fecha2` para evitar perder
+el dato anterior. El orden día/mes se propone por coherencia con los datos actuales;
+no hubo confirmación expresa de ese criterio para todas las fuentes futuras.
+
+Diagnóstico sólo lectura sobre la base configurada, sin ejecutar el inicializador:
+64.875 movimientos, ninguno vacío ni no convertible por las conversiones SQL
+consultadas. 20.892 fechas con barras admiten también una interpretación mes/día
+con otro resultado. `fecha2` es `smalldatetime NULL`: 45.992 valores coinciden con
+la conversión día/mes, ninguno difiere ni tiene hora distinta de cero; 18.883 están
+vacíos. No hay ítems ni sesiones externas; existen tres sesiones internas.
+
+Propuesta: `Fecha date NOT NULL` en movimientos e ítems externos, fechas .NET
+tipadas, parser de entrada determinista, consultas sin reparsing y migración
+transaccional con diagnóstico previo. Completar sólo faltantes de `fecha2`, verificar
+las conversiones y conservar la columna textual como `FechaTextoOriginal` antes
+del cambio de nombres. Ensayar antes en una base aislada y coordinar el corte.
+
+Diseño: `docs/superpowers/specs/2026-10-09-fechas-tipadas-design.md`.
+Estado: diseño preparado para revisión. Sin cambios de código ni escrituras en
+la base operativa para esta tarea; implementación, pruebas y migración pendientes.
+
+Aprobación del 09/10/2026: el usuario confirmó el diseño con «esta ok», incluyendo
+la interpretación día/mes/año. Se actualizó el spec y se preparó el plan
+`docs/superpowers/plans/2026-10-09-fechas-tipadas.md`: parser compartido, migrador
+independiente, contrato tipado e importación atómica, presentación/SQLite y ensayo
+con corte coordinado. Plan revisado contra el spec; recomendada ejecución nativa
+con revisión independiente final. Pendientes revisión del plan y elección del
+método. Esta etapa sólo modifica documentación; no se ejecutó la migración.
+
+### Ejecución y cierre — 13/10/2026
+
+Se agrega el ítem 3 a pedido del usuario durante la verificación, antes de cerrar:
+
+3. Corregir las ventanas que no muestran los acentos «por un tema de codificación»
+   y retirar el texto «Los registros sin fecha válida quedan fuera del rango» de la
+   ventana de consulta de conceptos, que dejó de corresponder al contrato nuevo.
+
+**Ítem 1 — fechas tipadas.** Parser común (`FechaBancariaParser`) independiente de
+cultura y zona horaria. La importación acumula las incidencias (archivo, hoja, fila,
+valor, motivo) y rechaza el archivo completo antes de crear cabecera o movimientos;
+cabecera y lote comparten una transacción, probada con un fallo SQL provocado. Modelos,
+consultas, comparadores, selector, diálogos, grillas y Excel usan fecha real
+(`dd/MM/yyyy` en pantalla; fechas con formato en Excel). `MigradorDataBanks` valida la
+fecha antes de copiar desde SQLite. El inicializador del módulo detecta el esquema
+anterior y se detiene con un mensaje que pide ejecutar la migración; no convierte solo.
+
+**Ítem 2 — base existente.** Herramienta `Tools/MigradorFechasBancos` con
+`diagnosticar` y `aplicar --respaldo`. Transaccional e idempotente: completa sólo los
+`fecha2` vacíos, se detiene ante cualquier diferencia o fecha inválida, conserva el texto
+como `FechaTextoOriginal` y deja `Fecha date NOT NULL`. Se aplica también a
+`ConciliacionItemsExternos`, que hoy tiene datos (1.992 ítems y 4 sesiones; el
+diagnóstico del 09/10 decía que no había).
+
+**Ítem 3 — acentos.** Causa: 71 signos de reemplazo (U+FFFD) guardados literalmente en
+7 archivos, por ediciones hechas leyendo como UTF-8 archivos que estaban en ANSI. Tres
+(`PreseaExportador.cs`, `MainForm.Designer.cs`, `HomologarForm.Designer.cs`) se
+recuperaron exactos del commit inicial; los otros cuatro (`FormPerfilOfflineDetalle.Designer.cs`,
+`ConfigPresea.cs`, `FormConfigPresea.cs`, `AppServices.cs`) ya nacieron dañados y se
+repusieron por contexto: «Nº», «después», «Condición», etc., y la raya larga (—), que es
+la que más usa el código original. Comprobado en las DLL compiladas: 0 cadenas con
+U+FFFD (antes 34 en ArcaCliente y 9 en AgrupadorConceptos). Los 47 archivos ANSI
+restantes compilan bien con el compilador actual y no se tocaron (una conversión de
+prueba no cambió el resultado y se revirtió byte a byte). Queda como riesgo latente:
+mientras sigan en ANSI, otra edición que los lea como UTF-8 volverá a dañarlos.
+
+**Ensayo.** Primero con una copia local (`EnsayoReal`); la copia por `SqlBulkCopy` se
+colgaba por falta de memoria de la LocalDB (pedía 9 MB de concesión contra un objetivo de
+4 MB) y se cambió por `INSERT` parametrizados. Después en `alvesu_pruebas`, creada en el
+servidor a pedido del usuario como copia de `alvesu` (misma intercalación y nivel de
+compatibilidad): 74.703 filas, 0 incidencias, `Fecha date NOT NULL`, texto original
+idéntico en las 72.711 filas de movimientos, 51.476 de 51.476 fechas con barras
+coinciden con la conversión día/mes, segunda ejecución sin cambios. `alvesu` no se
+modificó. El usuario probó la app contra esa base con su login y la dio por buena; un
+arnés automático repitió consulta, selector, conciliación interna y Excel.
+
+**Pruebas.** `FechasBancarias.Tests` por grupo (parser, migración, importación,
+presentación): correctas. `Homologador.Tests`: 14 de 14 con
+`CONCILIACION_SKIP_LEGACY_UI=1`. Las dos baterías aceptan ahora una instancia por
+variable de entorno (`FECHAS_TEST_SQL`, `FECHAS_TEST_DIR`, `HOMOLOGADOR_TEST_SQL`). El
+smoke de la ventana de consulta (`ProbarVentana`) es inestable —pasó una vez, falló otra
+por recuento y otra por tiempo— y se saltó; sospecha de una carrera del arnés al tildar
+conceptos antes de que termine de cargar la lista, no probada. La corrida conjunta de
+`FechasBancarias.Tests` puede fallar por memoria de LocalDB (quedaban unos 370 MB de RAM
+libre); por grupo pasa.
+
+**Revisión de Codex: omitida.** Codex no tenía saldo y el usuario decidió saltearla. No
+hay archivos `Docs/Revisiones/00083-review-*.md`.
+
+**Pendiente.** La migración real sobre `alvesu` no se ejecutó. Requiere respaldo
+identificado, ejecutables cerrados, un diagnóstico nuevo justo antes del corte (la base
+sigue recibiendo importaciones) y desplegar la versión nueva a la vez: los ejecutables
+anteriores no funcionan contra el esquema migrado. `alvesu_pruebas` queda en el servidor.
+
+## TAREA 00084 — 09/10/2026 — Perfil en las grillas del extracto externo
+
+1. Mostrar el nombre del perfil en la grilla del extracto de Conciliación Externa,
+   antes de continuar con la tarea 00083 de fechas tipadas.
+
+`MovimientoStorage.ObtenerPorArchivos` completa `MovimientoProcesado.NombreBanco`
+mediante el archivo importado y su perfil, con joins izquierdos para conservar el
+conjunto de movimientos. Las dos grillas del extracto (Con concepto seleccionado
+ y Resto del extracto) declaran en el Designer una columna de sólo lectura titulada
+`Perfil`, vinculada a ese nombre. Se conservan los cambios locales del usuario.
+
+Verificación: compilación Debug del shell correcta, cero errores y siete advertencias
+preexistentes. El primer intento de pruebas coincidió con el build y falló por bloqueo
+de una DLL (CS2012); se reinició después de terminar la compilación.
+La corrida siguiente detectó que el smoke UI buscaba los nombres anteriores al
+último guardado del Designer. Se actualizaron únicamente esas referencias para
+respetar los nombres actuales con prefijo. Resultado final: 13 pruebas existentes
+correctas sobre SQL LocalDB temporal, incluida la construcción del formulario.
+
+## TAREA 00085 — 09/10/2026 — Recuperar columnas del extracto junto al perfil
+
+1. Corregir la regresión introducida por la tarea 00084: al declarar únicamente la
+   columna Perfil en el Designer, las grillas Telerik no generaban las demás.
+
+Se reprodujo el error antes de corregirlo: al enlazar un MovimientoProcesado, la
+grilla de pendientes contenía sólo NombreBanco y faltaba Fecha. Las 13 pruebas
+anteriores no cubrían columnas/valores en esas grillas enlazadas y no detectaron
+la regresión.
+
+Ambas grillas del extracto ahora definen el conjunto completo en el Designer:
+Fecha, Concepto original, Descripción, Concepto estándar, Débitos, Créditos,
+Concepto final, Cuenta final y Perfil. La generación automática queda deshabilitada
+para ese conjunto explícito. Se conserva el vínculo de Perfil con NombreBanco.
+
+Verificación: nueva regresión de UI, sin conexión SQL, comprobada primero fallando
+por la columna Fecha ausente y luego pasando. Verifica las nueve columnas visibles,
+sus valores, un único Perfil y la conservación después de volver a enlazar datos,
+en ambas pestañas. Corrida final: 14 pruebas correctas con
+`CONCILIACION_SEGURA_ONLY=1`; las pruebas SQL existentes usan LocalDB temporal.
+Build incremental Debug del shell correcto, cero errores y cero advertencias;
+el build previo de las pruebas mostró la advertencia preexistente CA2255.
+Ejecutable Debug actualizado. No se modificó la base operativa.

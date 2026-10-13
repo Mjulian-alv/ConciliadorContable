@@ -57,7 +57,8 @@ namespace AgrupadorConceptos
             lblTitulo.Name = "lblTitulo";
             lblTitulo.Size = new System.Drawing.Size(228, 25);
             lblTitulo.TabIndex = 8;
-            lblTitulo.Text = "Creaci�n Perfil de Banco";
+            // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 3 - Se restauran los acentos que el archivo había perdido por un guardado con codificación equivocada (se veían como signo de reemplazo).
+            lblTitulo.Text = "Creación Perfil de Banco";
             // 
             // lblBanco
             // 
@@ -92,7 +93,8 @@ namespace AgrupadorConceptos
             lblArchivoExcel.Name = "lblArchivoExcel";
             lblArchivoExcel.Size = new System.Drawing.Size(161, 15);
             lblArchivoExcel.TabIndex = 4;
-            lblArchivoExcel.Text = "Ning�n archivo seleccionado";
+            // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 3 - Se restauran los acentos que el archivo había perdido por un guardado con codificación equivocada (se veían como signo de reemplazo).
+            lblArchivoExcel.Text = "Ningún archivo seleccionado";
             // 
             // grpMapeo
             // 
@@ -120,7 +122,8 @@ namespace AgrupadorConceptos
             chkEsCodigo.Name = "chkEsCodigo";
             chkEsCodigo.Size = new System.Drawing.Size(256, 19);
             chkEsCodigo.TabIndex = 0;
-            chkEsCodigo.Text = "�Es C�digo Exacto? (Si no, es un texto largo)";
+            // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 3 - Se restauran los acentos que el archivo había perdido por un guardado con codificación equivocada (se veían como signo de reemplazo).
+            chkEsCodigo.Text = "¿Es Código Exacto? (Si no, es un texto largo)";
             chkEsCodigo.UseVisualStyleBackColor = true;
             // 
             // cmbColumnaDescripcion
@@ -139,7 +142,8 @@ namespace AgrupadorConceptos
             lblColumnaDescripcion.Name = "lblColumnaDescripcion";
             lblColumnaDescripcion.Size = new System.Drawing.Size(124, 15);
             lblColumnaDescripcion.TabIndex = 2;
-            lblColumnaDescripcion.Text = "Columna Descripci�n:";
+            // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 3 - Se restauran los acentos que el archivo había perdido por un guardado con codificación equivocada (se veían como signo de reemplazo).
+            lblColumnaDescripcion.Text = "Columna Descripción:";
             // 
             // cmbColumnaConcepto
             // 
@@ -201,7 +205,8 @@ namespace AgrupadorConceptos
             radImporteUnico.Name = "radImporteUnico";
             radImporteUnico.Size = new System.Drawing.Size(101, 19);
             radImporteUnico.TabIndex = 0;
-            radImporteUnico.Text = "Importe �nico";
+            // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 3 - Se restauran los acentos que el archivo había perdido por un guardado con codificación equivocada (se veían como signo de reemplazo).
+            radImporteUnico.Text = "Importe único";
             radImporteUnico.UseVisualStyleBackColor = true;
             // 
             // radDebeHaber
