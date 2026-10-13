@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Fecha: 07/10/2026 - TAREA: 00073 - Linea: 2, 3 - Verificar el módulo real en una base local desechable sin usar datos productivos. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../AgrupadorConceptos/AgrupadorConceptos.csproj" />
+  </ItemGroup>
+</Project>

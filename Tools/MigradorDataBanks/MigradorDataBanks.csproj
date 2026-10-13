@@ -5,7 +5,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="../../Conciliador.Comun/Conciliador.Comun.csproj" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.4" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.2" />
   </ItemGroup>
 </Project>

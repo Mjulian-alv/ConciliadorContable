@@ -60,6 +60,12 @@ namespace AgrupadorConceptos.Services
                         celda.Value = importe;
                         celda.Style.NumberFormat.Format = FormatoImporte;
                     }
+                    // Fecha: 07/10/2026 - TAREA: 00073 - Linea: 3 - Una fecha debe poder ordenarse y filtrarse en Excel sin depender de la cultura del equipo.
+                    else if (valor is DateTime fecha)
+                    {
+                        celda.Value = fecha.Date;
+                        celda.Style.DateFormat.Format = "dd/mm/yyyy";
+                    }
                     else
                     {
                         celda.Value = valor?.ToString() ?? string.Empty;

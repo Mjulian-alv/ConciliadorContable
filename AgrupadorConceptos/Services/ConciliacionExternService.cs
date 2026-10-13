@@ -33,59 +33,13 @@ namespace AgrupadorConceptos.Services
 
         public static ConciliacionSesion CrearSesion(string nombre, List<int> idsArchivos,
             IEnumerable<string> conceptos, IEnumerable<ConciliacionItemExterno> itemsExternos)
-        {
-            using var cn = DatabaseHelper.GetConnection();
-            cn.Open();
-            using var tx = cn.BeginTransaction();
-
-            string conceptosJson = System.Text.Json.JsonSerializer.Serialize(conceptos.ToList());
-            string archivosJson  = System.Text.Json.JsonSerializer.Serialize(idsArchivos);
-            int primerArchivo    = idsArchivos.First();
-
-            var idSesion = cn.ExecuteScalar<int>(@"
-                INSERT INTO bancos.ConciliacionSesiones (Nombre, FechaCreacion, IdArchivoImportado, ArchivosJson, ConceptosJson, Estado)
-                VALUES (@Nombre, @Fecha, @IdArchivo, @ArchivosJson, @Conceptos, 'EnProceso');
-                SELECT CAST(SCOPE_IDENTITY() AS INT);",
-                new { Nombre = nombre, Fecha = DateTime.Now, IdArchivo = primerArchivo,
-                      ArchivosJson = archivosJson, Conceptos = conceptosJson },
-                tx);
-
-            foreach (var item in itemsExternos)
-            {
-                cn.Execute(@"
-                    INSERT INTO bancos.ConciliacionItemsExternos (IdSesion, Fecha, Importe, Detalle, Conciliado)
-                    VALUES (@IdSesion, @Fecha, @Importe, @Detalle, 0)",
-                    new { IdSesion = idSesion, item.Fecha, item.Importe, item.Detalle }, tx);
-            }
-
-            tx.Commit();
-
-            return cn.QuerySingle<ConciliacionSesion>(
-                "SELECT * FROM bancos.ConciliacionSesiones WHERE Id = @Id", new { Id = idSesion });
-        }
+            => ConciliacionExternStorage.CrearSesion(nombre, idsArchivos, conceptos, itemsExternos);
 
         public static void EliminarSesion(int idSesion)
-        {
-            using var cn = DatabaseHelper.GetConnection();
-            cn.Open();
-            using var tx = cn.BeginTransaction();
-
-            // Borrado explícito y ordenado: las FK de ConciliacionItemsExternos/ConciliacionPares
-            // hacia ConciliacionSesiones no tienen ON DELETE CASCADE en SQL Server (caminos múltiples).
-            cn.Execute("DELETE FROM bancos.ConciliacionPares WHERE IdSesion = @Id", new { Id = idSesion }, tx);
-            cn.Execute("DELETE FROM bancos.ConciliacionItemsExternos WHERE IdSesion = @Id", new { Id = idSesion }, tx);
-            cn.Execute("DELETE FROM bancos.ConciliacionSesiones WHERE Id = @Id", new { Id = idSesion }, tx);
-
-            tx.Commit();
-        }
+            => ConciliacionExternStorage.EliminarSesion(idSesion);
 
         public static void MarcarFinalizada(int idSesion)
-        {
-            using var cn = DatabaseHelper.GetConnection();
-            cn.Open();
-            cn.Execute("UPDATE bancos.ConciliacionSesiones SET Estado = 'Finalizada' WHERE Id = @Id",
-                new { Id = idSesion });
-        }
+            => ConciliacionExternStorage.MarcarFinalizada(idSesion);
 
         // ── Ítems externos ────────────────────────────────────────────────────────
 
@@ -161,59 +115,18 @@ namespace AgrupadorConceptos.Services
 
         // ── Pares conciliados ────────────────────────────────────────────────────
 
-        public static List<ConciliacionPar> ObtenerPares(int idSesion)
-        {
-            using var cn = DatabaseHelper.GetConnection();
-            cn.Open();
-            return cn.Query<ConciliacionPar>(@"
-                SELECT p.*, 
-                       e.Fecha  AS FechaExterno,  e.Importe AS ImporteExterno, e.Detalle AS DetalleExterno,
-                       m.Fecha  AS FechaExtracto, 
-                       CASE WHEN m.Debitos <> 0 THEN m.Debitos ELSE m.Creditos END AS ImporteExtracto,
-                       m.ConceptoFinal AS ConceptoFinalExtracto
-                FROM bancos.ConciliacionPares p
-                JOIN bancos.ConciliacionItemsExternos e ON p.IdItemExterno         = e.Id
-                JOIN bancos.MovimientosArchivo        m ON p.IdMovimientoProcesado = m.Id
-                WHERE p.IdSesion = @Id
-                ORDER BY p.FechaConciliacion",
-                new { Id = idSesion }).ToList();
-        }
+        // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Operar sobre días tipados evita reinterpretaciones culturales.
+        public static List<ConciliacionPar> ObtenerPares(int idSesion) => ConciliacionExternStorage.ObtenerPares(idSesion);
 
         public static void ConciliarPar(int idSesion, int idItemExterno, int idMovimiento, TipoMatch tipoMatch)
-        {
-            using var cn = DatabaseHelper.GetConnection();
-            cn.Open();
-            using var tx = cn.BeginTransaction();
+            => ConciliarSeleccion(idSesion, idItemExterno, new[] { idMovimiento }, tipoMatch);
 
-            cn.Execute(@"
-                INSERT INTO bancos.ConciliacionPares (IdSesion, IdItemExterno, IdMovimientoProcesado, TipoMatch, FechaConciliacion)
-                VALUES (@IdSesion, @IdItemExterno, @IdMovimiento, @TipoMatch, @Fecha)",
-                new { IdSesion = idSesion, IdItemExterno = idItemExterno,
-                      IdMovimiento = idMovimiento, TipoMatch = tipoMatch.ToString(),
-                      Fecha = DateTime.Now }, tx);
-
-            cn.Execute("UPDATE bancos.ConciliacionItemsExternos SET Conciliado = 1 WHERE Id = @Id",
-                new { Id = idItemExterno }, tx);
-
-            tx.Commit();
-        }
+        // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 2 - Un externo y varios movimientos forman un grupo atómico de suma exacta.
+        public static void ConciliarSeleccion(int idSesion, int idItemExterno, IReadOnlyCollection<int> idsMovimientos, TipoMatch tipoMatch)
+            => ConciliacionExternStorage.ConciliarSeleccion(idSesion, idItemExterno, idsMovimientos, tipoMatch);
 
         public static void DesconciliarPar(int idPar)
-        {
-            using var cn = DatabaseHelper.GetConnection();
-            cn.Open();
-            using var tx = cn.BeginTransaction();
-
-            var par = cn.QuerySingleOrDefault<ConciliacionPar>(
-                "SELECT * FROM bancos.ConciliacionPares WHERE Id = @Id", new { Id = idPar });
-            if (par == null) return;
-
-            cn.Execute("DELETE FROM bancos.ConciliacionPares WHERE Id = @Id", new { Id = idPar }, tx);
-            cn.Execute("UPDATE bancos.ConciliacionItemsExternos SET Conciliado = 0 WHERE Id = @Id",
-                new { Id = par.IdItemExterno }, tx);
-
-            tx.Commit();
-        }
+            => ConciliacionExternStorage.DesconciliarPar(idPar);
 
         // ── Auto-conciliación ────────────────────────────────────────────────────
 
@@ -239,6 +152,8 @@ namespace AgrupadorConceptos.Services
                              && ComparadorConciliacion.ImportesIguales(ext.Importe, m))
                     .ToList();
 
+
+                //Hacemos el cambio de que no haya duplicados. se concilia con el que primero caiga en esa fecha por caida
                 if (candidatos.Count == 1)
                 {
                     ConciliarPar(idSesion, ext.Id, candidatos[0].Id, TipoMatch.FechaImporte);
@@ -248,8 +163,12 @@ namespace AgrupadorConceptos.Services
                 }
                 else if (candidatos.Count > 1)
                 {
-                    duplicados.Add((ext, candidatos));
+                    ConciliarPar(idSesion, ext.Id, candidatos[0].Id, TipoMatch.FechaImporte);
+                    conciliadosExtracto.Add(candidatos[0].Id);
                     pendientesExternos.Remove(ext);
+                    totalConciliados++;
+                    //duplicados.Add((ext, candidatos));
+                    //pendientesExternos.Remove(ext);
                 }
             }
 
@@ -274,7 +193,10 @@ namespace AgrupadorConceptos.Services
                 }
                 else if (candidatos.Count > 1)
                 {
-                    duplicados.Add((ext, candidatos));
+                    ConciliarPar(idSesion, ext.Id, candidatos[0].Id, TipoMatch.SoloImporte);
+                    conciliadosExtracto.Add(candidatos[0].Id);
+                    totalConciliados++;
+                    //duplicados.Add((ext, candidatos));
                 }
             }
 

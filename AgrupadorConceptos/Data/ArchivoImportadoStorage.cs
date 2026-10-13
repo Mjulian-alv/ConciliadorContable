@@ -31,11 +31,17 @@ namespace AgrupadorConceptos.Data
         public static int Insertar(int idPerfilBanco, string nombreArchivo, DateTime fecha)
         {
             using var cn = DatabaseHelper.Open();
+            return Insertar(idPerfilBanco, nombreArchivo, fecha, cn, null);
+        }
+
+        // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Compartir la transacción del lote evita una cabecera huérfana.
+        public static int Insertar(int idPerfilBanco, string nombreArchivo, DateTime fecha, System.Data.IDbConnection cn, System.Data.IDbTransaction tx)
+        {
             return cn.QuerySingle<int>(@"
                 INSERT INTO bancos.ArchivosImportados (IdPerfilBanco, NombreArchivo, Fecha)
                 OUTPUT INSERTED.Id
                 VALUES (@IdPerfil, @Nombre, @Fecha);",
-                new { IdPerfil = idPerfilBanco, Nombre = nombreArchivo, Fecha = fecha });
+                new { IdPerfil = idPerfilBanco, Nombre = nombreArchivo, Fecha = fecha }, tx);
         }
 
         /// <summary>
@@ -45,8 +51,8 @@ namespace AgrupadorConceptos.Data
         /// </summary>
         public static void Eliminar(int id)
         {
-            using var cn = DatabaseHelper.Open();
-            cn.Execute("DELETE FROM bancos.ArchivosImportados WHERE Id = @Id", new { Id = id });
+            // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 1 - La cascada del archivo no debe eludir la protección de pendientes y pares.
+            EliminacionMovimientosStorage.EliminarArchivo(id);
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿// Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Par conciliado entre los dos extractos
+// Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Par conciliado entre los dos extractos
 using System;
 
 namespace AgrupadorConceptos.Models
@@ -13,10 +13,12 @@ namespace AgrupadorConceptos.Models
         public DateTime FechaConciliacion { get; set; }
 
         // Campos de visualización (no persisten)
-        public string FechaA { get; set; }
+        // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Operar sobre días tipados evita reinterpretaciones culturales.
+        public System.DateTime FechaA { get; set; }
         public decimal ImporteA { get; set; }
         public string ConceptoFinalA { get; set; }
-        public string FechaB { get; set; }
+        // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Operar sobre días tipados evita reinterpretaciones culturales.
+        public System.DateTime FechaB { get; set; }
         public decimal ImporteB { get; set; }
         public string ConceptoFinalB { get; set; }
 

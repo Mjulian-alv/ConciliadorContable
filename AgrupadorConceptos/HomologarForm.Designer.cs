@@ -44,7 +44,8 @@ namespace AgrupadorConceptos
             this.lblEstandar.Location = new System.Drawing.Point(20, 100);
             this.lblEstandar.Name = "lblEstandar";
             this.lblEstandar.Size = new System.Drawing.Size(126, 15);
-            this.lblEstandar.Text = "Concepto Est�ndar:";
+            // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 3 - Se restauran los acentos que el archivo había perdido por un guardado con codificación equivocada (se veían como signo de reemplazo).
+            this.lblEstandar.Text = "Concepto Estándar:";
             
             // cmbEstandar
             this.cmbEstandar.FormattingEnabled = true;
@@ -72,7 +73,8 @@ namespace AgrupadorConceptos
             this.btnGuardar.Location = new System.Drawing.Point(160, 180);
             this.btnGuardar.Name = "btnGuardar";
             this.btnGuardar.Size = new System.Drawing.Size(150, 30);
-            this.btnGuardar.Text = "Guardar Homologaci�n";
+            // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 3 - Se restauran los acentos que el archivo había perdido por un guardado con codificación equivocada (se veían como signo de reemplazo).
+            this.btnGuardar.Text = "Guardar Homologación";
             this.btnGuardar.UseVisualStyleBackColor = true;
             this.btnGuardar.Click += new System.EventHandler(this.btnGuardar_Click);
 
@@ -81,7 +83,8 @@ namespace AgrupadorConceptos
             this.lblAyuda.Location = new System.Drawing.Point(160, 48);
             this.lblAyuda.Name = "lblAyuda";
             this.lblAyuda.Size = new System.Drawing.Size(390, 30);
-            this.lblAyuda.Text = "Si el campo es una descripci�n larga, puedes acortar el texto para \r\nque busque esta palabra clave (Ej. 'TRANSF').";
+            // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 3 - Se restauran los acentos que el archivo había perdido por un guardado con codificación equivocada (se veían como signo de reemplazo).
+            this.lblAyuda.Text = "Si el campo es una descripción larga, puedes acortar el texto para \r\nque busque esta palabra clave (Ej. 'TRANSF').";
             this.lblAyuda.ForeColor = System.Drawing.Color.Gray;
             
             // HomologarForm
@@ -97,7 +100,8 @@ namespace AgrupadorConceptos
             this.Controls.Add(this.lblOriginal);
             this.Name = "HomologarForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.Text = "Crear Homologaci�n de Conceptos";
+            // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 3 - Se restauran los acentos que el archivo había perdido por un guardado con codificación equivocada (se veían como signo de reemplazo).
+            this.Text = "Crear Homologación de Conceptos";
             this.ResumeLayout(false);
             this.PerformLayout();
         }

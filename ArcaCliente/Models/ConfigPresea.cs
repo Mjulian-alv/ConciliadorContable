@@ -1,31 +1,37 @@
 namespace ArcaCliente.Models
 {
     /// <summary>
-    /// Valores por defecto para los campos del Excel de importaci�n de PRESEA
+    // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 3 - Se restauran los acentos que el archivo había perdido por un guardado con codificación equivocada (se veían como signo de reemplazo).
+    /// Valores por defecto para los campos del Excel de importación de PRESEA
     /// que no pueden derivarse directamente de los datos del CSV de ARCA.
     /// Todos los campos son editables por el usuario en el perfil offline.
     /// </summary>
     public class ConfigPresea
     {
-        /// <summary>C�digo de proveedor en PRESEA (campo Proveedor I/8).</summary>
+        // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 3 - Se restauran los acentos que el archivo había perdido por un guardado con codificación equivocada (se veían como signo de reemplazo).
+        /// <summary>Código de proveedor en PRESEA (campo Proveedor I/8).</summary>
         public string CodigoProveedor { get; set; } = "0";
 
         /// <summary>Cuenta contable del proveedor (campo Cuenta contable proveedor B/16).</summary>
         public string CuentaContableProveedor { get; set; } = string.Empty;
 
-        /// <summary>C�digo de provincia en PRESEA (campo Provincia I/3).</summary>
+        // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 3 - Se restauran los acentos que el archivo había perdido por un guardado con codificación equivocada (se veían como signo de reemplazo).
+        /// <summary>Código de provincia en PRESEA (campo Provincia I/3).</summary>
         public string Provincia { get; set; } = "0";
 
-        /// <summary>C�digo de condici�n de pago en PRESEA (campo Condici�n I/5).</summary>
+        // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 3 - Se restauran los acentos que el archivo había perdido por un guardado con codificación equivocada (se veían como signo de reemplazo).
+        /// <summary>Código de condición de pago en PRESEA (campo Condición I/5).</summary>
         public string Condicion { get; set; } = "0";
 
         /// <summary>"S" si fue emitido por impresor fiscal, "N" si no (campo Fiscal C/1).</summary>
         public string Fiscal { get; set; } = "N";
 
-        /// <summary>Cuenta contable para IVA cr�dito fiscal principal (campo Cuenta IVA B/16).</summary>
+        // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 3 - Se restauran los acentos que el archivo había perdido por un guardado con codificación equivocada (se veían como signo de reemplazo).
+        /// <summary>Cuenta contable para IVA crédito fiscal principal (campo Cuenta IVA B/16).</summary>
         public string CuentaIVA { get; set; } = string.Empty;
 
-        /// <summary>Cuenta contable para IVA cr�dito fiscal secundario (campo Cuenta IVA 2 B/16).</summary>
+        // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 3 - Se restauran los acentos que el archivo había perdido por un guardado con codificación equivocada (se veían como signo de reemplazo).
+        /// <summary>Cuenta contable para IVA crédito fiscal secundario (campo Cuenta IVA 2 B/16).</summary>
         public string CuentaIVA2 { get; set; } = string.Empty;
 
         /// <summary>Cuenta contable que se registra en el Debe (campo Cuenta contable del debe B/16).</summary>

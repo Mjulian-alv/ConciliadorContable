@@ -1,3 +1,4 @@
+// Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Operar sobre días tipados evita reinterpretaciones culturales.
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -31,7 +32,7 @@ namespace AgrupadorConceptos
 
             var lblInfo = new Label
             {
-                Text      = $"El ítem externo  [{externo.Fecha}  ${externo.Importe:N2}  {externo.Detalle}]  " +
+                Text      = $"El ítem externo  [{externo.Fecha:dd/MM/yyyy}  ${externo.Importe:N2}  {externo.Detalle}]  " +
                             $"tiene {candidatos.Count} movimientos candidatos en el extracto.\n" +
                             "Seleccione a cuál asignarlo (o Omitir para dejarlo pendiente).",
                 Location  = new Point(12, 10),
@@ -59,6 +60,8 @@ namespace AgrupadorConceptos
                 Importe = ComparadorConciliacion.ImporteEfectivo(m),
                 m.ConceptoFinal
             });
+            // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Mantener el formato de fechas tipadas al renovar los datos.
+            dgv.CellFormatting += (sender, e) => { if(dgv.Columns[e.ColumnIndex].Name=="Fecha" && e.Value is DateTime fecha) {e.Value=fecha.ToString("dd/MM/yyyy",System.Globalization.CultureInfo.InvariantCulture);e.FormattingApplied=true;} };
             dgv.DataSource = display;
             dgv.CellDoubleClick += (s, e) => AsignarSeleccionado(candidatos);
 

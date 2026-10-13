@@ -1,3 +1,5 @@
+using Conciliador.Comun.Services;
+// Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Operar sobre días tipados evita reinterpretaciones culturales.
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -28,6 +30,7 @@ namespace AgrupadorConceptos.Services
         private static List<ConciliacionItemExterno> LeerExcel(string path)
         {
             var result = new List<ConciliacionItemExterno>();
+            var incidencias = new List<IncidenciaFechaImportacion>();
 
             using var stream = File.Open(path, FileMode.Open, FileAccess.Read);
             using var reader = ExcelReaderFactory.CreateReader(stream);
@@ -42,22 +45,30 @@ namespace AgrupadorConceptos.Services
             if (iF < 0 || iI < 0 || iD < 0)
                 throw new InvalidOperationException("El archivo debe tener columnas Fecha, Importe y Concepto.");
 
+            int fila=1;
             foreach (DataRow row in table.Rows)
             {
+                fila++;
                 if (row[iI] == DBNull.Value) continue;
+                if (!FechaBancariaParser.TryParse(row[iF],out var fecha)) { incidencias.Add(FechasImportacionException.Incidencia(path,table.TableName,fila,row[iF])); continue; }
                 result.Add(new ConciliacionItemExterno
                 {
-                    Fecha   = row[iF]?.ToString()?.Trim(),
-                    Importe = ParseImporte(row[iI]?.ToString()),
+                    // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 2, 3, 4 - Las celdas tipadas no deben pasar por la cultura de Windows antes de conciliar.
+                    Fecha   = fecha,
+                    Importe = row[iI] is double or float or decimal or int or long
+                        ? Math.Abs(Convert.ToDecimal(row[iI], CultureInfo.InvariantCulture))
+                        : ParseImporte(row[iI]?.ToString()),
                     Detalle = row[iD]?.ToString()?.Trim()
                 });
             }
+            if(incidencias.Count>0) throw new FechasImportacionException(incidencias);
             return result;
         }
 
         private static List<ConciliacionItemExterno> LeerCsv(string path)
         {
             var result = new List<ConciliacionItemExterno>();
+            var incidencias = new List<IncidenciaFechaImportacion>();
             var lines = File.ReadAllLines(path);
             if (lines.Length < 2) return result;
 
@@ -72,15 +83,18 @@ namespace AgrupadorConceptos.Services
 
             for (int i = 1; i < lines.Length; i++)
             {
+                if(string.IsNullOrWhiteSpace(lines[i])) continue;
                 var cols = lines[i].Split(sep);
                 if (cols.Length <= Math.Max(iF, Math.Max(iI, iD))) continue;
+                if (!FechaBancariaParser.TryParse(cols[iF],out var fecha)) { incidencias.Add(FechasImportacionException.Incidencia(path,null,i+1,cols[iF])); continue; }
                 result.Add(new ConciliacionItemExterno
                 {
-                    Fecha   = cols[iF].Trim(),
+                    Fecha   = fecha,
                     Importe = ParseImporte(cols[iI]),
                     Detalle = cols[iD].Trim()
                 });
             }
+            if(incidencias.Count>0) throw new FechasImportacionException(incidencias);
             return result;
         }
 
@@ -98,13 +112,14 @@ namespace AgrupadorConceptos.Services
         /// Ojo: no es intercambiable con el parseo de importes de la importación de
         /// extractos, que sí conserva el signo.
         /// </summary>
+        // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 2, 3 - Una coma argentina es decimal aun si la cultura del equipo es inglesa.
         private static decimal ParseImporte(string s)
         {
             if (string.IsNullOrWhiteSpace(s)) return 0;
             s = s.Replace("$", "").Replace(" ", "").Trim();
-            if (decimal.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var v)) return Math.Abs(v);
-            if (decimal.TryParse(s, NumberStyles.Any, new CultureInfo("es-AR"), out v)) return Math.Abs(v);
-            return 0;
+            var cultura = s.Contains(',') ? new CultureInfo("es-AR") : CultureInfo.InvariantCulture;
+            if (decimal.TryParse(s, NumberStyles.Number | NumberStyles.AllowLeadingSign, cultura, out var v)) return Math.Abs(v);
+            throw new FormatException($"Importe externo no válido: '{s}'.");
         }
     }
 }

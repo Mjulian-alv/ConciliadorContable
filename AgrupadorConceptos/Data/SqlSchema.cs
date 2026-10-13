@@ -82,7 +82,8 @@ CREATE TABLE bancos.MovimientosArchivo (
     Id                  INT IDENTITY(1,1) CONSTRAINT PK_MovimientosArchivo PRIMARY KEY,
     IdArchivo           INT NOT NULL CONSTRAINT FK_Movimientos_Archivo
                             REFERENCES bancos.ArchivosImportados(Id) ON DELETE CASCADE,
-    Fecha               NVARCHAR(30) NULL,
+    -- Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Las fechas se validan al ingresar.
+    Fecha               DATE NOT NULL,
     ConceptoOriginal    NVARCHAR(400) NULL,
     DescripcionOriginal NVARCHAR(1000) NULL,
     Debitos             DECIMAL(18,2) NULL,
@@ -112,7 +113,8 @@ CREATE TABLE bancos.ConciliacionItemsExternos (
     Id         INT IDENTITY(1,1) CONSTRAINT PK_ConciliacionItemsExternos PRIMARY KEY,
     IdSesion   INT NOT NULL CONSTRAINT FK_ItemsExt_Sesion
                    REFERENCES bancos.ConciliacionSesiones(Id),
-    Fecha      NVARCHAR(30) NULL,
+    -- Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Igual contrato para los archivos externos.
+    Fecha      DATE NOT NULL,
     Importe    DECIMAL(18,2) NOT NULL,
     Detalle    NVARCHAR(1000) NULL,
     Conciliado BIT NOT NULL CONSTRAINT DF_ItemsExt_Conciliado DEFAULT 0

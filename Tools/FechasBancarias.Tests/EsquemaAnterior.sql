@@ -1,0 +1,194 @@
+-- Fecha: 13/10/2026 - TAREA: 00083 - Linea: 2 - Esquema anterior exclusivamente para el ensayo local.
+
+IF SCHEMA_ID(N'bancos') IS NULL EXEC(N'CREATE SCHEMA bancos');
+
+IF OBJECT_ID(N'bancos.PerfilesBanco', N'U') IS NULL
+CREATE TABLE bancos.PerfilesBanco (
+    Id                  INT IDENTITY(1,1) CONSTRAINT PK_PerfilesBanco PRIMARY KEY,
+    NombreBanco         NVARCHAR(200) NOT NULL,
+    ColumnaConcepto     NVARCHAR(100) NOT NULL,
+    ColumnaDescripcion  NVARCHAR(100) NULL,
+    EsCodigo            BIT NOT NULL,
+    FilaEncabezado      INT NOT NULL CONSTRAINT DF_PerfilesBanco_Fila DEFAULT 1,
+    TipoImporte         INT NOT NULL,
+    ColumnaImporteUnico NVARCHAR(100) NULL,
+    ColumnaDebe         NVARCHAR(100) NULL,
+    ColumnaHaber        NVARCHAR(100) NULL,
+    ColumnaFecha        NVARCHAR(100) NULL
+);
+
+-- Fecha: 05/09/2026 - TAREA: 00021 - Linea: 1 - Catalogo de cuentas contables del legacy
+IF OBJECT_ID(N'bancos.CuentasContables', N'U') IS NULL
+CREATE TABLE bancos.CuentasContables (
+    Id          INT IDENTITY(1,1) CONSTRAINT PK_CuentasContables PRIMARY KEY,
+    Cuenta      NVARCHAR(50) NOT NULL,
+    Descripcion NVARCHAR(300) NOT NULL,
+    CentroCosto NVARCHAR(50) NULL
+);
+
+-- Fecha: 05/09/2026 - TAREA: 00021 - Linea: 1 - Indice compuesto simple, sin expresion en la clave
+-- SQL Server no acepta CREATE INDEX sobre una expresion (ISNULL(...)) en la lista de columnas;
+-- alcanza con indexar las columnas tal cual, porque SQL Server ya trata dos NULL de CentroCosto
+-- como iguales a los fines de la unicidad (a diferencia del estandar ANSI), asi que el efecto
+-- practico -no duplicar (Cuenta, CentroCosto), incluido CentroCosto NULL- es el mismo.
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_CuentasContables_CuentaCentro')
+    CREATE UNIQUE INDEX UX_CuentasContables_CuentaCentro
+        ON bancos.CuentasContables(Cuenta, CentroCosto);
+
+-- Fecha: 05/09/2026 - TAREA: 00021 - Linea: 2 - Cuenta contable de referencia del perfil
+IF COL_LENGTH(N'bancos.PerfilesBanco', N'IdCuentaContable') IS NULL
+    ALTER TABLE bancos.PerfilesBanco ADD IdCuentaContable INT NULL
+        CONSTRAINT FK_Perfil_CuentaContable REFERENCES bancos.CuentasContables(Id);
+
+IF OBJECT_ID(N'bancos.ConceptosEstandar', N'U') IS NULL
+CREATE TABLE bancos.ConceptosEstandar (
+    Id     INT IDENTITY(1,1) CONSTRAINT PK_ConceptosEstandar PRIMARY KEY,
+    Nombre NVARCHAR(200) NOT NULL CONSTRAINT UQ_ConceptosEstandar_Nombre UNIQUE
+);
+
+-- Fecha: 05/09/2026 - TAREA: 00021 - Linea: 3 - Cuenta contable del concepto estandar
+IF COL_LENGTH(N'bancos.ConceptosEstandar', N'IdCuentaContable') IS NULL
+    ALTER TABLE bancos.ConceptosEstandar ADD IdCuentaContable INT NULL
+        CONSTRAINT FK_Concepto_CuentaContable REFERENCES bancos.CuentasContables(Id);
+
+IF OBJECT_ID(N'bancos.HomologacionConceptos', N'U') IS NULL
+CREATE TABLE bancos.HomologacionConceptos (
+    Id                 INT IDENTITY(1,1) CONSTRAINT PK_HomologacionConceptos PRIMARY KEY,
+    IdPerfilBanco      INT NOT NULL CONSTRAINT FK_Homologacion_Perfil
+                           REFERENCES bancos.PerfilesBanco(Id),
+    ValorOriginal      NVARCHAR(400) NOT NULL,
+    IdConceptoEstandar INT NOT NULL CONSTRAINT FK_Homologacion_Concepto
+                           REFERENCES bancos.ConceptosEstandar(Id)
+);
+
+IF OBJECT_ID(N'bancos.ArchivosImportados', N'U') IS NULL
+CREATE TABLE bancos.ArchivosImportados (
+    Id            INT IDENTITY(1,1) CONSTRAINT PK_ArchivosImportados PRIMARY KEY,
+    IdPerfilBanco INT NOT NULL CONSTRAINT FK_Archivos_Perfil
+                      REFERENCES bancos.PerfilesBanco(Id),
+    NombreArchivo NVARCHAR(500) NOT NULL,
+    Fecha         DATETIME2(0) NOT NULL
+);
+
+IF OBJECT_ID(N'bancos.MovimientosArchivo', N'U') IS NULL
+CREATE TABLE bancos.MovimientosArchivo (
+    Id                  INT IDENTITY(1,1) CONSTRAINT PK_MovimientosArchivo PRIMARY KEY,
+    IdArchivo           INT NOT NULL CONSTRAINT FK_Movimientos_Archivo
+                            REFERENCES bancos.ArchivosImportados(Id) ON DELETE CASCADE,
+    Fecha               NVARCHAR(30) NULL,
+    ConceptoOriginal    NVARCHAR(400) NULL,
+    DescripcionOriginal NVARCHAR(1000) NULL,
+    Debitos             DECIMAL(18,2) NULL,
+    Creditos            DECIMAL(18,2) NULL,
+    ConceptoEstandar    NVARCHAR(200) NULL,
+    ConceptoFinal       NVARCHAR(400) NULL
+);
+
+-- Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Cuenta final del movimiento
+IF COL_LENGTH(N'bancos.MovimientosArchivo', N'CuentaFinal') IS NULL
+    ALTER TABLE bancos.MovimientosArchivo ADD CuentaFinal NVARCHAR(50) NULL;
+
+IF OBJECT_ID(N'bancos.ConciliacionSesiones', N'U') IS NULL
+CREATE TABLE bancos.ConciliacionSesiones (
+    Id                 INT IDENTITY(1,1) CONSTRAINT PK_ConciliacionSesiones PRIMARY KEY,
+    Nombre             NVARCHAR(200) NOT NULL,
+    FechaCreacion      DATETIME2(0) NOT NULL,
+    IdArchivoImportado INT NOT NULL CONSTRAINT FK_Sesiones_Archivo
+                           REFERENCES bancos.ArchivosImportados(Id),
+    ConceptosJson      NVARCHAR(MAX) NOT NULL CONSTRAINT DF_Sesiones_Conceptos DEFAULT N'[]',
+    Estado             NVARCHAR(50) NOT NULL CONSTRAINT DF_Sesiones_Estado DEFAULT N'EnProceso',
+    ArchivosJson       NVARCHAR(MAX) NULL
+);
+
+IF OBJECT_ID(N'bancos.ConciliacionItemsExternos', N'U') IS NULL
+CREATE TABLE bancos.ConciliacionItemsExternos (
+    Id         INT IDENTITY(1,1) CONSTRAINT PK_ConciliacionItemsExternos PRIMARY KEY,
+    IdSesion   INT NOT NULL CONSTRAINT FK_ItemsExt_Sesion
+                   REFERENCES bancos.ConciliacionSesiones(Id),
+    Fecha      NVARCHAR(30) NULL,
+    Importe    DECIMAL(18,2) NOT NULL,
+    Detalle    NVARCHAR(1000) NULL,
+    Conciliado BIT NOT NULL CONSTRAINT DF_ItemsExt_Conciliado DEFAULT 0
+);
+
+IF OBJECT_ID(N'bancos.ConciliacionPares', N'U') IS NULL
+CREATE TABLE bancos.ConciliacionPares (
+    Id                    INT IDENTITY(1,1) CONSTRAINT PK_ConciliacionPares PRIMARY KEY,
+    IdSesion              INT NOT NULL CONSTRAINT FK_Pares_Sesion
+                              REFERENCES bancos.ConciliacionSesiones(Id),
+    IdItemExterno         INT NOT NULL CONSTRAINT FK_Pares_Item
+                              REFERENCES bancos.ConciliacionItemsExternos(Id),
+    IdMovimientoProcesado INT NOT NULL,
+    TipoMatch             NVARCHAR(50) NOT NULL,
+    FechaConciliacion     DATETIME2(0) NOT NULL
+);
+
+-- Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Rediseno: sin elegir perfil, un solo rango de fechas
+-- No se elige perfil al armar la sesion: se concilian debitos contra creditos de TODOS los
+-- extractos dentro de un rango de fechas unico (la exclusion de pares del mismo archivo importado
+-- vive en el matching, no en el alta). La tabla es nueva y sin datos reales todavia, asi que se
+-- recrea en vez de migrar columna por columna; ConciliacionInternaPares depende de ella (FK), se
+-- borra primero.
+IF COL_LENGTH(N'bancos.ConciliacionInternaSesiones', N'IdPerfilA') IS NOT NULL
+BEGIN
+    IF OBJECT_ID(N'bancos.ConciliacionInternaPares', N'U') IS NOT NULL
+        DROP TABLE bancos.ConciliacionInternaPares;
+    DROP TABLE bancos.ConciliacionInternaSesiones;
+END
+
+IF OBJECT_ID(N'bancos.ConciliacionInternaSesiones', N'U') IS NULL
+CREATE TABLE bancos.ConciliacionInternaSesiones (
+    Id            INT IDENTITY(1,1) CONSTRAINT PK_ConciliacionInternaSesiones PRIMARY KEY,
+    Nombre        NVARCHAR(200) NOT NULL,
+    FechaCreacion DATETIME2(0) NOT NULL,
+    FechaDesde    DATE NOT NULL,
+    FechaHasta    DATE NOT NULL,
+    ConceptosJson NVARCHAR(MAX) NOT NULL CONSTRAINT DF_SesionesInternas_Conceptos DEFAULT N'[]',
+    Estado        NVARCHAR(50) NOT NULL CONSTRAINT DF_SesionesInternas_Estado DEFAULT N'EnProceso'
+);
+
+IF OBJECT_ID(N'bancos.ConciliacionInternaPares', N'U') IS NULL
+CREATE TABLE bancos.ConciliacionInternaPares (
+    Id                INT IDENTITY(1,1) CONSTRAINT PK_ConciliacionInternaPares PRIMARY KEY,
+    IdSesion          INT NOT NULL CONSTRAINT FK_ParesInternos_Sesion
+                          REFERENCES bancos.ConciliacionInternaSesiones(Id),
+    IdMovimientoA     INT NOT NULL,
+    IdMovimientoB     INT NOT NULL,
+    TipoMatch         NVARCHAR(50) NOT NULL,
+    FechaConciliacion DATETIME2(0) NOT NULL
+);
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_MovimientosArchivo_IdArchivo')
+    CREATE INDEX IX_MovimientosArchivo_IdArchivo   ON bancos.MovimientosArchivo(IdArchivo);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_HomologacionConceptos_IdPerfil')
+    CREATE INDEX IX_HomologacionConceptos_IdPerfil ON bancos.HomologacionConceptos(IdPerfilBanco);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_ArchivosImportados_IdPerfil')
+    CREATE INDEX IX_ArchivosImportados_IdPerfil    ON bancos.ArchivosImportados(IdPerfilBanco);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_ConciliacionItemsExt_IdSesion')
+    CREATE INDEX IX_ConciliacionItemsExt_IdSesion  ON bancos.ConciliacionItemsExternos(IdSesion);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_ConciliacionPares_IdSesion')
+    CREATE INDEX IX_ConciliacionPares_IdSesion     ON bancos.ConciliacionPares(IdSesion);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_ConciliacionInternaPares_IdSesion')
+    CREATE INDEX IX_ConciliacionInternaPares_IdSesion ON bancos.ConciliacionInternaPares(IdSesion);
+-- Fecha: 11/09/2026 - TAREA: 00021 - Linea: 5 - Un movimiento no puede quedar conciliado dos veces en la misma sesion
+-- Sin esto, dos desempates manuales de un mismo Auto-conciliar (con listas de candidatos que se
+-- superponen) podian terminar asignando el mismo credito a dos debitos distintos: nada en la base
+-- lo impedia, ConciliarPar solo chequeaba conflictos contra OTRAS sesiones EnProceso.
+-- Dedupe primero: bases que ya vinieron probando esta pantalla antes del fix pueden tener el
+-- duplicado que lo motivo. Sin este paso, el CREATE UNIQUE INDEX de abajo falla sobre esos datos
+-- y rompe TODA la inicializacion del schema (no solo esta tabla), no solo la tabla nueva. Se
+-- conserva el par mas viejo (Id mas bajo) de cada duplicado y se borra el resto; es idempotente,
+-- en una base sin duplicados no borra nada.
+IF OBJECT_ID(N'bancos.ConciliacionInternaPares', N'U') IS NOT NULL
+BEGIN
+    DELETE p1 FROM bancos.ConciliacionInternaPares p1
+    WHERE EXISTS (SELECT 1 FROM bancos.ConciliacionInternaPares p2
+                  WHERE p2.IdSesion = p1.IdSesion AND p2.IdMovimientoA = p1.IdMovimientoA AND p2.Id < p1.Id);
+    DELETE p1 FROM bancos.ConciliacionInternaPares p1
+    WHERE EXISTS (SELECT 1 FROM bancos.ConciliacionInternaPares p2
+                  WHERE p2.IdSesion = p1.IdSesion AND p2.IdMovimientoB = p1.IdMovimientoB AND p2.Id < p1.Id);
+END
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_ConciliacionInternaPares_MovimientoA')
+    CREATE UNIQUE INDEX UX_ConciliacionInternaPares_MovimientoA ON bancos.ConciliacionInternaPares(IdSesion, IdMovimientoA);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_ConciliacionInternaPares_MovimientoB')
+    CREATE UNIQUE INDEX UX_ConciliacionInternaPares_MovimientoB ON bancos.ConciliacionInternaPares(IdSesion, IdMovimientoB);

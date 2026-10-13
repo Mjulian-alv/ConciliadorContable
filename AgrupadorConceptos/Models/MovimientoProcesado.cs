@@ -4,7 +4,8 @@ namespace AgrupadorConceptos.Models
     {
         public int Id { get; set; }
         public int IdArchivo { get; set; }
-        public string Fecha { get; set; }
+        // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Operar sobre días tipados evita reinterpretaciones culturales.
+        public System.DateTime Fecha { get; set; }
         public string ConceptoOriginal { get; set; }
         public string DescripcionOriginal { get; set; }
         public string ConceptoEstandar { get; set; }
@@ -13,5 +14,6 @@ namespace AgrupadorConceptos.Models
         public string ConceptoFinal { get; set; }
         // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Cuenta final, mismo patron que ConceptoFinal
         public string CuentaFinal { get; set; }
+        public string NombreBanco { get; set; }
     }
 }

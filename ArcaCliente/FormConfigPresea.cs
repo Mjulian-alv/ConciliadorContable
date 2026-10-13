@@ -9,7 +9,8 @@ namespace ArcaCliente
     {
         private ConfigPresea _config;
 
-        /// <summary>Configuraci�n resultante despu�s de Guardar (DialogResult.OK).</summary>
+        // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 3 - Se restauran los acentos que el archivo había perdido por un guardado con codificación equivocada (se veían como signo de reemplazo).
+        /// <summary>Configuración resultante después de Guardar (DialogResult.OK).</summary>
         public ConfigPresea Config => _config;
 
         public FormConfigPresea(ConfigPresea config = null)
@@ -59,13 +60,15 @@ namespace ArcaCliente
         private void CargarCombos()
         {
             cmbFiscal.Items.Clear();
-            cmbFiscal.Items.Add(new RadListDataItem("N � No fiscal",  "N"));
-            cmbFiscal.Items.Add(new RadListDataItem("S � Fiscal",     "S"));
+            // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 3 - Se restauran los acentos que el archivo había perdido por un guardado con codificación equivocada (se veían como signo de reemplazo).
+            cmbFiscal.Items.Add(new RadListDataItem("N — No fiscal",  "N"));
+            cmbFiscal.Items.Add(new RadListDataItem("S — Fiscal",     "S"));
 
             cmbImputa.Items.Clear();
-            cmbImputa.Items.Add(new RadListDataItem("N � No imputa",                 "N"));
-            cmbImputa.Items.Add(new RadListDataItem("D � Imputa despu�s",            "D"));
-            cmbImputa.Items.Add(new RadListDataItem("P � Imputa contra recepciones", "P"));
+            // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 3 - Se restauran los acentos que el archivo había perdido por un guardado con codificación equivocada (se veían como signo de reemplazo).
+            cmbImputa.Items.Add(new RadListDataItem("N — No imputa",                 "N"));
+            cmbImputa.Items.Add(new RadListDataItem("D — Imputa después",            "D"));
+            cmbImputa.Items.Add(new RadListDataItem("P — Imputa contra recepciones", "P"));
 
             cmbFormatoFecha.Items.Clear();
             cmbFormatoFecha.Items.Add(new RadListDataItem("yyyyMMdd  (p.ej. 20250115)",  "yyyyMMdd"));
