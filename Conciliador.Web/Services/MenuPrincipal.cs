@@ -22,8 +22,8 @@ public static class MenuPrincipal
         new(ModAgrupador, "agr-consulta", "⌕", "Consulta de movimientos", "Movimientos por rango de fechas y conceptos, con exportación.", "/agrupador/consulta", "AgrHomologaciones", false, true),
         new(ModAgrupador, "agr-externa", "⇄", "Conciliación externa", "Conciliá el extracto contra un listado del ERP, por sesiones.", "/agrupador/conciliacion-externa", "AgrConciliacion", false, true),
         new(ModAgrupador, "agr-interna", "↔", "Conciliación interna", "Conciliá débitos contra créditos propios dentro del extracto.", "/agrupador/conciliacion-interna", "AgrConciliacionInterna", false, true),
-        new(ModAgrupador, "agr-cuentas", "#", "Cuentas contables", "Catálogo de cuentas importado del sistema y sus conceptos.", "/agrupador/cuentas", "AgrCuentasContables", false, true),
-        new(ModAgrupador, "agr-conceptos", "◇", "Conceptos estándar", "Cada concepto estándar puede tener una cuenta contable.", "/agrupador/conceptos", "AgrCuentasContables", false, true, false),
+        new(ModAgrupador, "agr-cuentas", "#", "Cuentas contables", "Catálogo de cuentas importado del sistema y sus conceptos.", "/agrupador/cuentas", "AgrCuentasContables", true, true),
+        new(ModAgrupador, "agr-conceptos", "◇", "Conceptos estándar", "Cada concepto estándar puede tener una cuenta contable.", "/agrupador/conceptos", "AgrCuentasContables", true, true, false),
     };
     public static IEnumerable<Acceso> Visibles(ClaimsPrincipal usuario) => Accesos.Where(a => Permisos.Tiene(usuario, a.Permiso));
     public static EstadoAcceso Estado(Acceso acceso, ClaimsPrincipal usuario, bool demostracion)

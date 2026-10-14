@@ -1,0 +1,42 @@
+@page "/agrupador/cuentas"
+@attribute [Authorize(Policy="AgrCuentasContables")]
+@* Fecha: 14/10/2026 - TAREA: 00097 - Linea: 6 - Catálogo de cuentas contables importado del sistema legacy (equivale a CuentasContablesForm). *@
+<PageTitle>Cuentas contables · Agrupador</PageTitle>
+<div class="page-heading"><div><p class="eyebrow">AGRUPADOR DE CONCEPTOS</p><h1>Cuentas contables</h1><p>Catálogo importado del sistema contable.</p></div></div>
+@if(Importadas!=null){<div class="notice" role="status">@Importadas cuenta(s) importada(s) o actualizada(s).</div>}
+@if(error!=null){<div class="notice error" role="alert">@error</div>}
+@if(cuentas==null){<p class="muted">Cargando…</p>}
+else if(cuentas.Count==0)
+{
+    <section class="panel"><div class="empty"><div class="empty-icon" aria-hidden="true">#</div><h2>El catálogo todavía está vacío</h2><p class="muted">Importá el plan de cuentas desde un Excel o CSV del sistema.</p><a class="button primary" href="/agrupador/cuentas/importar">Importar desde Excel/CSV…</a></div></section>
+}
+else
+{
+    <section class="panel">
+        <div class="actions"><input class="search" placeholder="Buscar por cuenta o descripción…" aria-label="Buscar cuentas" @bind="busqueda" @bind:event="oninput" /><span class="grow"></span><a class="button primary" href="/agrupador/cuentas/importar">Importar desde Excel/CSV…</a></div>
+        <div class="table-wrap tall"><table>
+            <thead><tr><th>Cuenta</th><th>Descripción</th><th>Centro de costo</th><th class="numeric">Conceptos asignados</th></tr></thead>
+            <tbody><Virtualize Items="filtradas" Context="c" ItemSize="43">
+                <tr><td>@c.Cuenta</td><td>@c.Descripcion</td><td>@(string.IsNullOrEmpty(c.CentroCosto)?"—":c.CentroCosto)</td><td class="numeric">@(usoPorCuenta.GetValueOrDefault(c.Id))</td></tr>
+            </Virtualize></tbody>
+        </table></div>
+        <p class="note">@cuentas.Count.ToString("N0",new System.Globalization.CultureInfo("es-AR")) cuentas@(filtradas.Count!=cuentas.Count?$" · {filtradas.Count:N0} coinciden con la búsqueda":"")</p>
+    </section>
+}
+@code {
+    [SupplyParameterFromQuery(Name="importadas")] public int? Importadas{get;set;}
+    List<CuentaContable>? cuentas;
+    Dictionary<int,int> usoPorCuenta=new();
+    string busqueda="";
+    string? error;
+    List<CuentaContable> filtradas=>string.IsNullOrWhiteSpace(busqueda)?cuentas!:cuentas!.Where(c=>(c.Cuenta??"").Contains(busqueda.Trim(),StringComparison.OrdinalIgnoreCase)||(c.Descripcion??"").Contains(busqueda.Trim(),StringComparison.OrdinalIgnoreCase)).ToList();
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            (cuentas,usoPorCuenta)=await Task.Run(()=>(CuentaContableStorage.ObtenerTodas(),
+                HomologacionStorage.ObtenerListadoConceptosEstandar().Where(x=>x.IdCuentaContable.HasValue).GroupBy(x=>x.IdCuentaContable!.Value).ToDictionary(g=>g.Key,g=>g.Count())));
+        }
+        catch(Exception){cuentas=new();error="No se pudo leer el catálogo de cuentas. Probá de nuevo; si sigue, avisá a sistemas.";}
+    }
+}

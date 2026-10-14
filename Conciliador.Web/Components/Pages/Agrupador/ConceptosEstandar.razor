@@ -1,0 +1,68 @@
+@page "/agrupador/conceptos"
+@attribute [Authorize(Policy="AgrCuentasContables")]
+@inject AccessGuard Access
+@* Fecha: 14/10/2026 - TAREA: 00097 - Linea: 6 - Mantenimiento de la cuenta de cada concepto estándar; sólo asigna, cambia o quita la cuenta, como GestionConceptosEstandarForm. *@
+<PageTitle>Conceptos estándar · Agrupador</PageTitle>
+<div class="page-heading"><div><p class="eyebrow">AGRUPADOR DE CONCEPTOS</p><h1>Conceptos estándar</h1><p>Cada concepto estándar puede tener una cuenta contable.</p></div></div>
+@if(aviso!=null){<div class="notice" role="status">@aviso</div>}
+@if(error!=null){<div class="notice error" role="alert">@error</div>}
+@if(conceptos==null){<p class="muted">Cargando…</p>}
+else if(conceptos.Count==0)
+{
+    <section class="panel"><div class="empty"><div class="empty-icon" aria-hidden="true">◇</div><h2>Todavía no hay conceptos estándar</h2><p class="muted">Se crean al homologar un movimiento desde el Procesador.</p></div></section>
+}
+else
+{
+    <section class="panel"><div class="table-wrap"><table>
+        <thead><tr><th>Concepto estándar</th><th>Cuenta contable</th><th class="numeric">Movimientos</th><th></th></tr></thead>
+        <tbody>@foreach(var c in conceptos){
+            <tr class="@(editando?.Id==c.Id?"sel":"")"><td>@c.Nombre</td><td>@if(c.IdCuentaContable.HasValue){@c.CuentaDisplay}else{<span class="badge warn">Sin cuenta</span>}</td><td class="numeric">@c.Movimientos.ToString("N0",ar)</td><td><button @onclick="()=>Abrir(c)">Asignar cuenta…</button></td></tr>}
+        </tbody></table></div></section>
+}
+@if(editando!=null)
+{
+    <div class="backdrop"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="titulo-asignar">
+        <h2 id="titulo-asignar">Asignar cuenta a «@editando.Nombre»</h2>
+        <div class="sub">La cuenta pasa a ser la cuenta final de los movimientos homologados con este concepto, de ahora en más.</div>
+        <label>Cuenta contable<select @bind="idElegido"><option value="0">(sin asignar)</option>@foreach(var o in opciones){<option value="@o.Id">@o.DisplayName</option>}</select></label>
+        <div class="foot"><button @onclick="Cerrar">Cancelar</button><button class="primary" @onclick="Guardar" disabled="@ocupado">Asignar</button></div>
+    </div></div>
+}
+@code {
+    static readonly System.Globalization.CultureInfo ar=new("es-AR");
+    List<ConceptoEstandarListado>? conceptos;
+    List<CuentaContable> opciones=new();
+    ConceptoEstandarListado? editando;
+    int idElegido;
+    string? aviso,error;
+    bool ocupado;
+    protected override async Task OnInitializedAsync()=>await Cargar();
+    async Task Cargar()
+    {
+        try{conceptos=await Task.Run(()=>HomologacionStorage.ObtenerListadoConceptosEstandar());}
+        catch(Exception){conceptos=new();error="No se pudieron leer los conceptos estándar. Probá de nuevo; si sigue, avisá a sistemas.";}
+    }
+    async Task Abrir(ConceptoEstandarListado c)
+    {
+        aviso=error=null;
+        try{opciones=await Task.Run(()=>CuentaContableStorage.ObtenerTodas());editando=c;idElegido=c.IdCuentaContable??0;}
+        catch(Exception){error="No se pudo leer el catálogo de cuentas.";}
+    }
+    void Cerrar()=>editando=null;
+    async Task Guardar()
+    {
+        if(editando==null)return;
+        ocupado=true;
+        try
+        {
+            await Access.Require("AgrCuentasContables");
+            var concepto=editando;int? cuenta=idElegido==0?null:idElegido;
+            await Task.Run(()=>HomologacionStorage.ActualizarCuentaConcepto(concepto.Id,cuenta));
+            aviso=cuenta==null?$"Se quitó la cuenta de «{concepto.Nombre}».":$"Cuenta asignada a «{concepto.Nombre}».";
+            editando=null;await Cargar();
+        }
+        catch(UnauthorizedAccessException ex){error=ex.Message;editando=null;}
+        catch(Exception ex){error="No se pudo guardar: "+ex.Message;editando=null;}
+        finally{ocupado=false;}
+    }
+}

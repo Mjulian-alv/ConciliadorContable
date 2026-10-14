@@ -5,6 +5,7 @@ var passed = 0; var failed = 0;
 void Test(string name, Action action) { try { action(); Console.WriteLine("OK " + name); passed++; } catch (Exception ex) { failed++; Console.Error.WriteLine("ERROR " + name + ": " + ex.Message); } }
 FormatoImporteTests.Run(Test);
 MenuTests.Run(Test);
+CuentasTests.Run(Test);
 LoginTests.Run(Test);
 Console.WriteLine($"{passed} pruebas correctas, {failed} con error.");
 return failed == 0 ? 0 : 1;

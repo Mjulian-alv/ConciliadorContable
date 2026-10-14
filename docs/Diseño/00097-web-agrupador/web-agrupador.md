@@ -304,3 +304,18 @@ Cada línea es un commit propio, con sus pruebas. Verificación: pruebas automá
 5. **Diferencia con signo** (Línea 7): el resultado «Diferencia (C − D)» conserva su signo; todo importe de
    movimiento va en absoluto. ¿Confirmás esa excepción?
 6. **Cero en la columna opuesta:** se muestra `0,00` en gris, no vacío. ¿Está bien?
+
+## Ajustes al implementar
+
+Diferencias entre lo construido y las maquetas aprobadas, con su motivo.
+
+### Línea 6 (14/10/2026)
+
+- **Conceptos estándar:** el listado muestra la columna **Movimientos**, no «Reglas» como en la maqueta
+  `06-conceptos-estandar.png`. Es lo que muestra el escritorio (`GestionConceptosEstandarForm`) y el almacén ya lo
+  entrega; contar reglas por concepto exigía una consulta nueva. Cambiarlo es una columna.
+- **Importar cuentas:** la vista previa muestra las primeras 5 filas de datos del archivo y la cantidad de filas
+  junto al nombre. Tras confirmar, vuelve al catálogo con el aviso «N cuenta(s) importada(s) o actualizada(s)»,
+  como el escritorio.
+- **Cuentas contables:** la columna «Conceptos asignados» se calcula con los conceptos estándar que apuntan a cada
+  cuenta; el pie dice cuántas cuentas hay (la fecha de importación de la maqueta no existe en los datos).

@@ -1,0 +1,71 @@
+@page "/agrupador/cuentas/importar"
+@attribute [Authorize(Policy="AgrCuentasContables")]
+@inject AccessGuard Access
+@inject NavigationManager Nav
+@* Fecha: 14/10/2026 - TAREA: 00097 - Linea: 6 - Importar el catálogo de cuentas desde Excel o CSV, con vista previa y mapeo de columnas (equivale al panel de importación de CuentasContablesForm). *@
+<PageTitle>Importar cuentas · Agrupador</PageTitle>
+<div class="page-heading"><div><p class="eyebrow">AGRUPADOR DE CONCEPTOS</p><h1>Importar cuentas contables</h1></div></div>
+@if(error!=null){<div class="notice error" role="alert">@error</div>}
+<section class="panel">
+    <div class="section-heading"><span class="step-number">1</span><div><h2>Archivo</h2></div></div>
+    <div class="form-row"><label>Archivo<InputFile OnChange="Elegir" accept=".xls,.xlsx,.csv" />
+        <small>@(archivo==null?".xls, .xlsx o .csv · hasta 25 MB":$"{archivo.Nombre} · {Math.Max(1,archivo.Tamano/1024):N0} KB · {filas} filas")</small></label></div>
+</section>
+@if(archivo!=null&&encabezados.Count>0)
+{
+    <section class="panel">
+        <div class="section-heading"><span class="step-number">2</span><div><h2>Mapeo de columnas</h2><p>Vista previa de las primeras filas.</p></div></div>
+        <div class="grid3">
+            <label>Columna → Cuenta<select class="@(errCuenta!=null?"err":"")" @bind="colCuenta"><option value="">Elegí…</option>@foreach(var h in encabezados){<option value="@h">@h</option>}</select>@if(errCuenta!=null){<div class="ferr">@errCuenta</div>}</label>
+            <label>Columna → Descripción<select class="@(errDescripcion!=null?"err":"")" @bind="colDescripcion"><option value="">Elegí…</option>@foreach(var h in encabezados){<option value="@h">@h</option>}</select>@if(errDescripcion!=null){<div class="ferr">@errDescripcion</div>}</label>
+            <label>Columna → Centro de costo<select @bind="colCentro"><option value="">(ninguna)</option>@foreach(var h in encabezados){<option value="@h">@h</option>}</select></label>
+        </div>
+        <div style="height:12px"></div>
+        <div class="table-wrap"><table><thead><tr>@foreach(var h in encabezados){<th>@h</th>}</tr></thead><tbody>
+            @foreach(var f in vista){<tr>@foreach(var v in f){<td>@v</td>}</tr>}</tbody></table></div>
+    </section>
+}
+<div class="actions"><button class="primary" @onclick="Confirmar" disabled="@(archivo==null||ocupado)">Confirmar importación</button><a class="button" href="/agrupador/cuentas">Cancelar</a></div>
+@code {
+    ArchivoSubido? archivo;
+    List<string> encabezados=new();
+    List<string[]> vista=new();
+    int filas;
+    string colCuenta="",colDescripcion="",colCentro="";
+    string? error,errCuenta,errDescripcion;
+    bool ocupado;
+    async Task Elegir(InputFileChangeEventArgs e)
+    {
+        error=errCuenta=errDescripcion=null;archivo=null;encabezados=new();vista=new();filas=0;colCuenta=colDescripcion=colCentro="";
+        try
+        {
+            archivo=await ArchivosWeb.LeerAsync(e.File);
+            encabezados=ImportacionCuentasContablesService.LeerEncabezados(archivo.Abrir(),archivo.Extension);
+            var todas=ImportacionCuentasContablesService.LeerVistaPrevia(archivo.Abrir(),archivo.Extension,200000);
+            filas=todas.Count;vista=todas.Take(5).ToList();
+            // Mismos valores por defecto que el escritorio: primera columna = cuenta, segunda = descripción, centro de costo sin elegir.
+            if(encabezados.Count>0)colCuenta=encabezados[0];
+            if(encabezados.Count>1)colDescripcion=encabezados[1];
+        }
+        catch(Exception ex){archivo=null;error="No se pudo leer el archivo: "+ex.Message;}
+    }
+    async Task Confirmar()
+    {
+        error=errCuenta=errDescripcion=null;
+        if(archivo==null){error="Elegí un archivo.";return;}
+        if(string.IsNullOrEmpty(colCuenta)){errCuenta="Elegí la columna de la cuenta";error="No se importó nada: falta indicar la columna de la cuenta.";return;}
+        if(string.IsNullOrEmpty(colDescripcion)){errDescripcion="Elegí la columna de la descripción";error="No se importó nada: falta indicar la columna de la descripción.";return;}
+        ocupado=true;
+        try
+        {
+            await Access.Require("AgrCuentasContables");
+            var lista=await Task.Run(()=>ImportacionCuentasContablesService.Leer(archivo.Abrir(),archivo.Extension,colCuenta,colDescripcion,string.IsNullOrEmpty(colCentro)?null:colCentro));
+            if(lista.Count==0){error="El archivo no tiene filas para importar.";return;}
+            int n=await Task.Run(()=>CuentaContableStorage.UpsertLote(lista));
+            Nav.NavigateTo($"/agrupador/cuentas?importadas={n}");
+        }
+        catch(UnauthorizedAccessException ex){error=ex.Message;}
+        catch(Exception ex){error="No se importó nada: "+ex.Message;}
+        finally{ocupado=false;}
+    }
+}

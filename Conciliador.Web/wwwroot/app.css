@@ -32,3 +32,25 @@ a.card:hover{border-color:#89b2b0;box-shadow:0 2px 8px #1a344014}
 .sin-acceso{text-align:center;padding:46px 20px}.sin-acceso .empty-icon{font-size:40px;color:#9ab0b8}
 @media(max-width:1100px){.cards{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:760px){.cards{grid-template-columns:1fr}}
+
+/* Fecha: 14/10/2026 - TAREA: 00097 - Linea: 6 - Piezas compartidas de las pantallas del Agrupador: acciones, búsqueda, diálogos, resúmenes y estados, según las maquetas 02 a 07. */
+.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.grow{flex:1}
+.search{max-width:340px}
+.table-wrap.tall{max-height:560px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.note{font-size:11px;color:var(--muted);margin-top:8px}
+.stats{display:flex;gap:26px;flex-wrap:wrap;margin:0 0 12px}.stats div{font-size:12px;color:var(--muted)}.stats strong{display:block;font-size:19px;color:#183d4e;font-variant-numeric:tabular-nums;margin-top:2px}
+.sum{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;background:#f2f8f7;border:1px solid #cfe0de;border-radius:7px;padding:12px 16px;margin-top:14px;font-size:12px}.sum strong{font-variant-numeric:tabular-nums;font-size:14px}
+.cols{columns:3;column-gap:20px;font-size:12px}.cols label{font-weight:400;flex-direction:row;align-items:center;gap:8px;margin-bottom:7px}
+.backdrop{position:fixed;inset:0;background:rgba(18,46,62,.45);display:grid;place-items:center;z-index:9}
+.modal{background:#fff;border-radius:10px;box-shadow:0 18px 60px rgba(0,0,0,.35);padding:24px 26px;max-width:880px;width:calc(100% - 340px);max-height:80vh;overflow:auto}
+.modal h2{margin:0 0 4px}.modal .sub{color:var(--muted);font-size:12px;margin-bottom:14px}.modal .foot{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+.err{border-color:#d9776a!important;background:#fff8f6!important}.ferr{color:#a2392a;font-size:11px;margin-top:2px;font-weight:400}
+.badge.bad{background:#fde7e3;color:#a2392a}
+tr.sel td{background:#dff0ee}tr.pend td{background:#fff8e6}
+td.cero,.cero{color:#a9b6bd}
+th.numeric{text-align:right}
+.ok{color:#24764f;font-weight:700}.no{color:#a2392a;font-weight:700}
+@media(max-width:1100px){.modal{width:calc(100% - 60px)}.grid3{grid-template-columns:1fr 1fr}.cols{columns:2}}
+@media(max-width:760px){.grid2,.grid3{grid-template-columns:1fr}.cols{columns:1}}
