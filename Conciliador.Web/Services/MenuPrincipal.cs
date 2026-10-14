@@ -20,7 +20,7 @@ public static class MenuPrincipal
         new(ModAgrupador, "agr-procesador", "▦", "Procesador de movimientos", "Importá extractos bancarios y homologá sus conceptos.", "/agrupador/procesador", "AgrProcesador", true, true),
         new(ModAgrupador, "agr-homologaciones", "≡", "Gestión de homologaciones", "Reglas que traducen el texto del banco a un concepto estándar.", "/agrupador/homologaciones", "AgrHomologaciones", true, true),
         new(ModAgrupador, "agr-consulta", "⌕", "Consulta de movimientos", "Movimientos por rango de fechas y conceptos, con exportación.", "/agrupador/consulta", "AgrHomologaciones", true, true),
-        new(ModAgrupador, "agr-externa", "⇄", "Conciliación externa", "Conciliá el extracto contra un listado del ERP, por sesiones.", "/agrupador/conciliacion-externa", "AgrConciliacion", false, true),
+        new(ModAgrupador, "agr-externa", "⇄", "Conciliación externa", "Conciliá el extracto contra un listado del ERP, por sesiones.", "/agrupador/conciliacion-externa", "AgrConciliacion", true, true),
         new(ModAgrupador, "agr-interna", "↔", "Conciliación interna", "Conciliá débitos contra créditos propios dentro del extracto.", "/agrupador/conciliacion-interna", "AgrConciliacionInterna", true, true),
         new(ModAgrupador, "agr-cuentas", "#", "Cuentas contables", "Catálogo de cuentas importado del sistema y sus conceptos.", "/agrupador/cuentas", "AgrCuentasContables", true, true),
         new(ModAgrupador, "agr-conceptos", "◇", "Conceptos estándar", "Cada concepto estándar puede tener una cuenta contable.", "/agrupador/conceptos", "AgrCuentasContables", true, true, false),

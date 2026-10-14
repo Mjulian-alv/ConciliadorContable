@@ -366,3 +366,21 @@ Diferencias entre lo construido y las maquetas aprobadas, con su motivo.
 - **Sesión finalizada:** queda de sólo lectura; Exportar sigue disponible.
 - **Excel:** el libro sale de `ConciliacionInternaExcelExporter` (importes numéricos en absoluto, fechas tipadas), que
   ahora usa también el escritorio.
+
+### Línea 4 (14/10/2026)
+
+- **Sin diálogo de selección de candidato:** el auto-conciliar de la conciliación externa ya no devuelve duplicados
+  (con varios candidatos concilia con el primero, desde la TAREA 00076), así que `SeleccionCandidatoDialog` no tiene
+  cuándo abrirse y no se construyó. Si algún día el servicio vuelve a devolver duplicados hay que agregarlo.
+- **Alta de la sesión:** una sola página con los cuatro pasos de la maqueta. El archivo externo se lee al elegirlo: si
+  tiene fechas vacías o inválidas se listan archivo, hoja, fila y valor y no se crea nada; si está bien, sugiere el
+  rango de fechas y filtra los extractos. El nombre sugerido es el del escritorio y sigue a la elección de extractos
+  mientras no se lo cambie a mano.
+- **Registros externos:** se muestran todos, con su estado (Pendiente / Conciliado), como en la maqueta
+  `04-conciliacion-externa.png`; sólo los pendientes se pueden elegir. El escritorio mostraba sólo los pendientes.
+- **Selección de movimientos:** la selección es una sola para las dos pestañas (concepto seleccionado y resto del
+  extracto); «Conciliar selección» se habilita cuando la suma coincide con el importe externo. El resaltado verde/amarillo
+  vale en las dos pestañas (el escritorio lo hacía sólo en la primera).
+- **Desconciliar** deshace el grupo completo del registro elegido en «Conciliados».
+- **Excel:** ahora sale de `ConciliacionExcelExporter.ExportarBytes` y lleva todos los importes en valor absoluto
+  (Línea 7), también el de los movimientos guardados con signo; el escritorio comparte el mismo libro.

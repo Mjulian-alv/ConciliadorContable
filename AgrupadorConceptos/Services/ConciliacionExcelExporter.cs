@@ -12,7 +12,22 @@ namespace AgrupadorConceptos.Services
         public static void Exportar(IEnumerable<ConciliacionPar> pares, IEnumerable<ConciliacionItemExterno> pendientesExternos,
             IEnumerable<MovimientoProcesado> pendientesExtracto, string ruta)
         {
-            using var libro = new XLWorkbook();
+            using var libro = Construir(pares, pendientesExternos, pendientesExtracto);
+            libro.SaveAs(ruta);
+        }
+
+        // Fecha: 14/10/2026 - TAREA: 00097 - Linea: 4 - La web descarga el libro como bytes; es el mismo libro que arma el escritorio.
+        public static byte[] ExportarBytes(IEnumerable<ConciliacionPar> pares, IEnumerable<ConciliacionItemExterno> pendientesExternos,
+            IEnumerable<MovimientoProcesado> pendientesExtracto)
+        {
+            using var libro = Construir(pares, pendientesExternos, pendientesExtracto);
+            using var ms = new System.IO.MemoryStream(); libro.SaveAs(ms); return ms.ToArray();
+        }
+
+        private static XLWorkbook Construir(IEnumerable<ConciliacionPar> pares, IEnumerable<ConciliacionItemExterno> pendientesExternos,
+            IEnumerable<MovimientoProcesado> pendientesExtracto)
+        {
+            var libro = new XLWorkbook();
             var conciliados = libro.Worksheets.Add("Conciliados");
             string[] titulos = { "Fecha Externo", "Importe Externo", "Detalle", "Fecha Extracto", "Importe Extracto",
                 "Concepto Final", "Tipo Match" };
@@ -30,7 +45,7 @@ namespace AgrupadorConceptos.Services
                         conciliados.Cell(fila, 3).Value = par.DetalleExterno ?? "";
                     }
                     EscribirFecha(conciliados, fila, 4, par.FechaExtracto);
-                    conciliados.Cell(fila, 5).Value = par.ImporteExtracto;
+                    conciliados.Cell(fila, 5).Value = Math.Abs(par.ImporteExtracto); // Fecha: 14/10/2026 - TAREA: 00097 - Linea: 7 - El Excel lleva importes en valor absoluto, también los que se guardaron con signo.
                     conciliados.Cell(fila, 6).Value = par.ConceptoFinalExtracto ?? "";
                     conciliados.Cell(fila, 7).Value = par.TipoMatch ?? "";
                     fila++;
@@ -58,14 +73,14 @@ namespace AgrupadorConceptos.Services
             {
                 pendientes.Cell(pendienteFila, 1).Value = "Extracto";
                 EscribirFecha(pendientes, pendienteFila, 2, movimiento.Fecha);
-                pendientes.Cell(pendienteFila, 3).Value = movimiento.Debitos != 0 ? movimiento.Debitos : movimiento.Creditos;
+                pendientes.Cell(pendienteFila, 3).Value = ComparadorConciliacion.ImporteEfectivo(movimiento); // Fecha: 14/10/2026 - TAREA: 00097 - Linea: 7 - Valor absoluto, como el resto de las pantallas.
                 pendientes.Cell(pendienteFila, 4).Value = movimiento.ConceptoFinal ?? "";
                 pendienteFila++;
             }
             pendientes.Column(3).Style.NumberFormat.Format = "#,##0.00";
             conciliados.Columns().AdjustToContents();
             pendientes.Columns().AdjustToContents();
-            libro.SaveAs(ruta);
+            return libro;
         }
 
         // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Operar sobre días tipados evita reinterpretaciones culturales.

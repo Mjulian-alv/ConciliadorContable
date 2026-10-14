@@ -24,15 +24,29 @@ namespace AgrupadorConceptos.Services
         public static List<ConciliacionItemExterno> Leer(string path)
         {
             string ext = Path.GetExtension(path).ToLowerInvariant();
-            return ext == ".csv" ? LeerCsv(path) : LeerExcel(path);
+            if (ext == ".csv") return LeerCsv(File.ReadAllLines(path), path);
+            using var stream = File.Open(path, FileMode.Open, FileAccess.Read);
+            return LeerExcel(stream, path);
         }
 
-        private static List<ConciliacionItemExterno> LeerExcel(string path)
+        // Fecha: 14/10/2026 - TAREA: 00097 - Linea: 4 - El archivo que llega del navegador se lee desde un flujo; el nombre sólo se usa para informar las filas con fecha inválida.
+        public static List<ConciliacionItemExterno> Leer(Stream contenido, string extension, string nombreArchivo)
+        {
+            if (string.Equals(extension, ".csv", StringComparison.OrdinalIgnoreCase))
+            {
+                using var lector = new StreamReader(contenido, leaveOpen: true);
+                var lineas = new List<string>();
+                for (string linea; (linea = lector.ReadLine()) != null;) lineas.Add(linea);
+                return LeerCsv(lineas.ToArray(), nombreArchivo);
+            }
+            return LeerExcel(contenido, nombreArchivo);
+        }
+
+        private static List<ConciliacionItemExterno> LeerExcel(Stream stream, string path)
         {
             var result = new List<ConciliacionItemExterno>();
             var incidencias = new List<IncidenciaFechaImportacion>();
 
-            using var stream = File.Open(path, FileMode.Open, FileAccess.Read);
             using var reader = ExcelReaderFactory.CreateReader(stream);
             var ds = reader.AsDataSet(new ExcelDataSetConfiguration
             { ConfigureDataTable = _ => new ExcelDataTableConfiguration { UseHeaderRow = true } });
@@ -65,11 +79,10 @@ namespace AgrupadorConceptos.Services
             return result;
         }
 
-        private static List<ConciliacionItemExterno> LeerCsv(string path)
+        private static List<ConciliacionItemExterno> LeerCsv(string[] lines, string path)
         {
             var result = new List<ConciliacionItemExterno>();
             var incidencias = new List<IncidenciaFechaImportacion>();
-            var lines = File.ReadAllLines(path);
             if (lines.Length < 2) return result;
 
             char sep = lines[0].Contains(';') ? ';' : ',';

@@ -1,0 +1,328 @@
+@page "/agrupador/conciliacion-externa"
+@attribute [Authorize(Policy="AgrConciliacion")]
+@inject AccessGuard Access
+@inject IJSRuntime JS
+@* Fecha: 14/10/2026 - TAREA: 00097 - Linea: 4 - Conciliación externa: sesiones con extractos, conceptos y un archivo externo; auto-conciliar, conciliar un registro externo con uno o varios movimientos de suma exacta, desconciliar el grupo, finalizar y exportar (equivale a ConciliacionExternForm). *@
+<PageTitle>Conciliación externa · Agrupador</PageTitle>
+<div class="page-heading"><div><p class="eyebrow">AGRUPADOR DE CONCEPTOS</p><h1>@(modo==Modo.Nueva?"Nueva sesión de conciliación externa":"Conciliación externa")</h1><p>Conciliá el extracto contra un listado externo (el ERP), por sesiones.</p></div></div>
+@if(aviso!=null){<div class="notice" role="status">@aviso</div>}
+@if(error!=null){<div class="notice error" role="alert">@error</div>}
+@if(sesiones==null){<p class="muted">Cargando…</p>}
+else if(modo==Modo.Nueva)
+{
+    <section class="panel"><div class="section-heading"><span class="step-number">1</span><div><h2>Nombre</h2></div></div>
+        <label>Nombre de la sesión<input class="@(errNombre!=null?"err":"")" @bind="nombre" maxlength="200" />@if(errNombre!=null){<div class="ferr">@errNombre</div>}</label></section>
+    <section class="panel"><div class="section-heading"><span class="step-number">2</span><div><h2>Extractos</h2><p>Elegí uno o varios extractos del rango.</p></div></div>
+        <div class="form-row"><label>Desde<input type="date" @bind="desde" @bind:after="CargarCandidatos" /></label><label>Hasta<input type="date" @bind="hasta" @bind:after="CargarCandidatos" /></label>
+            <label class="check"><input type="checkbox" @bind="mostrarTodos" @bind:after="CargarCandidatos" /> Mostrar todos</label></div>
+        <small>El rango filtra la lista de archivos; la sesión incluye los archivos elegidos completos.</small>
+        @if(errRango!=null){<div class="ferr">@errRango</div>}
+        @if(cargandoCandidatos){<p class="muted">Buscando extractos…</p>}
+        else if(candidatos.Count==0){<p class="muted">No hay extractos en ese rango. Probá con «Mostrar todos».</p>}
+        else{<div class="table-wrap" style="margin-top:12px"><table><thead><tr><th style="width:60px">Elegir</th><th>Perfil</th><th>Archivo</th><th>Desde</th><th>Hasta</th><th class="numeric">Cantidad</th></tr></thead>
+            <tbody>@foreach(var c in candidatos){<tr class="@(archivosElegidos.Contains(c.IdArchivo)?"sel":"")"><td><input type="checkbox" aria-label="Elegir @c.Archivo" checked="@archivosElegidos.Contains(c.IdArchivo)" @onchange="e=>ElegirArchivo(c.IdArchivo,(bool)e.Value!)" /></td><td>@c.Perfil</td><td>@c.Archivo</td>
+                <td>@c.Desde?.ToString("dd/MM/yyyy")</td><td>@c.Hasta?.ToString("dd/MM/yyyy")</td><td class="numeric">@c.Cantidad.ToString("N0",ar)</td></tr>}</tbody></table></div>}
+        <small>@archivosElegidos.Count seleccionados, @fueraDeRango fuera del rango</small>
+        @if(errArchivos!=null){<div class="ferr">@errArchivos</div>}</section>
+    <section class="panel"><div class="section-heading"><span class="step-number">3</span><div><h2>Conceptos a conciliar</h2></div></div>
+        @if(archivosElegidos.Count==0){<p class="muted">Elegí al menos un extracto para ver sus conceptos.</p>}
+        else if(conceptos.Count==0){<p class="muted">Los extractos elegidos no tienen conceptos finales.</p>}
+        else{<div class="grid3">@foreach(var c in conceptos){<label class="check"><input type="checkbox" checked="@marcados.Contains(c)" @onchange="e=>Marcar(c,(bool)e.Value!)" /> @c</label>}</div>}
+        @if(errConceptos!=null){<div class="ferr">@errConceptos</div>}</section>
+    <section class="panel"><div class="section-heading"><span class="step-number">4</span><div><h2>Archivo externo</h2></div></div>
+        <label>Archivo externo (ERP)<InputFile OnChange="ElegirExterno" accept=".xls,.xlsx,.csv" />
+            <small>Necesita las columnas Fecha, Importe y Concepto. @(externo==null?"":$"{externo.Nombre} · {items.Count.ToString("N0",ar)} registros")</small></label>
+        @if(sugerencia!=null){<small>@sugerencia</small>}
+        @if(errExterno!=null){<div class="ferr">@errExterno</div>}
+        @if(incidencias!=null)
+        {
+            <div class="notice error" role="alert"><strong>No se pudo leer el archivo externo.</strong> Tiene <strong>@incidencias.Count.ToString("N0",ar) fecha(s) vacía(s) o inválida(s)</strong>; no se creó la sesión. Corregí esas filas y volvé a cargarlo.</div>
+            <div class="table-wrap tall"><table><thead><tr><th>Archivo</th><th>Hoja</th><th class="numeric">Fila</th><th>Valor</th><th>Motivo</th></tr></thead>
+                <tbody>@foreach(var i in incidencias.Take(200)){<tr><td>@i.Archivo</td><td>@i.Hoja</td><td class="numeric">@i.Fila.ToString("N0",ar)</td><td>@(string.IsNullOrWhiteSpace(i.ValorOriginal)?"(vacía)":i.ValorOriginal)</td><td>@i.Motivo</td></tr>}</tbody></table></div>
+        }</section>
+    <div class="actions"><button class="primary" @onclick="Confirmar" disabled="@ocupado">✓ Confirmar</button><button @onclick="CancelarNueva">✕ Cancelar</button></div>
+}
+else
+{
+    <section class="panel"><div class="actions">
+        <label style="flex:1;min-width:260px">Sesiones<select @bind="idSeleccion" disabled="@(sesiones.Count==0)">@if(sesiones.Count==0){<option value="0">(sin sesiones)</option>}@foreach(var s in sesiones){<option value="@s.Id">@s.DisplayName</option>}</select></label>
+        <button class="primary" @onclick="IniciarNueva">Nueva</button><button @onclick="Retomar" disabled="@(idSeleccion==0)">Retomar</button><button @onclick="()=>dialogo=Dialogo.Eliminar" disabled="@(idSeleccion==0)">Eliminar</button></div></section>
+    @if(sesion==null)
+    {
+        <section class="panel"><div class="empty"><div class="empty-icon" aria-hidden="true">⇄</div><h2>Sin sesión activa</h2><p class="muted">Creá una sesión eligiendo los extractos, los conceptos y el archivo externo a conciliar.</p></div></section>
+    }
+    else
+    {
+        <div class="context-strip"><div><span class="eyebrow">SESIÓN ACTIVA</span><strong>@sesion.Nombre</strong><span class="badge @(editable?"warn":"ok")">@(editable?"En proceso":"Finalizada")</span>
+            <span>@nombresArchivos · @externos.Count.ToString("N0",ar) registros externos · @pares.Count.ToString("N0",ar) pares</span></div></div>
+        <div class="actions" style="margin:14px 0">
+            <button @onclick="AutoConciliar" disabled="@(!editable||ocupado)">Auto-conciliar</button><button class="primary" @onclick="ConciliarSeleccion" disabled="@(!PuedeConciliar||ocupado)">Conciliar selección</button>
+            <button @onclick="Desconciliar" disabled="@(!editable||ocupado)">Desconciliar</button><button @onclick="PedirFinalizar" disabled="@(!editable||ocupado)">Finalizar</button><button @onclick="Exportar" disabled="@ocupado">Exportar Excel</button></div>
+        <div class="grid2 conc" style="align-items:start">
+            <section class="panel"><h3>Archivo externo — pendientes (@pendientesExternos.ToString("N0",ar))</h3>
+                <div class="table-wrap tall" style="max-height:460px"><table><thead><tr><th>Fecha</th><th>Detalle</th><th class="numeric">Importe</th><th>Estado</th></tr></thead>
+                    <tbody><Virtualize Items="externos" Context="x" ItemSize="48"><tr class="@(selExterno==x.Id?"sel":"")" @onclick="()=>ElegirExternoItem(x)"><td>@x.Fecha.ToString("dd/MM/yyyy")</td><td>@x.Detalle</td><td class="numeric">@FormatoImporte.Absoluto(x.Importe)</td>
+                        <td>@if(x.Conciliado){<span class="badge ok">Conciliado</span>}else{<span class="badge warn">Pendiente</span>}</td></tr></Virtualize></tbody></table></div></section>
+            <section class="panel">
+                <div class="tabs"><button class="@(pestana==Pestana.Concepto?"active":"")" @onclick="()=>CambiarPestana(Pestana.Concepto)">Con concepto seleccionado (@conConcepto.Count.ToString("N0",ar))</button><button class="@(pestana==Pestana.Resto?"active":"")" @onclick="()=>CambiarPestana(Pestana.Resto)">Resto del extracto (@resto.Count.ToString("N0",ar))</button>
+                    <button class="@(pestana==Pestana.Conciliados?"active":"")" @onclick="()=>CambiarPestana(Pestana.Conciliados)">Conciliados (@pares.Count.ToString("N0",ar))</button></div>
+                @if(pestana==Pestana.Conciliados)
+                {
+                    @if(pares.Count==0){<div class="empty"><h2>Todavía no hay pares conciliados</h2><p class="muted">Usá Auto-conciliar o elegí un registro externo y sus movimientos y presioná Conciliar selección.</p></div>}
+                    else{<div class="table-wrap tall" style="max-height:460px;margin-top:14px"><table><thead><tr><th>Fecha externo</th><th class="numeric">Importe externo</th><th>Detalle</th><th>Fecha extracto</th><th class="numeric">Importe extracto</th><th>Concepto final</th><th>Tipo</th></tr></thead>
+                        <tbody><Virtualize Items="filasPares" Context="f" ItemSize="48"><tr class="@(selPar==f.Par.Id?"sel":"")" @onclick="()=>selPar=f.Par.Id"><td>@(f.Primera?f.Par.FechaExterno.ToString("dd/MM/yyyy"):"")</td><td class="numeric">@(f.Primera?FormatoImporte.Absoluto(f.Par.ImporteExterno):"")</td><td>@(f.Primera?f.Par.DetalleExterno:"")</td>
+                            <td>@f.Par.FechaExtracto.ToString("dd/MM/yyyy")</td><td class="numeric">@FormatoImporte.Absoluto(f.Par.ImporteExtracto)</td><td>@f.Par.ConceptoFinalExtracto</td><td>@f.Par.TipoMatch</td></tr></Virtualize></tbody></table></div>
+                        <p class="note">Desconciliar deshace el grupo completo del registro externo elegido.</p>}
+                }
+                else
+                {
+                    var lista=pestana==Pestana.Concepto?conConcepto:resto;
+                    @if(lista.Count==0){<div class="empty"><h2>No hay movimientos pendientes</h2><p class="muted">@(pestana==Pestana.Concepto?"Ningún movimiento de los conceptos elegidos queda sin conciliar.":"Todo el extracto de la sesión está conciliado.")</p></div>}
+                    else{<div class="table-wrap tall" style="max-height:460px;margin-top:14px"><table><thead><tr><th style="width:36px"></th><th>Perfil</th><th>Fecha</th><th>Concepto original</th><th>Concepto estándar</th><th class="numeric">Débitos</th><th class="numeric">Créditos</th><th>Concepto final</th><th>Cuenta final</th></tr></thead>
+                        <tbody><Virtualize Items="lista" Context="m" ItemSize="48"><tr class="@ClaseMovimiento(m)"><td><input type="checkbox" aria-label="Elegir movimiento" checked="@selMovimientos.Contains(m.Id)" @onchange="e=>MarcarMovimiento(m.Id,(bool)e.Value!)" /></td><td>@m.NombreBanco</td><td>@m.Fecha.ToString("dd/MM/yyyy")</td><td>@m.ConceptoOriginal</td>
+                            <td>@if(m.ConceptoEstandar==ConceptosBancarios.PendienteHomologar){<span class="badge warn">Pendiente de homologar</span>}else{@m.ConceptoEstandar}</td>
+                            <td class="numeric @(FormatoImporte.EsCero(m.Debitos)?"cero":"")">@FormatoImporte.Absoluto(m.Debitos)</td><td class="numeric @(FormatoImporte.EsCero(m.Creditos)?"cero":"")">@FormatoImporte.Absoluto(m.Creditos)</td><td>@m.ConceptoFinal</td><td>@m.CuentaFinal</td></tr></Virtualize></tbody></table></div>}
+                }
+            </section>
+        </div>
+        <div class="sum"><span>Registro externo seleccionado: <strong>@(externoElegido==null?"—":FormatoImporte.Absoluto(externoElegido.Importe))</strong></span><span>Movimientos seleccionados (@selMovimientos.Count): <strong>@FormatoImporte.Absoluto(totalSeleccion)</strong></span>
+            <span>Diferencia: <strong>@(externoElegido==null?"—":FormatoImporte.Absoluto(externoElegido.Importe-totalSeleccion))</strong>@if(PuedeConciliar){<strong> ✓ exacta</strong>}</span>
+            <span class="muted">Sólo se concilia si la suma coincide. Verde: misma fecha e importe; amarillo: sólo el importe.</span></div>
+    }
+}
+@if(dialogo==Dialogo.Eliminar&&sesionElegida!=null){<AvisoDialog Titulo="Eliminar sesión" Mensaje="@($"¿Eliminar la sesión «{sesionElegida.Nombre}» y todos sus datos?")" Nota="No se puede deshacer. Los movimientos del extracto no se tocan." Confirmar="Eliminar" Ocupado="ocupado" OnCerrar="TrasEliminar" />}
+@if(dialogo==Dialogo.Finalizar){<AvisoDialog Titulo="Finalizar sesión" Mensaje="@MensajeFinalizar" Nota="La sesión queda de sólo lectura; Exportar sigue disponible." Confirmar="Finalizar" Ocupado="ocupado" OnCerrar="TrasFinalizar" />}
+@code {
+    enum Modo{Sesiones,Nueva} enum Pestana{Concepto,Resto,Conciliados} enum Dialogo{Ninguno,Eliminar,Finalizar}
+    sealed record FilaPar(ConciliacionPar Par,bool Primera);
+    static readonly System.Globalization.CultureInfo ar=new("es-AR");
+    List<ConciliacionSesion>? sesiones;
+    ConciliacionSesion? sesion;
+    List<ConciliacionItemExterno> externos=new();
+    List<MovimientoProcesado> conConcepto=new(),resto=new();
+    List<ConciliacionPar> pares=new(); List<FilaPar> filasPares=new();
+    HashSet<int> selMovimientos=new(); decimal totalSeleccion;
+    Modo modo=Modo.Sesiones; Pestana pestana=Pestana.Concepto; Dialogo dialogo=Dialogo.Ninguno;
+    int idSeleccion,selExterno,selPar; string nombresArchivos="";
+    string? aviso,error,errNombre,errRango,errArchivos,errConceptos,errExterno,sugerencia;
+    bool ocupado,cargandoCandidatos;
+    // alta
+    string nombre="",sugerido=""; DateTime desde=DateTime.Today.AddMonths(-1),hasta=DateTime.Today; bool mostrarTodos;
+    List<ExtractoCandidato> candidatos=new(); HashSet<int> archivosElegidos=new(); List<ArchivoImportado> todosArchivos=new();
+    List<string> conceptos=new(); HashSet<string> marcados=new(StringComparer.OrdinalIgnoreCase);
+    ArchivoSubido? externo; List<ConciliacionItemExterno> items=new(); IReadOnlyList<IncidenciaFechaImportacion>? incidencias;
+    bool editable=>sesion!=null&&sesion.Estado=="EnProceso";
+    ConciliacionSesion? sesionElegida=>sesiones?.FirstOrDefault(s=>s.Id==idSeleccion);
+    ConciliacionItemExterno? externoElegido=>externos.FirstOrDefault(x=>x.Id==selExterno&&!x.Conciliado);
+    int pendientesExternos=>externos.Count(x=>!x.Conciliado);
+    int fueraDeRango=>archivosElegidos.Count(id=>candidatos.All(c=>c.IdArchivo!=id));
+    bool PuedeConciliar=>editable&&externoElegido!=null&&selMovimientos.Count>0&&totalSeleccion==Math.Abs(externoElegido.Importe);
+    string MensajeFinalizar=>pendientesExternos>0?$"Aún quedan {pendientesExternos.ToString("N0",ar)} registros externos sin conciliar. ¿Finalizar igual?":"¿Finalizar la sesión?";
+    protected override async Task OnInitializedAsync()=>await CargarSesiones();
+    async Task CargarSesiones()
+    {
+        try{sesiones=await Task.Run(()=>ConciliacionExternService.ObtenerTodasSesiones());idSeleccion=sesiones.FirstOrDefault()?.Id??0;}
+        catch(Exception ex){sesiones??=new();error="No se pudieron leer las sesiones: "+ex.Message;}
+    }
+    // ---- alta ----
+    async Task IniciarNueva()
+    {
+        aviso=error=errNombre=errRango=errArchivos=errConceptos=errExterno=sugerencia=null;incidencias=null;externo=null;items=new();
+        archivosElegidos.Clear();marcados.Clear();conceptos=new();nombre=sugerido="";mostrarTodos=false;desde=DateTime.Today.AddMonths(-1);hasta=DateTime.Today;
+        modo=Modo.Nueva;
+        try{todosArchivos=await Task.Run(()=>ArchivoImportadoStorage.ObtenerTodos());}catch(Exception ex){error="No se pudieron leer los archivos: "+ex.Message;}
+        await CargarCandidatos();
+    }
+    async Task CargarCandidatos()
+    {
+        errRango=null;
+        if(desde.Date>hasta.Date){errRango="Rango inválido: Desde es posterior a Hasta.";candidatos=new();return;}
+        cargandoCandidatos=true;
+        try{var d=desde;var h=hasta;var t=mostrarTodos;candidatos=await Task.Run(()=>SelectorExtractosService.Obtener(d,h,t));}
+        catch(Exception ex){error="No se pudieron leer los extractos: "+ex.Message;}
+        finally{cargandoCandidatos=false;}
+    }
+    async Task ElegirArchivo(int id,bool on)
+    {
+        if(on)archivosElegidos.Add(id);else archivosElegidos.Remove(id);
+        await CargarConceptos();ActualizarNombreSugerido();
+    }
+    async Task CargarConceptos()
+    {
+        if(archivosElegidos.Count==0){conceptos=new();marcados.Clear();return;}
+        try{var ids=archivosElegidos.ToList();conceptos=await Task.Run(()=>MovimientoStorage.ObtenerConceptosFinalesDistintos(ids));marcados.IntersectWith(conceptos);}
+        catch(Exception ex){error="No se pudieron leer los conceptos: "+ex.Message;}
+    }
+    // El nombre sugerido es el del escritorio; si la persona lo cambió a mano no se pisa.
+    void ActualizarNombreSugerido()
+    {
+        if(!string.IsNullOrWhiteSpace(nombre)&&nombre!=sugerido)return;
+        var elegidos=todosArchivos.Where(a=>archivosElegidos.Contains(a.Id)).Select(a=>a.NombreArchivo).ToList();
+        nombre=sugerido=elegidos.Count==0?"":$"{string.Join(", ",elegidos)} - {DateTime.Now:dd/MM HH:mm}";
+    }
+    void Marcar(string c,bool on){if(on)marcados.Add(c);else marcados.Remove(c);}
+    async Task ElegirExterno(InputFileChangeEventArgs e)
+    {
+        errExterno=null;incidencias=null;sugerencia=null;externo=null;items=new();
+        try
+        {
+            var archivo=await ArchivosWeb.LeerAsync(e.File);
+            var leidos=await Task.Run(()=>{using var s=archivo.Abrir();return ArchivoExternoReader.Leer(s,archivo.Extension,archivo.Nombre);});
+            externo=archivo;items=leidos;
+            if(leidos.Count==0){errExterno="No se encontraron registros en el archivo externo.";return;}
+            var rango=SelectorExtractosService.SugerirRango(leidos);
+            if(rango.Desde.HasValue&&rango.Hasta.HasValue)
+            {
+                desde=rango.Desde.Value;hasta=rango.Hasta.Value;mostrarTodos=false;
+                sugerencia=$"Rango sugerido por el archivo externo: {desde:dd/MM/yyyy} al {hasta:dd/MM/yyyy}.";
+            }
+            else{mostrarTodos=true;sugerencia="El archivo externo no tiene fechas interpretables; se muestran todos los extractos.";}
+            await CargarCandidatos();
+        }
+        catch(FechasImportacionException ex){incidencias=ex.Incidencias;}
+        catch(InvalidOperationException ex){errExterno="No se pudo leer el archivo externo: "+ex.Message;}
+        catch(Exception ex){errExterno="Error al leer el archivo: "+ex.Message;}
+    }
+    void CancelarNueva(){modo=Modo.Sesiones;error=null;}
+    async Task Confirmar()
+    {
+        error=errNombre=errArchivos=errConceptos=errExterno=null;
+        if(archivosElegidos.Count==0)errArchivos="Seleccioná al menos un extracto para crear la sesión.";
+        if(marcados.Count==0)errConceptos="Seleccioná al menos un concepto.";
+        if(externo==null||incidencias!=null)errExterno="Cargá el archivo externo.";
+        else if(items.Count==0)errExterno="No se encontraron registros en el archivo externo.";
+        if(string.IsNullOrWhiteSpace(nombre))errNombre="Escribí el nombre de la sesión";
+        if(errArchivos!=null||errConceptos!=null||errExterno!=null||errNombre!=null){error="No se pudo crear la sesión. Revisá los campos marcados.";return;}
+        ocupado=true;
+        try
+        {
+            await Access.Require("AgrConciliacion");
+            var n=nombre.Trim();var ids=archivosElegidos.ToList();var cs=marcados.ToList();var it=items;
+            sesion=await Task.Run(()=>ConciliacionExternService.CrearSesion(n,ids,cs,it));
+            modo=Modo.Sesiones;await CargarSesiones();idSeleccion=sesion.Id;selMovimientos.Clear();totalSeleccion=0;selExterno=selPar=0;await Refrescar();
+            aviso=$"Sesión «{sesion.Nombre}» creada con {it.Count.ToString("N0",ar)} registros externos.";
+        }
+        catch(Exception ex){error=ex is UnauthorizedAccessException?ex.Message:"No se pudo crear la sesión: "+ex.Message;}
+        finally{ocupado=false;}
+    }
+    // ---- sesión activa ----
+    async Task Retomar()
+    {
+        aviso=error=null;sesion=sesionElegida;selMovimientos.Clear();totalSeleccion=0;selExterno=selPar=0;pestana=Pestana.Concepto;await Refrescar();
+    }
+    async Task Refrescar()
+    {
+        if(sesion==null){externos=new();conConcepto=new();resto=new();pares=new();filasPares=new();nombresArchivos="";return;}
+        try
+        {
+            int id=sesion.Id;var idsArchivos=sesion.IdsArchivos;
+            var r=await Task.Run(()=>
+            {
+                var nombres=ArchivoImportadoStorage.ObtenerTodos().Where(a=>idsArchivos.Contains(a.Id)).Select(a=>a.NombreArchivo);
+                var sinConceptos=ConciliacionExternService.ObtenerMovimientosSinConcepto(id);
+                var conceptosSesion=System.Text.Json.JsonSerializer.Deserialize<List<string>>(sesion.ConceptosJson)??new List<string>();
+                var con=sinConceptos.Where(m=>conceptosSesion.Contains(m.ConceptoFinal,StringComparer.OrdinalIgnoreCase)).ToList();
+                return (N:string.Join(" · ",nombres),X:ConciliacionExternService.ObtenerTodosItemsExternos(id),C:con,Pa:ConciliacionExternService.ObtenerPares(id),Todos:sinConceptos);
+            });
+            nombresArchivos=r.N;externos=r.X;conConcepto=r.C;pares=r.Pa;resto=r.Todos;
+            var vistos=new HashSet<(int,int)>();
+            filasPares=pares.Select(p=>new FilaPar(p,vistos.Add((p.IdSesion,p.IdItemExterno)))).ToList();
+            var existentes=resto.Select(m=>m.Id).ToHashSet();selMovimientos.IntersectWith(existentes);RecalcularSeleccion();
+            if(!externos.Any(x=>x.Id==selExterno&&!x.Conciliado))selExterno=0;if(!pares.Any(p=>p.Id==selPar))selPar=0;
+        }
+        catch(Exception ex){error="No se pudo leer la sesión: "+ex.Message;}
+    }
+    async Task TrasEliminar(bool confirma)
+    {
+        dialogo=Dialogo.Ninguno;var s=sesionElegida;if(!confirma||s==null)return;
+        ocupado=true;
+        try
+        {
+            await Access.Require("AgrConciliacion");
+            await Task.Run(()=>ConciliacionExternService.EliminarSesion(s.Id));
+            if(sesion?.Id==s.Id){sesion=null;await Refrescar();}
+            await CargarSesiones();aviso=$"Sesión «{s.Nombre}» eliminada.";
+        }
+        catch(Exception ex){error=ex is UnauthorizedAccessException?ex.Message:"No se pudo eliminar la sesión: "+ex.Message;}
+        finally{ocupado=false;}
+    }
+    // ---- selección ----
+    void CambiarPestana(Pestana p){pestana=p;}
+    void ElegirExternoItem(ConciliacionItemExterno x){if(x.Conciliado)return;selExterno=x.Id;selMovimientos.Clear();RecalcularSeleccion();}
+    void MarcarMovimiento(int id,bool on){if(on)selMovimientos.Add(id);else selMovimientos.Remove(id);RecalcularSeleccion();}
+    void RecalcularSeleccion(){totalSeleccion=resto.Where(m=>selMovimientos.Contains(m.Id)).Sum(ComparadorConciliacion.ImporteEfectivo);}
+    string ClaseMovimiento(MovimientoProcesado m)
+    {
+        string sel=selMovimientos.Contains(m.Id)?"sel ":"";var x=externoElegido;
+        if(x==null)return sel.Trim();
+        bool importe=Math.Abs(x.Importe)==ComparadorConciliacion.ImporteEfectivo(m);
+        if(importe&&ComparadorConciliacion.FechasIguales(x.Fecha,m.Fecha))return sel+"match-full";
+        return importe?sel+"match-imp":sel.Trim();
+    }
+    // ---- acciones ----
+    async Task AutoConciliar()
+    {
+        aviso=error=null;ocupado=true;
+        try
+        {
+            await Access.Require("AgrConciliacion");
+            int id=sesion!.Id;
+            var (conciliados,_)=await Task.Run(()=>ConciliacionExternService.AutoConciliar(id));
+            await Refrescar();aviso=$"Auto-conciliación completada: {conciliados.ToString("N0",ar)} par(es) conciliado(s).";
+        }
+        catch(Exception ex){error=ex is UnauthorizedAccessException||ex is InvalidOperationException?ex.Message:"No se pudo auto-conciliar: "+ex.Message;await Refrescar();}
+        finally{ocupado=false;}
+    }
+    async Task ConciliarSeleccion()
+    {
+        aviso=error=null;var x=externoElegido;
+        if(x==null){error="Seleccioná un registro del archivo externo.";return;}
+        if(selMovimientos.Count==0){error="Seleccioná movimientos del extracto.";return;}
+        ocupado=true;
+        try
+        {
+            await Access.Require("AgrConciliacion");
+            int s=sesion!.Id,e=x.Id;var ids=selMovimientos.ToArray();
+            await Task.Run(()=>ConciliacionExternService.ConciliarSeleccion(s,e,ids,TipoMatch.Manual));
+            selMovimientos.Clear();selExterno=0;aviso="Registro conciliado con "+ids.Length.ToString("N0",ar)+" movimiento(s).";await Refrescar();
+        }
+        catch(Exception ex){error=ex is UnauthorizedAccessException||ex is InvalidOperationException?ex.Message:"No se pudo conciliar: "+ex.Message;await Refrescar();}
+        finally{ocupado=false;}
+    }
+    async Task Desconciliar()
+    {
+        aviso=error=null;
+        if(selPar==0){error="Elegí un par en la pestaña Conciliados.";pestana=Pestana.Conciliados;return;}
+        ocupado=true;
+        try{await Access.Require("AgrConciliacion");int id=selPar;await Task.Run(()=>ConciliacionExternService.DesconciliarPar(id));selPar=0;aviso="Grupo desconciliado.";await Refrescar();}
+        catch(Exception ex){error=ex is UnauthorizedAccessException||ex is InvalidOperationException?ex.Message:"No se pudo desconciliar: "+ex.Message;await Refrescar();}
+        finally{ocupado=false;}
+    }
+    void PedirFinalizar(){aviso=error=null;dialogo=Dialogo.Finalizar;}
+    async Task TrasFinalizar(bool confirma)
+    {
+        dialogo=Dialogo.Ninguno;if(!confirma||sesion==null)return;
+        ocupado=true;
+        try
+        {
+            await Access.Require("AgrConciliacion");
+            int id=sesion.Id;await Task.Run(()=>ConciliacionExternService.MarcarFinalizada(id));
+            sesion.Estado="Finalizada";aviso="Sesión finalizada.";await CargarSesiones();idSeleccion=sesion.Id;await Refrescar();
+        }
+        catch(Exception ex){error=ex is UnauthorizedAccessException||ex is InvalidOperationException?ex.Message:"No se pudo finalizar: "+ex.Message;await Refrescar();}
+        finally{ocupado=false;}
+    }
+    async Task Exportar()
+    {
+        aviso=error=null;if(sesion==null)return;ocupado=true;
+        try
+        {
+            int id=sesion.Id;
+            var bytes=await Task.Run(()=>ConciliacionExcelExporter.ExportarBytes(ConciliacionExternService.ObtenerPares(id),ConciliacionExternService.ObtenerItemsPendientes(id),ConciliacionExternService.ObtenerMovimientosPendientes(id)));
+            using var stream=new MemoryStream(bytes);using var referencia=new DotNetStreamReference(stream);
+            await JS.InvokeVoidAsync("downloadFile",$"Conciliacion_{DateTime.Now:yyyyMMdd_HHmm}.xlsx",referencia);
+        }
+        catch(Exception ex){error="No se pudo exportar: "+ex.Message;}
+        finally{ocupado=false;}
+    }
+}
