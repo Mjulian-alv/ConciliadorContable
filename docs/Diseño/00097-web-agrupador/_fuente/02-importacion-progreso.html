@@ -1,0 +1,44 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Procesador de movimientos</title>
+<link rel="stylesheet" href="web.css"><style>
+body{background:#f3f5f7}
+.sidebar nav a{padding:10px 14px;font-size:13px}
+.sidebar nav span{font-size:16px;width:20px;text-align:center}
+.nav-caption{padding:18px 14px 8px}
+.sidebar{overflow:hidden}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:26px}
+.card{background:#fff;border:1px solid var(--line);border-radius:9px;padding:18px 20px;display:flex;gap:14px;min-height:104px}
+.card .ico{width:40px;height:40px;border-radius:9px;background:#e6f2f0;color:#157a70;display:grid;place-items:center;font-size:19px;flex-shrink:0}
+.card h3{margin:0 0 4px;font-size:15px} .card p{margin:0;font-size:12px;color:var(--muted);line-height:1.5}
+.card.off{opacity:.55;background:#f7f9fa} .card.off .ico{background:#eceff1;color:#8a9aa3}
+.lock{display:inline-block;margin-top:7px;font-size:10px;font-weight:700;color:#8a6a2a;background:#fff1d7;border-radius:4px;padding:3px 7px}
+.grp{font-size:10px;letter-spacing:1.6px;font-weight:700;color:#647d87;margin:6px 0 12px}
+.cero{color:#a9b6bd}
+th.numeric{text-align:right}
+.stats{display:flex;gap:26px;flex-wrap:wrap;margin:0 0 12px}
+.stats div{font-size:12px;color:var(--muted)} .stats strong{display:block;font-size:19px;color:#183d4e;font-variant-numeric:tabular-nums;margin-top:2px}
+.badge.bad{background:#fde7e3;color:#a2392a}
+tr.sel td{background:#dff0ee} tr.pend td{background:#fff8e6}
+.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.split{display:grid;grid-template-columns:1fr 1.5fr;gap:18px}
+.bar{height:12px;background:#e4ecee;border-radius:7px;overflow:hidden;margin:12px 0}
+.bar i{display:block;height:100%;background:var(--teal)}
+.stepper{display:flex;gap:26px;font-size:12px;color:#83939c;margin:6px 0 8px}
+.stepper .done{color:#24764f;font-weight:600} .stepper .now{color:#157a70;font-weight:700}
+.backdrop{position:fixed;inset:0;background:rgba(18,46,62,.45);display:grid;place-items:center;z-index:9}
+.modal{background:#fff;border-radius:10px;box-shadow:0 18px 60px rgba(0,0,0,.35);padding:24px 26px;max-width:880px;width:calc(100% - 340px);max-height:80vh;overflow:hidden}
+.modal h2{margin:0 0 4px} .modal .sub{color:var(--muted);font-size:12px;margin-bottom:14px}
+.modal .foot{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+.err{border-color:#d9776a!important;background:#fff8f6!important} .ferr{color:#a2392a;font-size:11px;margin-top:2px;font-weight:400}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.cols{columns:3;column-gap:20px;font-size:12px} .cols label{font-weight:400;flex-direction:row;align-items:center;gap:8px;margin-bottom:7px}
+.pager{font-size:11px;color:var(--muted);padding:10px 4px}
+.kbd{font-size:11px;background:#eef3f5;border:1px solid #d6e0e5;border-radius:4px;padding:1px 6px}
+h1{font-size:26px}
+.note{font-size:11px;color:var(--muted);margin-top:8px}
+.sum{display:flex;justify-content:space-between;align-items:center;gap:16px;background:#f2f8f7;border:1px solid #cfe0de;border-radius:7px;padding:12px 16px;margin-top:14px;font-size:12px}
+.sum strong{font-variant-numeric:tabular-nums;font-size:14px}
+.ok{color:#24764f;font-weight:700} .no{color:#a2392a;font-weight:700}
+</style></head><body>
+<div class="app-shell"><aside class="sidebar"><a href="#" class="brand"><span class="brand-mark">C</span><span>Conciliador<small>CONTABLE</small></span></a><div class="nav-caption">INICIO</div><nav><a href="#"><span>⌂</span> Inicio</a></nav><div class="nav-caption">ARCA CLIENTE</div><nav><a href="#"><span>⇄</span> Comprobantes</a><a href="#"><span>▤</span> Perfiles de comprobantes</a><a href="#"><span>⇄</span> Percepciones y retenciones</a><a href="#"><span>▤</span> Perfiles PyR</a></nav><div class="nav-caption">AGRUPADOR DE CONCEPTOS</div><nav><a href="#" class="active"><span>▦</span> Procesador</a><a href="#"><span>≡</span> Homologaciones</a><a href="#"><span>⌕</span> Consulta de movimientos</a><a href="#"><span>⇄</span> Conciliación externa</a><a href="#"><span>↔</span> Conciliación interna</a><a href="#"><span>#</span> Cuentas contables</a><a href="#"><span>◇</span> Conceptos estándar</a></nav><div class="sidebar-foot"><span class="status-dot"></span> M. Julián<small>Alvear Supermercados</small><a href="#">Cerrar sesión ↗</a></div></aside><div class="main-shell">
+<header class="topbar"><span>Conciliador Contable <span class="muted"> / Agrupador / Procesador</span></span><span class="pill">ENTORNO CONFIGURADO</span></header>
+<main class="content"><div class="page-heading"><div><p class="eyebrow">AGRUPADOR DE CONCEPTOS</p><h1>Procesador de movimientos</h1></div></div><section class="panel"><div class="section-heading"><span class="step-number">1</span><div><h2>Importando</h2><p>BNA CA · 7.840 movimientos</p></div></div><div class="form-row"><label>Archivo del banco<input type="file" disabled><small>BNA 09-2026 A MANO MERI.xlsx</small></label><button class="primary" disabled>Importar archivo</button></div><div class="stepper"><span class="done">✔ Leyendo archivo</span><span class="done">✔ Homologando</span><span class="now">● Guardando en la base · 6.100 / 7.840</span><span>○ Mostrando datos</span></div><div class="bar"><i style="width:78%"></i></div><p class="note">Una importación por vez. Mientras corre no se puede borrar ni cargar otro archivo. Si cerrás la página, la importación se cancela y no queda nada a medias.</p></section></main></div></div></body></html>

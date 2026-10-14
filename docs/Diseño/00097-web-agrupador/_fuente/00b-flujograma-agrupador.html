@@ -1,0 +1,33 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+body{margin:0;background:#fff;font-family:"Segoe UI",Arial,sans-serif} .m{padding:24px;display:inline-block}
+</style></head><body><div class="m"><pre class="mermaid">
+flowchart TD
+    subgraph IMP[Importar un extracto - Línea 2]
+        I1([Elegir perfil de banco]) --> I2[Subir archivo .xls .xlsx .csv hasta 25 MB]
+        I2 --> I3{¿Coincide con el perfil?<br/>encabezado y columnas}
+        I3 -- No --> IE1[Error: no se encontró la columna<br/>nada se guarda]
+        I3 -- Sí --> I4{¿Todas las fechas<br/>son válidas?}
+        I4 -- No --> IE2[Se rechaza el archivo completo<br/>lista: fila, valor y motivo<br/>no se guarda nada]
+        I4 -- Sí --> I5[Reparto del importe<br/>único: negativo = débito, positivo = crédito<br/>Debe/Haber: según las columnas]
+        I5 --> I6[Homologar con las reglas del perfil]
+        I6 --> I7[Guardar cabecera y movimientos<br/>en una sola transacción]
+        I7 --> I8([Grilla con el archivo<br/>importes en absoluto, con miles y decimales])
+    end
+    I8 --> H1{¿Hay movimientos<br/>pendientes de homologar?}
+    H1 -- Sí --> H2[Homologar fila o Pendientes agrupados<br/>crear la regla - Línea 3]
+    H2 --> H3[Reaplicar reglas a los pendientes]
+    H3 --> H1
+    H1 -- No --> X1[Exportar consolidado o detalle<br/>Excel: importes numéricos, absolutos y en su columna]
+    I8 --> B1[Borrar archivo o movimientos seleccionados]
+    B1 --> B2{¿Algún movimiento está tomado por un par<br/>o alcanzado por una sesión en proceso o finalizada?}
+    B2 -- Sí --> B3[Bloqueado: se informa el motivo<br/>no se borra nada]
+    B2 -- No --> B4[Se borra en cascada<br/>y se refresca la grilla]
+    I8 --> C1[Cuentas y conceptos estándar - Línea 6]
+    C1 --> C2[Importar catálogo de cuentas<br/>asignar cuenta a un concepto estándar]
+    C2 --> H2
+
+</pre></div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true,theme:"base",flowchart:{useMaxWidth:false,htmlLabels:true,curve:"basis"},
+themeVariables:{fontFamily:"Segoe UI, Arial",fontSize:"15px",primaryColor:"#e6f2f0",primaryBorderColor:"#007e79",primaryTextColor:"#153445",lineColor:"#647786",
+secondaryColor:"#fff1d7",tertiaryColor:"#f3f5f7"}});</script></body></html>

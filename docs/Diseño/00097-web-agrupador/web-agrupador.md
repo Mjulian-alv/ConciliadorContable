@@ -1,6 +1,6 @@
 # Web: menú principal y Agrupador de Conceptos — guía de diseño (TAREA 00097)
 
-Estado: **guía para aprobar**. Sin código. Flujograma y maquetas pendientes (etapa siguiente).
+Estado: **guía aprobada** (14/10/2026). **Flujograma y maquetas hechos, pendientes de aprobación.** Sin código.
 
 ## Qué es
 
@@ -30,6 +30,7 @@ Numeración confirmada por el usuario (comentario `Linea: N` en el código):
 | 4 | **Agrupador · Conciliación externa**: sesiones con varios archivos, selector de extractos, pares 1:N, selección de candidatos, finalizar, exportar. |
 | 5 | **Agrupador · Conciliación interna**: sesiones por rango y conceptos, pendientes de débito y crédito, conciliados, finalizar, exportar. |
 | 6 | **Agrupador · Cuentas contables y conceptos estándar**: importar el catálogo desde Excel/CSV, asignar cuenta a un concepto estándar. |
+| 7 | **Importes en toda la web del Agrupador**: separador de miles y decimales, en valor absoluto y en la columna que corresponde (Débitos o Créditos). Agregado por el usuario al aprobar la guía; atraviesa las líneas 2 a 6. |
 
 Fuera de alcance: administración de usuarios en la web (no aparece en el menú), conexión online a ARCA
 y todo lo que ya existía en la web.
@@ -93,8 +94,20 @@ seleccionadas, sesión activa, resultado de la última importación.
 
 - **Fechas:** `dd/MM/yyyy` en pantalla y Excel; un archivo con alguna fecha vacía o inválida se rechaza
   completo, listando archivo, fila, valor y motivo (nada queda guardado).
-- **Importes:** importe único negativo → débito, positivo → crédito (ambos se guardan en valor absoluto);
-  Debe/Haber según las columnas del perfil.
+- **Importes al importar:** importe único negativo → débito, positivo → crédito (ambos se guardan en valor
+  absoluto); Debe/Haber según las columnas del perfil.
+- **Importes al mostrar (Línea 7):**
+  - Todo importe lleva **separador de miles y dos decimales**: `1.234.567,89`. Formato `es-AR` fijo, sin depender
+    de la cultura del servidor ni del navegador.
+  - Se muestra en **valor absoluto**, sin signo, y **en la columna que le corresponde**: un débito en
+    *Débitos* y un crédito en *Créditos*. En la otra columna se muestra `0,00` en gris. Un dato ausente
+    (nulo) queda en blanco.
+  - Vale para grillas, totales, resúmenes, diálogos, vista previa y mensajes. En Excel el importe es un
+    **número real** con formato `#,##0.00`, no un texto, con la misma regla de absoluto y columna.
+  - Es solo **presentación**: lo guardado en la base no cambia, y un dato histórico que tuviera signo se ve
+    igual de bien. Un único formateador en `AgrupadorConceptos.Core` lo aplica en todas las pantallas.
+  - Excepción: la **diferencia** (créditos − débitos) es un resultado, no un importe de movimiento; conserva su
+    signo, rotulada «Diferencia (C − D)», como ya se muestra en la consulta de conceptos (TAREA 00075).
 - **Homologación:** un movimiento toma el concepto estándar de la primera regla que coincide; `Pendiente de
   homologar` si ninguna; la cuenta final sale sólo del concepto estándar.
 - **Bajas protegidas:** un archivo o movimiento no se borra si lo toma un par de conciliación (externa o
@@ -129,7 +142,105 @@ seleccionadas, sesión activa, resultado de la última importación.
 
 ## Flujograma
 
-_Pendiente: lo produce la etapa siguiente (Mermaid + `00-flujograma.png`)._
+Tres diagramas. La fuente Mermaid (la que se lee al implementar) está acá y en `_fuente/*.mmd`; los PNG, para mostrar, están en esta carpeta.
+
+### Navegación y permisos — `00-flujograma.png`
+
+```mermaid
+flowchart TD
+    A([Usuario abre la web]) --> B{¿Sesión válida?}
+    B -- No --> L[Login: usuario y contraseña]
+    L --> C{¿Credenciales correctas?}
+    C -- No --> E1[Mensaje de error<br/>límite de intentos por IP]
+    E1 --> L
+    C -- Sí --> M
+    B -- Sí --> M[Menú principal /<br/>tarjetas según permisos]
+    M --> P{¿Qué permisos tiene?}
+    P -- Ninguno --> S[Aviso: sin permisos asignados<br/>pedir acceso a un administrador]
+    P -- ARCA --> ARCA[ARCA Cliente<br/>/arca/comprobantes · /arca/perfiles<br/>/pyr · /pyr/perfiles]
+    P -- Agrupador --> AG[Agrupador de Conceptos<br/>/agrupador/...]
+    AG --> PR[Procesador<br/>AgrProcesador]
+    AG --> HO[Homologaciones y consulta<br/>AgrHomologaciones]
+    AG --> CE[Conciliación externa<br/>AgrConciliacion]
+    AG --> CI[Conciliación interna<br/>AgrConciliacionInterna]
+    AG --> CU[Cuentas y conceptos estándar<br/>AgrCuentasContables]
+    PR --> ACC[Cada acción: importar, homologar,<br/>borrar, conciliar, exportar]
+    HO --> ACC
+    CE --> ACC
+    CI --> ACC
+    CU --> ACC
+    ARCA --> ACC
+    ACC --> G{AccessGuard.Require<br/>¿sesión activa y permiso vigente?}
+    G -- No --> D[Aviso: tu usuario no tiene permiso<br/>o la sesión venció → volver a ingresar]
+    G -- Sí --> OK([Se ejecuta la acción])
+```
+
+### Circuito de datos del Agrupador (Líneas 2, 3, 6 y 7) — `00b-flujograma-agrupador.png`
+
+```mermaid
+flowchart TD
+    subgraph IMP[Importar un extracto - Línea 2]
+        I1([Elegir perfil de banco]) --> I2[Subir archivo .xls .xlsx .csv hasta 25 MB]
+        I2 --> I3{¿Coincide con el perfil?<br/>encabezado y columnas}
+        I3 -- No --> IE1[Error: no se encontró la columna<br/>nada se guarda]
+        I3 -- Sí --> I4{¿Todas las fechas<br/>son válidas?}
+        I4 -- No --> IE2[Se rechaza el archivo completo<br/>lista: fila, valor y motivo<br/>no se guarda nada]
+        I4 -- Sí --> I5[Reparto del importe<br/>único: negativo = débito, positivo = crédito<br/>Debe/Haber: según las columnas]
+        I5 --> I6[Homologar con las reglas del perfil]
+        I6 --> I7[Guardar cabecera y movimientos<br/>en una sola transacción]
+        I7 --> I8([Grilla con el archivo<br/>importes en absoluto, con miles y decimales])
+    end
+    I8 --> H1{¿Hay movimientos<br/>pendientes de homologar?}
+    H1 -- Sí --> H2[Homologar fila o Pendientes agrupados<br/>crear la regla - Línea 3]
+    H2 --> H3[Reaplicar reglas a los pendientes]
+    H3 --> H1
+    H1 -- No --> X1[Exportar consolidado o detalle<br/>Excel: importes numéricos, absolutos y en su columna]
+    I8 --> B1[Borrar archivo o movimientos seleccionados]
+    B1 --> B2{¿Algún movimiento está tomado por un par<br/>o alcanzado por una sesión en proceso o finalizada?}
+    B2 -- Sí --> B3[Bloqueado: se informa el motivo<br/>no se borra nada]
+    B2 -- No --> B4[Se borra en cascada<br/>y se refresca la grilla]
+    I8 --> C1[Cuentas y conceptos estándar - Línea 6]
+    C1 --> C2[Importar catálogo de cuentas<br/>asignar cuenta a un concepto estándar]
+    C2 --> H2
+```
+
+### Conciliaciones (Líneas 4 y 5) — `00c-flujograma-conciliaciones.png`
+
+```mermaid
+flowchart TD
+    N([Nueva sesión externa - Línea 4]) --> N1[Elegir extractos, conceptos<br/>y archivo externo del ERP]
+    N1 --> N2{¿Archivo externo y fechas válidos?}
+    N2 -- No --> NE[Error con las filas<br/>no se crea la sesión]
+    N2 -- Sí --> S[Sesión En proceso]
+    S --> A{¿Cómo conciliar?}
+    A -- Auto --> A1[Motor: coincidencia exacta<br/>por fecha e importe]
+    A1 --> A2{¿Cuántos candidatos?}
+    A2 -- Uno --> P[Se crea el par]
+    A2 -- Varios --> A3[Diálogo: elegir uno<br/>Asignar u Omitir]
+    A3 --> P
+    A2 -- Ninguno --> R[Queda pendiente]
+    A -- Manual --> M1[Elegir un registro externo<br/>y uno o más movimientos]
+    M1 --> M2{¿La suma coincide<br/>exactamente?}
+    M2 -- No --> ME[Rechazado: muestra la diferencia]
+    M2 -- Sí --> M3{¿Alguno ya está conciliado<br/>en otra sesión en proceso?}
+    M3 -- Sí --> ME2[Rechazado: indica la sesión]
+    M3 -- No --> P
+    P --> D[Desconciliar: deshace el grupo entero]
+    D --> S
+    S --> F[Finalizar]
+    F --> F2{¿Quedan pendientes?}
+    F2 -- Sí --> F3[Pedir confirmación]
+    F3 --> FF
+    F2 -- No --> FF[Sesión Finalizada<br/>sólo lectura]
+    FF --> X([Exportar a Excel])
+    NI([Nueva sesión interna - Línea 5]) --> NI1[Rango de fechas y conceptos]
+    NI1 --> SI[Sesión En proceso]
+    SI --> PI[Pares 1:1 débito con crédito<br/>automáticos o manuales]
+    PI --> CHK{¿El par es exacto y ninguno<br/>está en otro par de la sesión?}
+    CHK -- No --> RI[Rechazado con el motivo]
+    CHK -- Sí --> PI2[Se crea el par]
+    PI2 --> FI[Finalizar y exportar]
+```
 
 ## Maquetas
 
@@ -161,6 +272,9 @@ Datos de ejemplo realistas (BNA CA, septiembre de 2026). Cada pantalla con datos
 | `06-cuentas-contables.png` · `-vacio.png` | Catálogo | 6 |
 | `06-importar-cuentas.png` · `-error.png` | Importación con mapeo de columnas | 6 |
 | `06-conceptos-estandar.png` | Conceptos y asignación de cuenta | 6 |
+| `07-importes-formato.png` | Tabla de referencia: dato guardado → cómo se muestra (miles, decimales, absoluto, columna, cero, nulo, diferencia) | 7 |
+
+Todas las maquetas de las líneas 2 a 6 ya muestran los importes con esta regla.
 
 Fuentes en `_fuente/` (HTML), de donde salen los PNG.
 
@@ -168,7 +282,8 @@ Fuentes en `_fuente/` (HTML), de donde salen los PNG.
 
 1. **Línea 1, base:** `AgrupadorConceptos.Core` (A1) sin cambiar el comportamiento; `Homologador.Tests` en
    verde antes y después. Después, infraestructura web (políticas, `AgrupadorWorkspace`, carga y descarga de
-   archivos) y el menú principal con la redirección de URLs de ARCA.
+   archivos), el **formateador de importes** de la Línea 7 con sus pruebas (negativos, cero, nulo, miles,
+   redondeo) y el menú principal con la redirección de URLs de ARCA.
 2. **Línea 6:** cuentas contables y conceptos estándar (los demás dependen de este catálogo).
 3. **Línea 3:** gestión de homologaciones y consulta de movimientos.
 4. **Línea 2:** Procesador (perfiles, importación, homologación, exportaciones, bajas).
@@ -186,3 +301,6 @@ Cada línea es un commit propio, con sus pruebas. Verificación: pruebas automá
    base configurada (`alvesu_pruebas`).
 3. **Grillas propias** (A5): tablas Blazor virtualizadas en lugar de una librería comercial.
 4. **Alcance del menú:** la «Administración de usuarios» no aparece (queda para otra tarea).
+5. **Diferencia con signo** (Línea 7): el resultado «Diferencia (C − D)» conserva su signo; todo importe de
+   movimiento va en absoluto. ¿Confirmás esa excepción?
+6. **Cero en la columna opuesta:** se muestra `0,00` en gris, no vacío. ¿Está bien?

@@ -1,0 +1,33 @@
+flowchart TD
+    N([Nueva sesión externa - Línea 4]) --> N1[Elegir extractos, conceptos<br/>y archivo externo del ERP]
+    N1 --> N2{¿Archivo externo y fechas válidos?}
+    N2 -- No --> NE[Error con las filas<br/>no se crea la sesión]
+    N2 -- Sí --> S[Sesión En proceso]
+    S --> A{¿Cómo conciliar?}
+    A -- Auto --> A1[Motor: coincidencia exacta<br/>por fecha e importe]
+    A1 --> A2{¿Cuántos candidatos?}
+    A2 -- Uno --> P[Se crea el par]
+    A2 -- Varios --> A3[Diálogo: elegir uno<br/>Asignar u Omitir]
+    A3 --> P
+    A2 -- Ninguno --> R[Queda pendiente]
+    A -- Manual --> M1[Elegir un registro externo<br/>y uno o más movimientos]
+    M1 --> M2{¿La suma coincide<br/>exactamente?}
+    M2 -- No --> ME[Rechazado: muestra la diferencia]
+    M2 -- Sí --> M3{¿Alguno ya está conciliado<br/>en otra sesión en proceso?}
+    M3 -- Sí --> ME2[Rechazado: indica la sesión]
+    M3 -- No --> P
+    P --> D[Desconciliar: deshace el grupo entero]
+    D --> S
+    S --> F[Finalizar]
+    F --> F2{¿Quedan pendientes?}
+    F2 -- Sí --> F3[Pedir confirmación]
+    F3 --> FF
+    F2 -- No --> FF[Sesión Finalizada<br/>sólo lectura]
+    FF --> X([Exportar a Excel])
+    NI([Nueva sesión interna - Línea 5]) --> NI1[Rango de fechas y conceptos]
+    NI1 --> SI[Sesión En proceso]
+    SI --> PI[Pares 1:1 débito con crédito<br/>automáticos o manuales]
+    PI --> CHK{¿El par es exacto y ninguno<br/>está en otro par de la sesión?}
+    CHK -- No --> RI[Rechazado con el motivo]
+    CHK -- Sí --> PI2[Se crea el par]
+    PI2 --> FI[Finalizar y exportar]

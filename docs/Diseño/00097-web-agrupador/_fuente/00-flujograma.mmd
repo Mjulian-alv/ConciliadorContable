@@ -1,0 +1,26 @@
+flowchart TD
+    A([Usuario abre la web]) --> B{¿Sesión válida?}
+    B -- No --> L[Login: usuario y contraseña]
+    L --> C{¿Credenciales correctas?}
+    C -- No --> E1[Mensaje de error<br/>límite de intentos por IP]
+    E1 --> L
+    C -- Sí --> M
+    B -- Sí --> M[Menú principal /<br/>tarjetas según permisos]
+    M --> P{¿Qué permisos tiene?}
+    P -- Ninguno --> S[Aviso: sin permisos asignados<br/>pedir acceso a un administrador]
+    P -- ARCA --> ARCA[ARCA Cliente<br/>/arca/comprobantes · /arca/perfiles<br/>/pyr · /pyr/perfiles]
+    P -- Agrupador --> AG[Agrupador de Conceptos<br/>/agrupador/...]
+    AG --> PR[Procesador<br/>AgrProcesador]
+    AG --> HO[Homologaciones y consulta<br/>AgrHomologaciones]
+    AG --> CE[Conciliación externa<br/>AgrConciliacion]
+    AG --> CI[Conciliación interna<br/>AgrConciliacionInterna]
+    AG --> CU[Cuentas y conceptos estándar<br/>AgrCuentasContables]
+    PR --> ACC[Cada acción: importar, homologar,<br/>borrar, conciliar, exportar]
+    HO --> ACC
+    CE --> ACC
+    CI --> ACC
+    CU --> ACC
+    ARCA --> ACC
+    ACC --> G{AccessGuard.Require<br/>¿sesión activa y permiso vigente?}
+    G -- No --> D[Aviso: tu usuario no tiene permiso<br/>o la sesión venció → volver a ingresar]
+    G -- Sí --> OK([Se ejecuta la acción])

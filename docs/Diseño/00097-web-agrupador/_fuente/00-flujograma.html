@@ -1,0 +1,35 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+body{margin:0;background:#fff;font-family:"Segoe UI",Arial,sans-serif} .m{padding:24px;display:inline-block}
+</style></head><body><div class="m"><pre class="mermaid">
+flowchart TD
+    A([Usuario abre la web]) --> B{¿Sesión válida?}
+    B -- No --> L[Login: usuario y contraseña]
+    L --> C{¿Credenciales correctas?}
+    C -- No --> E1[Mensaje de error<br/>límite de intentos por IP]
+    E1 --> L
+    C -- Sí --> M
+    B -- Sí --> M[Menú principal /<br/>tarjetas según permisos]
+    M --> P{¿Qué permisos tiene?}
+    P -- Ninguno --> S[Aviso: sin permisos asignados<br/>pedir acceso a un administrador]
+    P -- ARCA --> ARCA[ARCA Cliente<br/>/arca/comprobantes · /arca/perfiles<br/>/pyr · /pyr/perfiles]
+    P -- Agrupador --> AG[Agrupador de Conceptos<br/>/agrupador/...]
+    AG --> PR[Procesador<br/>AgrProcesador]
+    AG --> HO[Homologaciones y consulta<br/>AgrHomologaciones]
+    AG --> CE[Conciliación externa<br/>AgrConciliacion]
+    AG --> CI[Conciliación interna<br/>AgrConciliacionInterna]
+    AG --> CU[Cuentas y conceptos estándar<br/>AgrCuentasContables]
+    PR --> ACC[Cada acción: importar, homologar,<br/>borrar, conciliar, exportar]
+    HO --> ACC
+    CE --> ACC
+    CI --> ACC
+    CU --> ACC
+    ARCA --> ACC
+    ACC --> G{AccessGuard.Require<br/>¿sesión activa y permiso vigente?}
+    G -- No --> D[Aviso: tu usuario no tiene permiso<br/>o la sesión venció → volver a ingresar]
+    G -- Sí --> OK([Se ejecuta la acción])
+
+</pre></div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true,theme:"base",flowchart:{useMaxWidth:false,htmlLabels:true,curve:"basis"},
+themeVariables:{fontFamily:"Segoe UI, Arial",fontSize:"15px",primaryColor:"#e6f2f0",primaryBorderColor:"#007e79",primaryTextColor:"#153445",lineColor:"#647786",
+secondaryColor:"#fff1d7",tertiaryColor:"#f3f5f7"}});</script></body></html>
