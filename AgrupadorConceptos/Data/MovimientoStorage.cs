@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
-using Telerik.Windows.Documents.Spreadsheet.Expressions.Functions;
+// Fecha: 14/10/2026 - TAREA: 00097 - Linea: 1 - Se retira un using de Telerik que no se usaba: el Core no referencia WinForms.
 
 namespace AgrupadorConceptos.Data
 {

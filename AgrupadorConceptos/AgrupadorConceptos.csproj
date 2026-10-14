@@ -15,6 +15,10 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
+    <!-- Fecha: 14/10/2026 - TAREA: 00097 - Linea: 1 - Modelos, servicios y datos viven en AgrupadorConceptos.Core, compartido con la web; acá quedan las pantallas y FechasPresentacion (usa Telerik). -->
+    <Compile Remove="Models/**/*.cs;Data/**/*.cs;Services/**/*.cs;ModuleInit.cs" />
+    <Compile Include="Services/FechasPresentacion.cs" />
+    <ProjectReference Include="..\AgrupadorConceptos.Core\AgrupadorConceptos.Core.csproj" />
     <ProjectReference Include="..\Conciliador.Comun\Conciliador.Comun.csproj" />
   </ItemGroup>
 </Project>

@@ -2,6 +2,7 @@
   <!-- Fecha: 05/10/2026 - TAREA: 00064 - Linea: 1 - Solución independiente del homologador. -->
   <Project Path="Conciliador.Web/Conciliador.Web.csproj" />
   <Project Path="ArcaCliente.Core/ArcaCliente.Core.csproj" />
+  <Project Path="AgrupadorConceptos.Core/AgrupadorConceptos.Core.csproj" />
   <Project Path="Conciliador.Comun/Conciliador.Comun.csproj" />
   <Project Path="Tools/ArcaWeb.Tests/ArcaWeb.Tests.csproj" />
 </Solution>

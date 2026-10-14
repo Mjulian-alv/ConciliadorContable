@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Fecha: 14/10/2026 - TAREA: 00097 - Linea: 1 - Los modelos, servicios y datos del Agrupador se compilan una sola vez para el escritorio y la web; los archivos siguen en AgrupadorConceptos (se vinculan, no se copian). -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>AgrupadorConceptos.Core</AssemblyName>
+    <RootNamespace>AgrupadorConceptos</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../AgrupadorConceptos/Models/**/*.cs" Link="Models/%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="../AgrupadorConceptos/Data/**/*.cs" Link="Data/%(RecursiveDir)%(Filename)%(Extension)" />
+    <!-- FechasPresentacion usa Telerik (formato de columnas de grilla): pertenece a la capa WinForms. -->
+    <Compile Include="../AgrupadorConceptos/Services/**/*.cs" Exclude="../AgrupadorConceptos/Services/FechasPresentacion.cs" Link="Services/%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="../AgrupadorConceptos/ModuleInit.cs" Link="ModuleInit.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Dapper" Version="2.1.35" />
+    <PackageReference Include="ExcelDataReader" Version="3.6.0" />
+    <PackageReference Include="ExcelDataReader.DataSet" Version="3.6.0" />
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="8.0.0" />
+    <PackageReference Include="ClosedXML" Version="0.105.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Conciliador.Comun/Conciliador.Comun.csproj" />
+  </ItemGroup>
+</Project>
