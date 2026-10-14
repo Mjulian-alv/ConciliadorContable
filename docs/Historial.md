@@ -1144,3 +1144,89 @@ conciliación asociadas»). Se recompiló el Release (14/10 10:54), con `concili
 `secrets.config` intactos (comparados por hash), y el usuario borró el archivo sin problemas.
 Pendiente: copiar esa carpeta `bin/Release` a los demás puestos, sin pisar su `conciliador.db` ni
 su `secrets.config`. La rama `feature/00096-baja-archivo-consulta` se borró el 13/10.
+
+## TAREA 00097 — 14/10/2026 — Menú principal y Agrupador de Conceptos en la web
+
+Pedido del usuario (textual): «En la web (Conciliador.Web) solo se hizo ArcaCliente. Completar el
+trabajo: crear el menú principal de ConciliadorContable en la web y pasar el Agrupador de
+Conceptos con todas sus ventanas y funcionalidades. Ya hay VPN para verificar el SQL.» Al aprobar
+la guía agregó: «y ya que esta agrega que todos los importes deben tener separador de miles y
+decimales y estar en absoluto en su columna correspondiente». Numeración definida con el usuario:
+
+1. Menú principal de ConciliadorContable en la web (y biblioteca común `AgrupadorConceptos.Core`).
+2. Procesador de movimientos: perfiles de banco, importar extracto, grilla, homologación
+   individual y masiva, consolidado y detalle a Excel, bajas.
+3. Gestión de homologaciones (con baja con impacto) y consulta de movimientos por conceptos.
+4. Conciliación externa.
+5. Conciliación interna.
+6. Cuentas contables (con importación) y conceptos estándar.
+7. Importes con separador de miles y dos decimales, en valor absoluto y en la columna que
+   corresponde (la diferencia C − D conserva el signo; el cero se muestra `0,00` en gris; el
+   dato nulo queda en blanco).
+
+**Diseño previo.** Guía, flujogramas (Mermaid + PNG) y 37 maquetas en
+`docs/Diseño/00097-web-agrupador/`. Las maquetas las hizo Claude (Codex sin saldo) y el usuario
+las aprobó («apruebo flujogramas y maquetas, seguí con el código»). Los desvíos respecto de las
+maquetas, línea por línea y con su motivo, están en «Ajustes al implementar» de la guía.
+
+**Lo que se hizo (commits en `feature/00097-web-agrupador`).**
+
+- `2229831` / `c0cdf02` (líneas 1 y 7): `AgrupadorConceptos.Core` compila por vínculo los modelos,
+  datos y servicios de `AgrupadorConceptos` (misma receta que `ArcaCliente.Core`, TAREA 00064);
+  el WinForms los excluye y referencia el Core. Menú principal por módulo y permisos
+  (`MenuPrincipal`, estados Disponible / Sin permiso / Próximamente / Requiere base), catálogo
+  `Permisos`, `FormatoImporte` (un único formateador `es-AR` fijo).
+- `8e4781e` (línea 6): cuentas contables, importación desde Excel con vista previa, conceptos
+  estándar y asignación de cuenta.
+- `d28862f` (línea 3): homologaciones (alta, edición, baja con impacto por archivo) y consulta de
+  movimientos con exportación.
+- `53da1c0` (línea 2): Procesador (`Procesador.razor` y su código, `PerfilBancoEditor`, diálogos de
+  aviso, pendientes agrupados y consolidado, `AgrupadorWorkspace`). Importa desde un flujo
+  (`ImportacionService.ImportarArchivo`), con avance por pasos y rechazo del archivo completo ante
+  una fecha inválida.
+- `5f503c6` (línea 5): conciliación interna (`ConciliacionInterna.razor`, desempate de candidatos,
+  `ConciliacionInternaExcelExporter`, que ahora usa también el escritorio).
+- `f589319` (línea 4): conciliación externa (`ConciliacionExterna.razor`,
+  `ArchivoExternoReader.Leer(Stream…)`, `ConciliacionExcelExporter.ExportarBytes`).
+- Las mutaciones de la web piden `AccessGuard.Require(permiso)` y reutilizan el bloqueo
+  `bancos.Conciliacion.Mutacion` de los almacenes, así que web y escritorio pueden convivir. Los
+  formularios WinForms de las conciliaciones, `ConciliacionExcelExporter` y el resto del código
+  del escritorio siguen funcionando igual salvo lo anotado abajo.
+
+**Cambios que alcanzan al escritorio.** `ConciliacionExcelExporter` y el Excel de la conciliación
+interna ahora escriben todos los importes en valor absoluto (línea 7), también los movimientos
+que se guardaron con signo; `ConciliacionInternaForm.btnExportar_Click` usa el exportador común.
+No se tocó `ConciliacionInternaForm.Designer.cs`: en el árbol de trabajo queda una modificación
+ajena a esta tarea (el diseñador de Visual Studio lo reescribió) que no se commiteó; falta que el
+usuario diga si se restaura.
+
+**Pruebas.** `Tools/AgrupadorWeb.Tests` (consola, net10): 38 de 38 — formato de importes, menú y
+permisos, login, cuentas, Excel, importación desde flujo, conciliación interna (auto-conciliar
+entre extractos distintos con desempate, manual, desconciliar, finalizar con la cuenta del banco
+contrario, Excel) y conciliación externa (lector del archivo externo en Excel y CSV, fechas
+inválidas, auto-conciliar, grupo 1:N de suma exacta, desconciliar el grupo, finalizar, Excel).
+Regresión: `ArcaWeb.Tests` 34/34, `Homologador.Tests` 15/15 (`CONCILIACION_SKIP_LEGACY_UI=1`),
+`FechasBancarias.Tests` grupo importación correcto (migración no se volvió a correr en esta tarea). **No se pudo correr el grupo
+«presentacion»** de `FechasBancarias.Tests`: la instancia LocalDB agota el tiempo en el bulk copy
+(falta de memoria de la máquina); no toca lo cambiado. Ambas soluciones compilan sin errores.
+
+**Verificación en el navegador** contra `alvesu_pruebas`, con un usuario y una clave descartables:
+todas las pantallas de las líneas 1 a 6 con datos reales, incluidos los estados vacío y de error.
+Se importó el extracto real `BNA 09-2026 A MANO MERI.xlsx` (7.840 movimientos; 330 homologados y
+7.510 pendientes; débitos 253.073.251,55, créditos 255.024.569,21), se filtró, ordenó y exportó, y
+se borró el archivo. En la conciliación interna se creó una sesión sobre julio, se auto-concilió
+(el desempate abrió y un par se rechazó por estar tomado por otra sesión en proceso, con su aviso),
+se desconcilió, se exportó y se eliminó. En la externa se probó un archivo con fechas inválidas
+(2 incidencias, no se crea nada) y uno válido (rango sugerido, resaltado, suma exacta, conciliar,
+auto-conciliar, desconciliar, finalizar cancelado, exportar, eliminar). Todos los datos de prueba
+se borraron; la base conserva sus sesiones reales. Se encontró y corrigió un desborde horizontal de
+las dos columnas de la conciliación externa; esa corrección de CSS quedó sin reverificar a ojo.
+Límite: no se probó una conciliación 1:N desde la pantalla (sí en la prueba automática).
+
+**Revisión de Codex: omitida** por decisión del usuario (Codex sin saldo). Sin archivos en
+`Docs/Revisiones/`.
+
+**Pendiente.** La rama no se mergeó ni se subió: decide el usuario. Quedan abiertas las decisiones
+5 y 6 de la guía (importe único con signo y cero en la columna opuesta), que se dieron por aceptadas
+al aprobar las maquetas. Falta desplegar la web y, para el escritorio, copiar `bin/Release` a los
+puestos si se quiere el Excel con importes en absoluto.
