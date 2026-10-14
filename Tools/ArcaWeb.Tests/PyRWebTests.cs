@@ -97,7 +97,7 @@ static class PyRWebTests
             var capture=new CaptureAuth();using var services=new ServiceCollection().AddSingleton<IAuthenticationService>(capture).BuildServiceProvider();
             var context=new DefaultHttpContext{RequestServices=services};var users=new UserStorage(path);var sessions=new SessionRegistry();
             var model=new LoginModel(users,new WebMode(false),sessions,NullLogger<LoginModel>.Instance){Username="pyr",Password="prueba",PageContext=new PageContext{HttpContext=context}};
-            var response=Wait(model.OnPostAsync());Check(capture.SignedIn&&response is LocalRedirectResult redirect&&redirect.Url=="/pyr");
+            var response=Wait(model.OnPostAsync());Check(capture.SignedIn&&response is LocalRedirectResult redirect&&redirect.Url=="/"); // Fecha: 14/10/2026 - TAREA: 00097 - Linea: 1 - Todos aterrizan en el menú principal.
             var auth=new Auth{Principal=Wait(users.ValidateAsync("pyr","prueba"))!.Principal()};sessions.Register(auth.Principal);
             var access=new AccessGuard(auth,users,new WebMode(false),sessions);Wait(access.Require("ArcaPyR"));
             try{Wait(access.Require("ArcaOffline"));throw new Exception("Permitió comprobantes");}catch(UnauthorizedAccessException){}

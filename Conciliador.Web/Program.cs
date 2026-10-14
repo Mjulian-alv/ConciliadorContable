@@ -20,6 +20,8 @@ if(demo){builder.Services.AddSingleton<IWebConfigurationStore,DemoConfigurationS
 else {
     string connection=builder.Configuration.GetConnectionString("Arca")??throw new InvalidOperationException("Configurá ConnectionStrings:Arca o activá Web:Demo en Development.");
     if(string.IsNullOrWhiteSpace(builder.Configuration["Web:UsersDatabasePath"]))throw new InvalidOperationException("Configurá Web:UsersDatabasePath.");
+    // Fecha: 14/10/2026 - TAREA: 00097 - Linea: 1 - El Agrupador usa SqlDb: se fija una vez al arrancar, con la misma conexión explícita de ARCA.
+    Conciliador.Comun.SqlDb.ConnectionString=connection;
     builder.Services.AddSingleton<IWebConfigurationStore>(new SqlConfigurationStorage(connection));
     builder.Services.AddSingleton<IPyRProfileStore>(new SqlPyRProfileStorage(connection));
 }
@@ -27,16 +29,17 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     o.LoginPath="/account/login";o.AccessDeniedPath="/account/login";o.Cookie.Name="Conciliador.Web.Auth";o.Cookie.HttpOnly=true;o.Cookie.SameSite=SameSiteMode.Strict;o.Cookie.SecurePolicy=demo?CookieSecurePolicy.SameAsRequest:CookieSecurePolicy.Always;o.ExpireTimeSpan=TimeSpan.FromHours(8);o.SlidingExpiration=false;
     o.Events.OnValidatePrincipal=async context=>{if(!context.HttpContext.RequestServices.GetRequiredService<SessionRegistry>().IsActive(context.Principal!) || !demo && await context.HttpContext.RequestServices.GetRequiredService<UserStorage>().Find(context.Principal?.Identity?.Name??"")==null)context.RejectPrincipal();};
 });
-builder.Services.AddAuthorization(o=>{
-    foreach(var permission in new[]{"ArcaOffline","ArcaPerfiles","ArcaEquivalencias","ArcaPyR"})o.AddPolicy(permission,p=>p.RequireAuthenticatedUser().RequireAssertion(c=>c.User.IsInRole("Admin")||c.User.HasClaim("permission",permission)));
-});
+// Fecha: 14/10/2026 - TAREA: 00097 - Linea: 1 - Las políticas de ARCA y del Agrupador salen de un único catálogo de permisos.
+builder.Services.AddAuthorization(Permisos.Registrar);
 builder.Services.AddCascadingAuthenticationState();builder.Services.AddScoped<AccessGuard>();builder.Services.AddScoped<Workspace>();
 builder.Services.AddScoped<PyRWorkspace>();
 builder.Services.AddRazorComponents().AddInteractiveServerComponents(o=>{o.DisconnectedCircuitRetentionPeriod=TimeSpan.FromMinutes(2);});
 builder.Services.AddRazorPages();
 builder.Services.AddRateLimiter(o=>{o.RejectionStatusCode=429;o.AddPolicy("login",context=>RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString()??"unknown",_=>new FixedWindowRateLimiterOptions{PermitLimit=10,Window=TimeSpan.FromMinutes(1),QueueLimit=0}));});
 var app=builder.Build();
-if(!demo){app.UseExceptionHandler("/Error");app.UseHsts();app.UseHttpsRedirection();await ((SqlConfigurationStorage)app.Services.GetRequiredService<IWebConfigurationStore>()).Initialize();await ((SqlPyRProfileStorage)app.Services.GetRequiredService<IPyRProfileStore>()).Initialize();}
+if(!demo){app.UseExceptionHandler("/Error");app.UseHsts();app.UseHttpsRedirection();await ((SqlConfigurationStorage)app.Services.GetRequiredService<IWebConfigurationStore>()).Initialize();await ((SqlPyRProfileStorage)app.Services.GetRequiredService<IPyRProfileStore>()).Initialize();
+    // Fecha: 14/10/2026 - TAREA: 00097 - Linea: 1 - Si la base no está migrada a fechas tipadas, el arranque se detiene con el mensaje que pide migrar.
+    AgrupadorConceptos.Data.DatabaseHelper.InitializeDatabase();}
 if(demo)app.Use(async(ctx,next)=>{if(ctx.Connection.RemoteIpAddress==null||!System.Net.IPAddress.IsLoopback(ctx.Connection.RemoteIpAddress)){ctx.Response.StatusCode=403;return;}await next();});
 app.Use(async(ctx,next)=>{ctx.Response.Headers["X-Content-Type-Options"]="nosniff";ctx.Response.Headers["X-Frame-Options"]="DENY";await next();});
 app.UseAuthentication();app.UseAuthorization();app.UseRateLimiter();app.UseAntiforgery();

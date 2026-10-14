@@ -5,4 +5,5 @@
   <Project Path="AgrupadorConceptos.Core/AgrupadorConceptos.Core.csproj" />
   <Project Path="Conciliador.Comun/Conciliador.Comun.csproj" />
   <Project Path="Tools/ArcaWeb.Tests/ArcaWeb.Tests.csproj" />
+  <Project Path="Tools/AgrupadorWeb.Tests/AgrupadorWeb.Tests.csproj" />
 </Solution>

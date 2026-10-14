@@ -8,5 +8,5 @@
   </PropertyGroup>
 
   <!-- Fecha: 05/10/2026 - TAREA: 00064 - Linea: 1 - Motor común y usuarios actuales. -->
-  <ItemGroup><ProjectReference Include="../ArcaCliente.Core/ArcaCliente.Core.csproj" /><PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" /><PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" /></ItemGroup>
+  <ItemGroup><ProjectReference Include="../ArcaCliente.Core/ArcaCliente.Core.csproj" /><!-- Fecha: 14/10/2026 - TAREA: 00097 - Linea: 1 - El Agrupador comparte con el escritorio sus modelos, servicios y datos. --><ProjectReference Include="../AgrupadorConceptos.Core/AgrupadorConceptos.Core.csproj" /><PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" /><PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" /></ItemGroup>
 </Project>

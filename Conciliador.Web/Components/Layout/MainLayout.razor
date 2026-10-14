@@ -1,14 +1,39 @@
 @inherits LayoutComponentBase
 @inject Conciliador.Web.Security.WebMode Mode
-@* Fecha: 06/10/2026 - TAREA: 00072 - Linea: 1 - Cada circuito muestra sus accesos según el permiso existente del usuario. *@
+@inject AuthenticationStateProvider Authentication
+@inject NavigationManager Navigation
+@using Conciliador.Web.Services
+@* Fecha: 14/10/2026 - TAREA: 00097 - Linea: 1 - Menú lateral por módulos, generado desde el catálogo de accesos y los permisos del usuario. *@
 <div class="app-shell"><aside class="sidebar">
-<AuthorizeView Context="identity"><a href="@(identity.User.IsInRole("Admin")||identity.User.HasClaim("permission","ArcaOffline")?"/":"/pyr")" class="brand"><span class="brand-mark">C</span><span>Conciliador<small>CONTABLE</small></span></a></AuthorizeView>
-<div class="nav-caption">ESPACIO DE TRABAJO</div><nav>
-<AuthorizeView Policy="ArcaOffline"><NavLink href="/" Match="NavLinkMatch.All"><span>⇄</span> Comprobantes</NavLink></AuthorizeView>
-<AuthorizeView Policy="ArcaPerfiles"><NavLink href="/perfiles"><span>▤</span> Perfiles de comprobantes</NavLink></AuthorizeView>
-<AuthorizeView Policy="ArcaPyR"><NavLink href="/pyr" Match="NavLinkMatch.All"><span>⇄</span> Percepciones y retenciones</NavLink><NavLink href="/pyr/perfiles"><span>▤</span> Perfiles PyR</NavLink></AuthorizeView>
-</nav><div class="sidebar-foot"><span class="status-dot"></span> ArcaCliente web<small>Conciliación fiscal</small><a href="/account/logout" data-enhance-nav="false">Cerrar sesión ↗</a></div></aside>
-<div class="main-shell"><header class="topbar"><span>ArcaCliente <span class="muted"> / Conciliación fiscal</span></span><span class="pill">@(Mode.Demo?"DEMOSTRACIÓN LOCAL":"ENTORNO CONFIGURADO")</span></header>
+<a href="/" class="brand"><span class="brand-mark">C</span><span>Conciliador<small>CONTABLE</small></span></a>
+<div class="nav-caption">INICIO</div><nav><NavLink href="/" Match="NavLinkMatch.All"><span>⌂</span> Inicio</NavLink></nav>
+@foreach(var modulo in new[]{MenuPrincipal.ModArca,MenuPrincipal.ModAgrupador})
+{
+    var accesos=lateral.Where(a=>a.Modulo==modulo).ToList();
+    if(accesos.Count==0)continue;
+    <div class="nav-caption">@modulo</div><nav>
+    @foreach(var a in accesos){<NavLink href="@a.Ruta" Match="NavLinkMatch.All"><span>@a.Glifo</span> @a.Titulo</NavLink>}
+    </nav>
+}
+<div class="sidebar-foot"><span class="status-dot"></span> @nombre<small>Alvear Supermercados</small><a href="/account/logout" data-enhance-nav="false">Cerrar sesión ↗</a></div></aside>
+<div class="main-shell"><header class="topbar"><span>Conciliador Contable @if(seccion!=null){<span class="muted"> / @seccion</span>}</span><span class="pill">@(Mode.Demo?"DEMOSTRACIÓN LOCAL":"ENTORNO CONFIGURADO")</span></header>
 @if(Mode.Demo){<div class="demo-bar">Datos de ejemplo · La configuración de demostración se conserva hasta reiniciar la aplicación.</div>}
-<main class="content">@Body</main><footer>Comprobantes · Percepciones y retenciones · Motor compartido</footer></div></div>
+<main class="content">@Body</main><footer>Conciliador Contable · ARCA Cliente · Agrupador de Conceptos</footer></div></div>
 <div id="blazor-error-ui" role="alert">Se interrumpió la sesión. <a href="/account/login">Volver a ingresar</a></div>
+@code {
+    List<Acceso> lateral=new();
+    string nombre="";
+    string? seccion;
+    protected override async Task OnInitializedAsync()
+    {
+        var usuario=(await Authentication.GetAuthenticationStateAsync()).User;
+        lateral=MenuPrincipal.Lateral(usuario,Mode.Demo).ToList();
+        nombre=usuario.FindFirst("display_name")?.Value??usuario.Identity?.Name??"";
+    }
+    protected override void OnParametersSet()
+    {
+        var ruta="/"+Navigation.ToBaseRelativePath(Navigation.Uri).Split('?','#')[0].TrimEnd('/');
+        var acceso=MenuPrincipal.Accesos.FirstOrDefault(a=>a.Ruta==ruta);
+        seccion=acceso==null?null:(acceso.Modulo==MenuPrincipal.ModArca?"ARCA":"Agrupador")+" / "+acceso.Titulo;
+    }
+}

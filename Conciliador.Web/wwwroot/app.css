@@ -15,3 +15,20 @@ h1:focus{outline:none}
 
 /* Fecha: 06/10/2026 - TAREA: 00072 - Linea: 2,4 - Las cuentas y los cinco estados conservan legibilidad en la pantalla web. */
 .pyr-account-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:18px}.pyr-account-grid .subpanel{min-width:0}.pyr-account-grid h3{margin-top:0}.pyr-section-title{margin-top:30px}.pyr-profile-actions{gap:12px;flex-wrap:wrap;align-items:center}.pyr-profile-actions span{margin-right:auto}.pyr-unrecognized{background:#fff3cf}.pyr-states{grid-template-columns:repeat(5,minmax(0,1fr))}.pyr-states .stat{background:var(--state-color)}.sidebar nav a{white-space:normal}section.panel{margin-bottom:20px}@media(max-width:1100px){.pyr-states{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:760px){.pyr-states{grid-template-columns:repeat(2,minmax(0,1fr))}.sidebar nav{flex-wrap:wrap}}
+
+/* Fecha: 14/10/2026 - TAREA: 00097 - Linea: 1 - Menú principal por módulos y menú lateral agrupado, según las maquetas 01. */
+.sidebar{overflow-y:auto}
+.sidebar nav a{padding:10px 14px}
+.sidebar nav span{font-size:16px;width:20px;text-align:center}
+.nav-caption{padding:18px 14px 8px}
+.grp{font-size:10px;letter-spacing:1.6px;font-weight:700;color:#647d87;margin:6px 0 12px}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:26px}
+.card{background:#fff;border:1px solid var(--line);border-radius:9px;padding:18px 20px;display:flex;gap:14px;min-height:104px;color:inherit}
+a.card:hover{border-color:#89b2b0;box-shadow:0 2px 8px #1a344014}
+.card .ico{width:40px;height:40px;border-radius:9px;background:#e6f2f0;color:#157a70;display:grid;place-items:center;font-size:19px;flex-shrink:0}
+.card h3{margin:0 0 4px;font-size:15px}.card p{margin:0;font-size:12px;color:var(--muted);line-height:1.5}
+.card.off{opacity:.55;background:#f7f9fa}.card.off .ico{background:#eceff1;color:#8a9aa3}
+.lock{display:inline-block;margin-top:7px;font-size:10px;font-weight:700;color:#8a6a2a;background:#fff1d7;border-radius:4px;padding:3px 7px}
+.sin-acceso{text-align:center;padding:46px 20px}.sin-acceso .empty-icon{font-size:40px;color:#9ab0b8}
+@media(max-width:1100px){.cards{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:760px){.cards{grid-template-columns:1fr}}

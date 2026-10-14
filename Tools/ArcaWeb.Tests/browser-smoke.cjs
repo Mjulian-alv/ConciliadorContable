@@ -11,6 +11,8 @@ const fs = require('node:fs');
    const page = await context.newPage(); page.on('pageerror',e=>errors.push(e.message));
    await page.goto(base+'/account/login');
    await page.getByRole('button',{name:'Entrar a la demostración'}).click();
+   // Fecha: 14/10/2026 - TAREA: 00097 - Linea: 1 - El login aterriza en el menú principal; ARCA Comprobantes está en /arca/comprobantes.
+   await page.getByRole('heading',{name:'Conciliador Contable',exact:true}).waitFor(); await page.goto(base+'/arca/comprobantes');
    await page.getByRole('heading',{name:'Conciliación',exact:true}).waitFor(); return page;
  }
  const context=await browser.newContext({viewport:{width:1440,height:1000}});

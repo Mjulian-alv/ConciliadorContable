@@ -1,0 +1,41 @@
+@page "/"
+@attribute [Authorize]
+@inject WebMode Mode
+@inject AuthenticationStateProvider Authentication
+@using Conciliador.Web.Services
+@* Fecha: 14/10/2026 - TAREA: 00097 - Linea: 1 - Menú principal de la suite: tarjetas por módulo según los permisos de cada usuario. *@
+<PageTitle>Inicio · Conciliador Contable</PageTitle>
+<div class="page-heading"><div><p class="eyebrow">INICIO</p><h1>Conciliador Contable</h1><p>Elegí con qué querés trabajar. Los accesos dependen de los permisos de tu usuario.</p></div></div>
+@if(usuario!=null)
+{
+    @if(!MenuPrincipal.Visibles(usuario).Any())
+    {
+        <section class="panel"><div class="empty sin-acceso"><div class="empty-icon" aria-hidden="true">🔒</div><h2>Tu usuario todavía no tiene permisos asignados</h2><p class="muted">Pedile a un administrador que te habilite los accesos que necesitás y volvé a ingresar.</p></div></section>
+    }
+    else
+    {
+        @foreach(var modulo in new[]{MenuPrincipal.ModArca,MenuPrincipal.ModAgrupador})
+        {
+            <div class="grp">@modulo</div>
+            <div class="cards">
+            @foreach(var a in MenuPrincipal.Accesos.Where(a=>a.Modulo==modulo&&a.Tarjeta))
+            {
+                var estado=MenuPrincipal.Estado(a,usuario,Mode.Demo);
+                if(estado==EstadoAcceso.Disponible)
+                {
+                    <a class="card" href="@a.Ruta"><div class="ico" aria-hidden="true">@a.Glifo</div><div><h3>@a.Titulo</h3><p>@a.Descripcion</p></div></a>
+                }
+                else
+                {
+                    <div class="card off"><div class="ico" aria-hidden="true">@a.Glifo</div><div><h3>@a.Titulo</h3><p>@a.Descripcion</p><div class="lock">@Motivo(estado)</div></div></div>
+                }
+            }
+            </div>
+        }
+    }
+}
+@code {
+    System.Security.Claims.ClaimsPrincipal? usuario;
+    protected override async Task OnInitializedAsync() => usuario=(await Authentication.GetAuthenticationStateAsync()).User;
+    static string Motivo(EstadoAcceso e)=>e switch{EstadoAcceso.SinPermiso=>"Sin permiso",EstadoAcceso.RequiereBase=>"Requiere la base configurada",_=>"Próximamente"};
+}
