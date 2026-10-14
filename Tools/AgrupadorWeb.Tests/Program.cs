@@ -8,6 +8,7 @@ MenuTests.Run(Test);
 CuentasTests.Run(Test);
 ExcelTests.Run(Test);
 ImportacionTests.Run(Test);
+ConciliacionInternaTests.Run(Test);
 LoginTests.Run(Test);
 Console.WriteLine($"{passed} pruebas correctas, {failed} con error.");
 return failed == 0 ? 0 : 1;

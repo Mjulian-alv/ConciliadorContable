@@ -319,33 +319,8 @@ namespace AgrupadorConceptos
             var pendDebitos = ConciliacionInternaService.ObtenerPendientesDebitos(_sesionActiva.Id);
             var pendCreditos = ConciliacionInternaService.ObtenerPendientesCreditos(_sesionActiva.Id);
 
-            using var wb = new XLWorkbook();
-            var wsCon = wb.Worksheets.Add("Conciliados");
-            wsCon.Cell(1,1).Value = "Fecha Débito"; wsCon.Cell(1,2).Value = "Importe Débito"; wsCon.Cell(1,3).Value = "Banco Débito";
-            wsCon.Cell(1,4).Value = "Fecha Crédito"; wsCon.Cell(1,5).Value = "Importe Crédito"; wsCon.Cell(1,6).Value = "Banco Crédito";
-            wsCon.Cell(1,7).Value = "Tipo Match";
-            for (int i = 0; i < pares.Count; i++)
-            {
-                var p = pares[i]; int r = i + 2;
-                wsCon.Cell(r,1).Value = p.FechaA; wsCon.Cell(r,2).Value = (double)p.ImporteA; wsCon.Cell(r,3).Value = p.NombreBancoA;
-                wsCon.Cell(r,4).Value = p.FechaB; wsCon.Cell(r,5).Value = (double)p.ImporteB; wsCon.Cell(r,6).Value = p.NombreBancoB;
-                wsCon.Cell(r,7).Value = p.TipoMatch;
-            }
-
-            var wsPend = wb.Worksheets.Add("Pendientes");
-            wsPend.Cell(1,1).Value = "Lado"; wsPend.Cell(1,2).Value = "Fecha";
-            wsPend.Cell(1,3).Value = "Importe"; wsPend.Cell(1,4).Value = "Banco";
-            int rp = 2;
-            foreach (var m in pendDebitos)
-            { wsPend.Cell(rp,1).Value="Débito"; wsPend.Cell(rp,2).Value=m.Fecha; wsPend.Cell(rp,3).Value=(double)ComparadorConciliacion.ImporteEfectivo(m); wsPend.Cell(rp,4).Value=m.NombreBanco; rp++; }
-            foreach (var m in pendCreditos)
-            { wsPend.Cell(rp,1).Value="Crédito"; wsPend.Cell(rp,2).Value=m.Fecha; wsPend.Cell(rp,3).Value=(double)ComparadorConciliacion.ImporteEfectivo(m); wsPend.Cell(rp,4).Value=m.NombreBanco; rp++; }
-
-            // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Mantener el formato de fechas tipadas al renovar los datos.
-            wsCon.Column(1).Style.DateFormat.Format="dd/mm/yyyy";
-            wsCon.Column(4).Style.DateFormat.Format="dd/mm/yyyy";
-            wsPend.Column(2).Style.DateFormat.Format="dd/mm/yyyy";
-            wb.SaveAs(dlg.FileName);
+            // Fecha: 14/10/2026 - TAREA: 00097 - Linea: 5 - El libro lo arma el exportador común (escritorio y web), con importes numéricos en absoluto.
+            System.IO.File.WriteAllBytes(dlg.FileName, ConciliacionInternaExcelExporter.ExportarBytes(pares, pendDebitos, pendCreditos));
             MessageBox.Show("Exportado correctamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 

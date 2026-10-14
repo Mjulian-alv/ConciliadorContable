@@ -1,0 +1,19 @@
+@* Fecha: 14/10/2026 - TAREA: 00097 - Linea: 5 - Desempate del auto-conciliar: un débito con varios créditos candidatos; se elige uno u «Omitir» lo deja pendiente (equivale a SeleccionCandidatoInternoDialog). *@
+<div class="backdrop"><div class="modal" style="max-width:760px" role="dialog" aria-modal="true" aria-labelledby="titulo-candidato">
+    <h2 id="titulo-candidato">Seleccionar movimiento a conciliar</h2>
+    <div class="sub">El movimiento del @Origen.Fecha.ToString("dd/MM/yyyy") por @FormatoImporte.Absoluto(Origen.Importe) («@Origen.ConceptoFinal», extracto «@Origen.Extracto») tiene @Candidatos.Count candidatos. Elegí a cuál asignarlo, u omitilo para dejarlo pendiente.</div>
+    <div class="table-wrap" style="max-height:300px"><table>
+        <thead><tr><th>Fecha</th><th>Concepto</th><th>Extracto</th><th class="numeric">Créditos</th></tr></thead>
+        <tbody>@foreach(var c in Candidatos){
+            <tr class="@(elegido==c.Id?"sel":"")" @onclick="()=>elegido=c.Id" @ondblclick="Asignar"><td>@c.Fecha.ToString("dd/MM/yyyy")</td><td>@c.ConceptoFinal</td><td>@c.Extracto</td><td class="numeric">@FormatoImporte.Absoluto(c.Importe)</td></tr>}
+        </tbody></table></div>
+    <div class="foot"><button @onclick="()=>OnCerrar.InvokeAsync(null)">Omitir</button><button class="primary" @onclick="Asignar" disabled="@(elegido==null)">Asignar</button></div>
+</div></div>
+@code {
+    [Parameter,EditorRequired] public MovimientoInterno Origen{get;set;}=default!;
+    [Parameter,EditorRequired] public List<MovimientoInterno> Candidatos{get;set;}=new();
+    /// <summary>Id del candidato elegido, o null si se omite.</summary>
+    [Parameter] public EventCallback<int?> OnCerrar{get;set;}
+    int? elegido;
+    Task Asignar()=>elegido==null?Task.CompletedTask:OnCerrar.InvokeAsync(elegido);
+}

@@ -63,3 +63,5 @@ th.numeric{text-align:right}
 th.numeric .th-sort{float:right}
 input.celda{min-height:32px;padding:5px 8px;min-width:190px;font-size:12px}
 input.celda.corta{min-width:92px;width:100px}
+/* Fecha: 14/10/2026 - TAREA: 00097 - Linea: 5 - Créditos candidatos del débito elegido: verde si coinciden fecha e importe, amarillo si sólo el importe. */
+tr.match-full td{background:#d9f2e3}tr.match-imp td{background:#fff6d6}tr.sel.match-full td,tr.sel.match-imp td{background:#bfe3df}

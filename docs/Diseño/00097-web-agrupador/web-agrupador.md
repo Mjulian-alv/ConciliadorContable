@@ -352,3 +352,17 @@ Diferencias entre lo construido y las maquetas aprobadas, con su motivo.
 - **Consolidado:** la vista previa muestra débitos, créditos y saldo por concepto con totales, y avisa si hay
   pendientes (sólo se exportan los homologados).
 - **Borrar archivo:** si una conciliación toma movimientos, no se borra nada y un aviso dice el motivo.
+
+### Línea 5 (14/10/2026)
+
+- **Sesiones y alta:** la lista de sesiones, «Nueva», «Retomar» y «Eliminar» van en la misma pantalla, y la alta ocupa
+  la página completa (nombre, rango y conceptos), como `05-nueva-sesion.png`. El nombre sugerido es el del escritorio
+  (`dd/MM - dd/MM - dd/MM HH:mm`) y se puede cambiar. Los conceptos se recargan al cambiar el rango.
+- **Desempate:** el diálogo de candidatos se abre uno por vez, igual que el escritorio; un crédito ya llevado por un
+  desempate anterior no se vuelve a ofrecer. Si un par no se puede asignar (por ejemplo porque lo toma otra sesión en
+  proceso) se avisa y el recorrido sigue con el resto.
+- **Conciliar manual:** el resumen inferior muestra débito elegido, crédito elegido y la diferencia (C − D, con su
+  signo y un ✓ si es 0,00). Los créditos se resaltan en verde (misma fecha e importe) o amarillo (sólo importe).
+- **Sesión finalizada:** queda de sólo lectura; Exportar sigue disponible.
+- **Excel:** el libro sale de `ConciliacionInternaExcelExporter` (importes numéricos en absoluto, fechas tipadas), que
+  ahora usa también el escritorio.

@@ -1,0 +1,294 @@
+@page "/agrupador/conciliacion-interna"
+@attribute [Authorize(Policy="AgrConciliacionInterna")]
+@inject AccessGuard Access
+@inject IJSRuntime JS
+@* Fecha: 14/10/2026 - TAREA: 00097 - Linea: 5 - Conciliación interna: sesiones por rango y conceptos, débitos contra créditos de cualquier extracto, auto-conciliar con desempate, manual, desconciliar, finalizar y exportar (equivale a ConciliacionInternaForm). *@
+<PageTitle>Conciliación interna · Agrupador</PageTitle>
+<div class="page-heading"><div><p class="eyebrow">AGRUPADOR DE CONCEPTOS</p><h1>@(modo==Modo.Nueva?"Nueva sesión de conciliación interna":"Conciliación interna")</h1><p>Conciliá débitos contra créditos propios, de cualquier extracto, dentro de un rango de fechas.</p></div></div>
+@if(aviso!=null){<div class="notice" role="status">@aviso</div>}
+@if(error!=null){<div class="notice error" role="alert">@error</div>}
+@if(sesiones==null){<p class="muted">Cargando…</p>}
+else if(modo==Modo.Nueva)
+{
+    <section class="panel"><div class="section-heading"><span class="step-number">1</span><div><h2>Nombre</h2></div></div>
+        <label>Nombre de la sesión<input class="@(errNombre!=null?"err":"")" @bind="nombre" maxlength="200" />@if(errNombre!=null){<div class="ferr">@errNombre</div>}</label></section>
+    <section class="panel"><div class="section-heading"><span class="step-number">2</span><div><h2>Rango de fechas a conciliar</h2></div></div>
+        <div class="form-row"><label>Desde<input type="date" @bind="desde" @bind:after="CargarConceptos" /></label><label>Hasta<input type="date" @bind="hasta" @bind:after="CargarConceptos" /></label></div>
+        @if(errRango!=null){<div class="ferr">@errRango</div>}</section>
+    <section class="panel"><div class="section-heading"><span class="step-number">3</span><div><h2>Conceptos a conciliar</h2><p>Débitos y créditos de estos conceptos se concilian entre sí.</p></div></div>
+        @if(cargandoConceptos){<p class="muted">Buscando conceptos del rango…</p>}
+        else if(conceptos.Count==0){<p class="muted">No hay conceptos con movimientos en ese rango.</p>}
+        else{<div class="grid3">@foreach(var c in conceptos){<label class="check"><input type="checkbox" checked="@marcados.Contains(c)" @onchange="e=>Marcar(c,(bool)e.Value!)" /> @c</label>}</div>}
+        @if(errConceptos!=null){<div class="ferr">@errConceptos</div>}</section>
+    <div class="actions"><button class="primary" @onclick="Confirmar" disabled="@ocupado">Confirmar</button><button @onclick="CancelarNueva">Cancelar</button></div>
+}
+else
+{
+    <section class="panel"><div class="actions">
+        <label style="flex:1;min-width:260px">Sesiones<select @bind="idSeleccion" disabled="@(sesiones.Count==0)">@if(sesiones.Count==0){<option value="0">(sin sesiones)</option>}@foreach(var s in sesiones){<option value="@s.Id">@s.DisplayName</option>}</select></label>
+        <button class="primary" @onclick="IniciarNueva">Nueva</button><button @onclick="Retomar" disabled="@(idSeleccion==0)">Retomar</button><button @onclick="()=>dialogo=Dialogo.Eliminar" disabled="@(idSeleccion==0)">Eliminar</button></div></section>
+    @if(sesion==null)
+    {
+        <section class="panel"><div class="empty"><div class="empty-icon" aria-hidden="true">↔</div><h2>Sin sesión activa</h2><p class="muted">Creá una sesión indicando el rango de fechas y los conceptos a conciliar entre sí.</p></div></section>
+    }
+    else
+    {
+        <div class="context-strip"><div><span class="eyebrow">SESIÓN ACTIVA</span><strong>@sesion.Nombre</strong><span class="badge @(editable?"warn":"ok")">@(editable?"En proceso":"Finalizada")</span>
+            <span>@sesion.FechaDesde.ToString("dd/MM/yyyy") al @sesion.FechaHasta.ToString("dd/MM/yyyy") · @pares.Count.ToString("N0",ar) pares</span></div></div>
+        <div class="actions" style="margin:14px 0">
+            <button @onclick="AutoConciliar" disabled="@(!editable||ocupado)">Auto-conciliar</button><button class="primary" @onclick="ConciliarManual" disabled="@(!editable||ocupado)">Conciliar manual</button>
+            <button @onclick="Desconciliar" disabled="@(!editable||ocupado)">Desconciliar</button><button @onclick="PedirFinalizar" disabled="@(!editable||ocupado)">Finalizar</button><button @onclick="Exportar" disabled="@ocupado">Exportar</button></div>
+        <section class="panel">
+            <div class="tabs"><button class="@(pestana==Pestana.Pendientes?"active":"")" @onclick="()=>pestana=Pestana.Pendientes">Pendientes</button><button class="@(pestana==Pestana.Conciliados?"active":"")" @onclick="()=>pestana=Pestana.Conciliados">Conciliados (@pares.Count.ToString("N0",ar))</button></div>
+            @if(pestana==Pestana.Pendientes)
+            {
+                <div class="grid2" style="margin-top:14px">
+                    <div><h3>Débitos pendientes (@debitos.Count.ToString("N0",ar))</h3>
+                        <div class="table-wrap tall" style="max-height:420px"><table><thead><tr><th>Fecha</th><th>Concepto</th><th>Extracto</th><th class="numeric">Débitos</th></tr></thead>
+                            <tbody><Virtualize Items="debitos" Context="m" ItemSize="48"><tr class="@(selDebito==m.Id?"sel":"")" @onclick="()=>SeleccionarDebito(m)"><td>@m.Fecha.ToString("dd/MM/yyyy")</td><td>@m.ConceptoFinal</td><td>@m.Extracto</td><td class="numeric">@FormatoImporte.Absoluto(m.Importe)</td></tr></Virtualize></tbody></table></div></div>
+                    <div><h3>Créditos pendientes (@creditos.Count.ToString("N0",ar))</h3>
+                        <div class="table-wrap tall" style="max-height:420px"><table><thead><tr><th>Fecha</th><th>Concepto</th><th>Extracto</th><th class="numeric">Créditos</th></tr></thead>
+                            <tbody><Virtualize Items="creditos" Context="m" ItemSize="48"><tr class="@ClaseCredito(m)" @onclick="()=>selCredito=m.Id"><td>@m.Fecha.ToString("dd/MM/yyyy")</td><td>@m.ConceptoFinal</td><td>@m.Extracto</td><td class="numeric">@FormatoImporte.Absoluto(m.Importe)</td></tr></Virtualize></tbody></table></div></div>
+                </div>
+                <div class="sum"><span>Débito elegido: <strong>@(debitoElegido==null?"—":FormatoImporte.Absoluto(debitoElegido.Importe))</strong></span><span>Crédito elegido: <strong>@(creditoElegido==null?"—":FormatoImporte.Absoluto(creditoElegido.Importe))</strong></span>
+                    <span>Diferencia (C − D): <strong>@(debitoElegido==null||creditoElegido==null?"—":FormatoImporte.Diferencia(creditoElegido.Importe-debitoElegido.Importe))</strong>@if(debitoElegido!=null&&creditoElegido!=null&&debitoElegido.Importe==creditoElegido.Importe){<span> ✓</span>}</span>
+                    <span class="muted">Cada movimiento puede estar en un solo par por sesión. Verde: misma fecha e importe; amarillo: sólo el importe.</span></div>
+            }
+            else if(pares.Count==0){<div class="empty"><h2>Todavía no hay pares conciliados</h2><p class="muted">Usá Auto-conciliar o elegí un débito y un crédito y presioná Conciliar manual.</p></div>}
+            else
+            {
+                <div class="table-wrap tall" style="max-height:480px;margin-top:14px"><table><thead><tr><th>Fecha débito</th><th class="numeric">Débitos</th><th>Banco débito</th><th>Fecha crédito</th><th class="numeric">Créditos</th><th>Banco crédito</th><th>Tipo</th></tr></thead>
+                    <tbody><Virtualize Items="pares" Context="p" ItemSize="48"><tr class="@(selPar==p.Id?"sel":"")" @onclick="()=>selPar=p.Id"><td>@p.FechaA.ToString("dd/MM/yyyy")</td><td class="numeric">@FormatoImporte.Absoluto(p.ImporteA)</td><td>@p.NombreBancoA</td>
+                        <td>@p.FechaB.ToString("dd/MM/yyyy")</td><td class="numeric">@FormatoImporte.Absoluto(p.ImporteB)</td><td>@p.NombreBancoB</td><td>@p.TipoMatch</td></tr></Virtualize></tbody></table></div>
+            }
+        </section>
+    }
+}
+@if(dialogo==Dialogo.Eliminar&&sesionElegida!=null){<AvisoDialog Titulo="Eliminar sesión" Mensaje="@($"¿Eliminar la sesión «{sesionElegida.Nombre}» y todos sus datos?")" Nota="No se puede deshacer. Los movimientos no se tocan." Confirmar="Eliminar" Ocupado="ocupado" OnCerrar="TrasEliminar" />}
+@if(dialogo==Dialogo.Finalizar){<AvisoDialog Titulo="Finalizar sesión" Mensaje="@MensajeFinalizar" Nota="Al finalizar, la cuenta final de cada movimiento pasa a ser la del banco contrario y la sesión queda de sólo lectura." Confirmar="Finalizar" Ocupado="ocupado" OnCerrar="TrasFinalizar" />}
+@if(dialogo==Dialogo.Resultado){<AvisoDialog Titulo="@tituloResultado" Mensaje="@mensajeResultado" Error="resultadoError" OnCerrar="_=>CerrarResultado()" />}
+@if(dialogo==Dialogo.Candidato&&candidatoActual!=null){<SeleccionCandidatoInternoDialog Origen="candidatoActual.Value.Origen" Candidatos="candidatoActual.Value.Candidatos" OnCerrar="TrasCandidato" />}
+@code {
+    enum Modo{Sesiones,Nueva} enum Pestana{Pendientes,Conciliados} enum Dialogo{Ninguno,Eliminar,Finalizar,Resultado,Candidato}
+    static readonly System.Globalization.CultureInfo ar=new("es-AR");
+    List<ConciliacionInternaSesion>? sesiones;
+    ConciliacionInternaSesion? sesion;
+    List<MovimientoInterno> debitos=new(),creditos=new();
+    List<ConciliacionInternaPar> pares=new();
+    Dictionary<int,string> extractos=new();
+    Modo modo=Modo.Sesiones; Pestana pestana=Pestana.Pendientes; Dialogo dialogo=Dialogo.Ninguno;
+    int idSeleccion,selDebito,selCredito,selPar;
+    string? aviso,error,errNombre,errRango,errConceptos,tituloResultado,mensajeResultado;
+    bool ocupado,cargandoConceptos,resultadoError,enAuto;
+    string nombre="";
+    DateTime desde=DateTime.Today.AddMonths(-1),hasta=DateTime.Today;
+    List<string> conceptos=new(); HashSet<string> marcados=new(StringComparer.OrdinalIgnoreCase);
+    // Desempate del auto-conciliar: cola de débitos con varios candidatos y créditos ya llevados en este mismo recorrido.
+    Queue<(MovimientoInterno Origen,List<MovimientoInterno> Candidatos)> cola=new(); HashSet<int> creditosAsignados=new(); int conciliadosAuto,quedaronPendientes;
+    (MovimientoInterno Origen,List<MovimientoInterno> Candidatos)? candidatoActual;
+    bool editable=>sesion!=null&&sesion.Estado!="Finalizada";
+    ConciliacionInternaSesion? sesionElegida=>sesiones?.FirstOrDefault(s=>s.Id==idSeleccion);
+    MovimientoInterno? debitoElegido=>debitos.FirstOrDefault(m=>m.Id==selDebito);
+    MovimientoInterno? creditoElegido=>creditos.FirstOrDefault(m=>m.Id==selCredito);
+    string MensajeFinalizar=>debitos.Count>0?$"Aún quedan {debitos.Count.ToString("N0",ar)} movimientos sin conciliar. ¿Finalizar igual?":"¿Finalizar la sesión?";
+    protected override async Task OnInitializedAsync()=>await CargarSesiones();
+    async Task CargarSesiones()
+    {
+        try{sesiones=await Task.Run(()=>ConciliacionInternaService.ObtenerTodasSesiones());idSeleccion=sesiones.FirstOrDefault()?.Id??0;}
+        catch(Exception ex){sesiones??=new();error="No se pudieron leer las sesiones: "+ex.Message;}
+    }
+    // ---- alta de sesión ----
+    async Task IniciarNueva()
+    {
+        aviso=error=errNombre=errRango=errConceptos=null;desde=DateTime.Today.AddMonths(-1);hasta=DateTime.Today;marcados.Clear();
+        nombre=NombreSugerido();modo=Modo.Nueva;await CargarConceptos();
+    }
+    string NombreSugerido()=>$"{desde:dd/MM} - {hasta:dd/MM} - {DateTime.Now:dd/MM HH:mm}";
+    async Task CargarConceptos()
+    {
+        errRango=null;conceptos=new();
+        if(desde.Date>hasta.Date){errRango="La fecha «Desde» no puede ser posterior a «Hasta».";return;}
+        cargandoConceptos=true;
+        try{var d=desde;var h=hasta;conceptos=await Task.Run(()=>ConciliacionInternaService.ObtenerConceptosDisponibles(d,h));marcados.IntersectWith(conceptos);}
+        catch(Exception ex){error="No se pudieron leer los conceptos: "+ex.Message;}
+        finally{cargandoConceptos=false;}
+    }
+    void Marcar(string c,bool on){if(on)marcados.Add(c);else marcados.Remove(c);}
+    void CancelarNueva(){modo=Modo.Sesiones;error=null;}
+    async Task Confirmar()
+    {
+        error=errNombre=errRango=errConceptos=null;
+        if(desde.Date>hasta.Date)errRango="La fecha «Desde» no puede ser posterior a «Hasta».";
+        if(string.IsNullOrWhiteSpace(nombre))errNombre="Escribí el nombre de la sesión";
+        if(marcados.Count==0)errConceptos="Seleccioná al menos un concepto.";
+        if(errNombre!=null||errRango!=null||errConceptos!=null)return;
+        ocupado=true;
+        try
+        {
+            await Access.Require("AgrConciliacionInterna");
+            var d=desde;var h=hasta;var n=nombre.Trim();var cs=marcados.ToList();
+            sesion=await Task.Run(()=>ConciliacionInternaService.CrearSesion(n,d,h,cs));
+            modo=Modo.Sesiones;await CargarSesiones();idSeleccion=sesion.Id;await Refrescar();
+        }
+        catch(Exception ex){error=ex is UnauthorizedAccessException?ex.Message:"No se pudo crear la sesión: "+ex.Message;}
+        finally{ocupado=false;}
+    }
+    // ---- sesión activa ----
+    async Task Retomar()
+    {
+        aviso=error=null;sesion=sesionElegida;selDebito=selCredito=selPar=0;pestana=Pestana.Pendientes;await Refrescar();
+    }
+    async Task Refrescar()
+    {
+        if(sesion==null){debitos=new();creditos=new();pares=new();return;}
+        try
+        {
+            int id=sesion.Id;
+            var r=await Task.Run(()=>
+            {
+                var nombres=ConciliacionInternaService.ObtenerNombresExtracto();
+                string De(MovimientoProcesado m)=>nombres.TryGetValue(m.IdArchivo,out var n)?n:$"Archivo #{m.IdArchivo}";
+                return (D:ConciliacionInternaService.ObtenerPendientesDebitos(id).Select(m=>new MovimientoInterno(m,De(m))).ToList(),
+                        C:ConciliacionInternaService.ObtenerPendientesCreditos(id).Select(m=>new MovimientoInterno(m,De(m))).ToList(),
+                        P:ConciliacionInternaService.ObtenerPares(id));
+            });
+            debitos=r.D;creditos=r.C;pares=r.P;
+            if(!debitos.Any(m=>m.Id==selDebito))selDebito=0;if(!creditos.Any(m=>m.Id==selCredito))selCredito=0;if(!pares.Any(p=>p.Id==selPar))selPar=0;
+        }
+        catch(Exception ex){error="No se pudo leer la sesión: "+ex.Message;}
+    }
+    async Task TrasEliminar(bool confirma)
+    {
+        dialogo=Dialogo.Ninguno;var s=sesionElegida;if(!confirma||s==null)return;
+        ocupado=true;
+        try
+        {
+            await Access.Require("AgrConciliacionInterna");
+            await Task.Run(()=>ConciliacionInternaService.EliminarSesion(s.Id));
+            if(sesion?.Id==s.Id){sesion=null;await Refrescar();}
+            await CargarSesiones();aviso=$"Sesión «{s.Nombre}» eliminada.";
+        }
+        catch(Exception ex){error=ex is UnauthorizedAccessException?ex.Message:"No se pudo eliminar la sesión: "+ex.Message;}
+        finally{ocupado=false;}
+    }
+    // ---- selección manual ----
+    void SeleccionarDebito(MovimientoInterno m){selDebito=m.Id;}
+    string ClaseCredito(MovimientoInterno c)
+    {
+        string sel=selCredito==c.Id?"sel ":"";var d=debitoElegido;
+        if(d==null)return sel.Trim();
+        bool importe=ComparadorConciliacionInterna.ImportesOpuestos(d.Original,c.Original);
+        if(importe&&ComparadorConciliacion.FechasIguales(d.Fecha,c.Fecha))return sel+"match-full";
+        return importe?sel+"match-imp":sel.Trim();
+    }
+    async Task ConciliarManual()
+    {
+        aviso=error=null;
+        var d=debitoElegido;var c=creditoElegido;
+        if(d==null){error="Seleccioná un movimiento del panel Débitos.";return;}
+        if(c==null){error="Seleccioná un movimiento del panel Créditos.";return;}
+        ocupado=true;
+        try
+        {
+            await Access.Require("AgrConciliacionInterna");
+            string? conflicto=await Task.Run(()=>ConciliacionInternaService.ConciliarPar(sesion!.Id,d.Id,c.Id,TipoMatch.Manual));
+            if(conflicto!=null)error=conflicto;else{selDebito=selCredito=0;aviso="Par conciliado.";}
+            await Refrescar();
+        }
+        catch(Exception ex){error=ex is UnauthorizedAccessException?ex.Message:"No se pudo conciliar: "+ex.Message;}
+        finally{ocupado=false;}
+    }
+    async Task Desconciliar()
+    {
+        aviso=error=null;
+        if(selPar==0){error="Elegí un par en la pestaña Conciliados.";pestana=Pestana.Conciliados;return;}
+        ocupado=true;
+        try{await Access.Require("AgrConciliacionInterna");int id=selPar;await Task.Run(()=>ConciliacionInternaService.DesconciliarPar(id));selPar=0;aviso="Par desconciliado.";await Refrescar();}
+        catch(Exception ex){error=ex is UnauthorizedAccessException||ex is InvalidOperationException?ex.Message:"No se pudo desconciliar: "+ex.Message;await Refrescar();}
+        finally{ocupado=false;}
+    }
+    // ---- auto-conciliar con desempate ----
+    async Task AutoConciliar()
+    {
+        aviso=error=null;ocupado=true;
+        try
+        {
+            await Access.Require("AgrConciliacionInterna");
+            int id=sesion!.Id;
+            var (conciliados,duplicados)=await Task.Run(()=>ConciliacionInternaService.AutoConciliar(id));
+            var nombres=await Task.Run(()=>ConciliacionInternaService.ObtenerNombresExtracto());
+            string De(MovimientoProcesado m)=>nombres.TryGetValue(m.IdArchivo,out var n)?n:$"Archivo #{m.IdArchivo}";
+            conciliadosAuto=conciliados;quedaronPendientes=0;creditosAsignados=new();enAuto=true;
+            cola=new(duplicados.Select(x=>(new MovimientoInterno(x.A,De(x.A)),x.Candidatos.Select(c=>new MovimientoInterno(c,De(c))).ToList())));
+            await SiguienteCandidato();
+        }
+        catch(Exception ex){error=ex is UnauthorizedAccessException?ex.Message:"No se pudo auto-conciliar: "+ex.Message;enAuto=false;await Refrescar();ocupado=false;}
+    }
+    // Un crédito ya llevado por un desempate anterior no se vuelve a ofrecer: el segundo diálogo lo seguiría mostrando con la foto vieja de candidatos.
+    async Task SiguienteCandidato()
+    {
+        while(cola.Count>0)
+        {
+            var (origen,cands)=cola.Dequeue();
+            var libres=cands.Where(c=>!creditosAsignados.Contains(c.Id)).ToList();
+            if(libres.Count==0){quedaronPendientes++;continue;}
+            candidatoActual=(origen,libres);dialogo=Dialogo.Candidato;ocupado=false;return;
+        }
+        candidatoActual=null;dialogo=Dialogo.Ninguno;enAuto=false;await Refrescar();
+        string resumen=$"Auto-conciliación completada: {conciliadosAuto.ToString("N0",ar)} par(es) conciliado(s).";
+        if(quedaronPendientes>0)resumen+=$" {quedaronPendientes} quedaron pendientes porque su único candidato ya se había asignado a otro movimiento.";
+        aviso=resumen;ocupado=false;
+    }
+    async Task TrasCandidato(int? idCredito)
+    {
+        var actual=candidatoActual;dialogo=Dialogo.Ninguno;candidatoActual=null;ocupado=true;
+        try
+        {
+            if(idCredito!=null&&actual!=null)
+            {
+                int a=actual.Value.Origen.Id,b=idCredito.Value,s=sesion!.Id;
+                string? conflicto=await Task.Run(()=>ConciliacionInternaService.ConciliarPar(s,a,b,TipoMatch.SeleccionManual));
+                if(conflicto!=null){tituloResultado="Aviso";mensajeResultado="No se concilió: "+conflicto;resultadoError=true;dialogo=Dialogo.Resultado;ocupado=false;return;}
+                creditosAsignados.Add(b);conciliadosAuto++;
+            }
+            await SiguienteCandidato();
+        }
+        catch(Exception ex){error="No se pudo conciliar: "+ex.Message;enAuto=false;cola.Clear();await Refrescar();ocupado=false;}
+    }
+    // ---- finalizar y exportar ----
+    void PedirFinalizar(){aviso=error=null;dialogo=Dialogo.Finalizar;}
+    async Task TrasFinalizar(bool confirma)
+    {
+        dialogo=Dialogo.Ninguno;if(!confirma||sesion==null)return;
+        ocupado=true;
+        try
+        {
+            await Access.Require("AgrConciliacionInterna");
+            int id=sesion.Id;
+            var r=await Task.Run(()=>ConciliacionInternaService.Finalizar(id));
+            if(!r.Exito)
+            {
+                tituloResultado="Faltan cuentas contables";resultadoError=true;dialogo=Dialogo.Resultado;
+                mensajeResultado="No se puede finalizar: hay pares cuyo perfil no tiene cuenta contable asignada. Asignale una cuenta a esos perfiles (Procesador → Editar perfil) y reintentá. "+string.Join(" · ",r.ParesSinCuenta.Distinct());
+            }
+            else{sesion.Estado="Finalizada";aviso="Sesión finalizada. La cuenta final quedó actualizada en los movimientos conciliados.";await CargarSesiones();idSeleccion=sesion.Id;await Refrescar();}
+        }
+        catch(Exception ex){error=ex is UnauthorizedAccessException||ex is InvalidOperationException?ex.Message:"No se pudo finalizar: "+ex.Message;await Refrescar();}
+        finally{ocupado=false;}
+    }
+    // Como el escritorio: un par que no se pudo asignar se avisa y el recorrido de desempates sigue con el resto.
+    async Task CerrarResultado(){dialogo=Dialogo.Ninguno;if(enAuto){ocupado=true;await SiguienteCandidato();}}
+    async Task Exportar()
+    {
+        aviso=error=null;if(sesion==null)return;ocupado=true;
+        try
+        {
+            int id=sesion.Id;
+            var bytes=await Task.Run(()=>ConciliacionInternaExcelExporter.ExportarBytes(ConciliacionInternaService.ObtenerPares(id),ConciliacionInternaService.ObtenerPendientesDebitos(id),ConciliacionInternaService.ObtenerPendientesCreditos(id)));
+            using var stream=new MemoryStream(bytes);using var referencia=new DotNetStreamReference(stream);
+            await JS.InvokeVoidAsync("downloadFile",$"ConciliacionInterna_{DateTime.Now:yyyyMMdd_HHmm}.xlsx",referencia);
+        }
+        catch(Exception ex){error="No se pudo exportar: "+ex.Message;}
+        finally{ocupado=false;}
+    }
+}
