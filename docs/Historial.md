@@ -1132,3 +1132,15 @@ base LocalDB, no sobre `alvesu`; el comportamiento en pantalla no se probó con 
 `origin/main`. Antes de subir, `main` compiló sin errores y `Homologador.Tests` dio 15 de 15. La rama
 `feature/00096-baja-archivo-consulta` se conserva. Pendiente: desplegar la versión nueva del ejecutable
 en los puestos para que el borrado de archivos grandes funcione.
+
+**Verificación en producción (14/10/2026).** El usuario intentó borrar el archivo 121
+(`09-2026 .xlsx`, perfil 8, 7.840 movimientos) y creyó que estaba tomado por una conciliación.
+No lo estaba: la validación nueva, ejecutada en una transacción revertida sobre `alvesu` y sobre
+`alvesu_pruebas`, dio libre (sin pares, sin sesiones externas que lo incluyan, sin sesiones
+internas que alcancen sus fechas, sin claves foráneas ni triggers que lo frenen). Causa: corría el
+Release de `bin/Release`, compilado el 13/10 a las 15:40, 16 minutos antes del commit del arreglo,
+que conservaba el mensaje viejo (un error de 2.100 parámetros disfrazado de «sesiones de
+conciliación asociadas»). Se recompiló el Release (14/10 10:54), con `conciliador.db` y
+`secrets.config` intactos (comparados por hash), y el usuario borró el archivo sin problemas.
+Pendiente: copiar esa carpeta `bin/Release` a los demás puestos, sin pisar su `conciliador.db` ni
+su `secrets.config`. La rama `feature/00096-baja-archivo-consulta` se borró el 13/10.
