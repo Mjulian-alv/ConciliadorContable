@@ -1,0 +1,38 @@
+@* Fecha: 14/10/2026 - TAREA: 00097 - Linea: 3 - Qué hacer con los movimientos al dar de baja una homologación (equivale a BajaHomologacionDialog). Sólo decide: no escribe nada, de eso se ocupa quien lo abre con el mismo impacto que se mostró acá. *@
+<div class="backdrop"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="titulo-baja">
+    <h2 id="titulo-baja">Eliminar homologación</h2>
+    <div class="sub">Impacto calculado en este momento sobre los archivos ya importados</div>
+    <div class="notice">La homologación <strong>«@Regla.ValorOriginal» → «@Regla.ConceptoEstandar»</strong> del perfil «@Regla.Banco» resuelve hoy <strong>@Impacto.Total.ToString("N0",ar) movimiento(s)</strong>.
+        <strong>@Impacto.Afectados.Count.ToString("N0",ar)</strong> quedan sin ninguna regla que los cubra; los otros @Impacto.CubiertosPorOtraRegla.Count.ToString("N0",ar) los sigue resolviendo otra homologación y no se tocan.</div>
+    <div class="table-wrap"><table>
+        <thead><tr><th>Archivo importado</th><th class="numeric">Quedan sin regla</th><th class="numeric">Los toma otra regla</th><th class="numeric">Débitos afectados</th><th class="numeric">Créditos afectados</th></tr></thead>
+        <tbody>@foreach(var f in Desglose){<tr><td>@f.Archivo</td><td class="numeric">@f.SinRegla.ToString("N0",ar)</td><td class="numeric">@f.OtraRegla.ToString("N0",ar)</td>
+            <td class="numeric @(FormatoImporte.EsCero(f.Debitos)?"cero":"")">@FormatoImporte.Absoluto(f.Debitos)</td><td class="numeric @(FormatoImporte.EsCero(f.Creditos)?"cero":"")">@FormatoImporte.Absoluto(f.Creditos)</td></tr>}</tbody>
+    </table></div>
+    <div style="height:14px"></div>
+    <label class="check"><input type="radio" name="destino" checked="@(!reasignar)" @onchange="()=>reasignar=false" /> Dejarlos como «Pendiente de homologar»</label>
+    <label class="check" style="margin-top:6px"><input type="radio" name="destino" checked="@reasignar" @onchange="()=>reasignar=true" /> Reasignarlos a otro concepto:</label>
+    <div style="max-width:360px;margin-top:8px"><input class="@(errDestino!=null?"err":"")" list="conceptos-baja" @bind="destino" disabled="@(!reasignar)" placeholder="Elegí o escribí un concepto estándar…" autocomplete="off" />
+        <datalist id="conceptos-baja">@foreach(var c in Conceptos){<option value="@c"></option>}</datalist>
+        @if(errDestino!=null){<div class="ferr">@errDestino</div>}</div>
+    <div class="foot"><button @onclick="Cancelar">Cancelar</button><button class="primary" @onclick="Confirmar">Confirmar baja</button></div>
+</div></div>
+@code {
+    static readonly System.Globalization.CultureInfo ar=new("es-AR");
+    [Parameter,EditorRequired] public HomologacionListado Regla{get;set;}=default!;
+    [Parameter,EditorRequired] public ImpactoHomologacion Impacto{get;set;}=default!;
+    [Parameter] public List<ImpactoPorArchivo> Desglose{get;set;}=new();
+    [Parameter] public List<string> Conceptos{get;set;}=new();
+    /// <summary>Concepto destino, o null si quedan pendientes de homologar; Cancelada indica que no se confirmó.</summary>
+    [Parameter] public EventCallback<(bool Confirmada,string? Destino)> OnCerrar{get;set;}
+    bool reasignar;
+    string destino="";
+    string? errDestino;
+    async Task Cancelar()=>await OnCerrar.InvokeAsync((false,null));
+    async Task Confirmar()
+    {
+        errDestino=null;
+        if(reasignar&&string.IsNullOrWhiteSpace(destino)){errDestino="Elegí o escribí el concepto al que se reasignan los movimientos.";return;}
+        await OnCerrar.InvokeAsync((true,reasignar?destino.Trim():null));
+    }
+}

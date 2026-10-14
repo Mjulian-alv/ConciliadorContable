@@ -1,0 +1,91 @@
+@page "/agrupador/consulta"
+@attribute [Authorize(Policy="AgrHomologaciones")]
+@inject IJSRuntime JS
+@inject AccessGuard Access
+@* Fecha: 14/10/2026 - TAREA: 00097 - Linea: 3 - Consulta de movimientos por rango de fechas y conceptos finales, de todos los perfiles (equivale a ConceptosListado). Cambiar un filtro invalida el resultado: no se exportan filas de filtros anteriores. *@
+<PageTitle>Consulta de movimientos · Agrupador</PageTitle>
+<div class="page-heading"><div><p class="eyebrow">AGRUPADOR DE CONCEPTOS</p><h1>Consulta de movimientos</h1><p>Movimientos por rango de fechas y conceptos, de todos los perfiles y archivos.</p></div></div>
+@if(error!=null){<div class="notice error" role="alert">@error</div>}
+<section class="panel">
+    <div class="section-heading"><span class="step-number">1</span><div><h2>Filtros</h2></div></div>
+    <div class="form-row">
+        <label style="max-width:190px">Desde<input type="date" @bind="desde" @bind:after="Invalidar" /></label>
+        <label style="max-width:190px">Hasta<input type="date" class="@(errHasta!=null?"err":"")" @bind="hasta" @bind:after="Invalidar" />@if(errHasta!=null){<div class="ferr">@errHasta</div>}</label>
+        <button class="primary" @onclick="Consultar" disabled="@ocupado">Consultar</button>
+        <button @onclick="Exportar" disabled="@(resultado==null||resultado.Count==0||ocupado)">Exportar a Excel</button>
+    </div>
+    <div style="height:14px"></div>
+    <div class="actions"><strong style="font-size:13px">Conceptos finales</strong><button @onclick="()=>MarcarTodos(true)" disabled="@ocupado">Marcar todos</button><button @onclick="()=>MarcarTodos(false)" disabled="@ocupado">Desmarcar todos</button>
+        <span class="muted" style="font-size:12px">@marcados.Count seleccionado(s) de @conceptos.Count</span></div>
+    @if(errConceptos!=null){<div class="ferr" style="margin-bottom:8px">@errConceptos</div>}
+    <div class="cols">@foreach(var c in conceptos){<label><input type="checkbox" checked="@marcados.Contains(c)" @onchange="e=>Marcar(c,(bool)e.Value!)" /> @c</label>}</div>
+    <p class="note">Rango inclusivo por fecha del movimiento. La consulta sólo se ejecuta al tocar «Consultar».</p>
+</section>
+<section class="panel">
+    <div class="section-heading"><span class="step-number">2</span><div><h2>Resultado</h2></div></div>
+    @if(ocupado){<p class="muted" role="status">Consultando movimientos…</p>}
+    else if(resultado==null){<p class="muted">Filtros pendientes. Presioná «Consultar» para obtener los movimientos.</p>}
+    else if(resultado.Count==0)
+    {
+        <div class="empty"><div class="empty-icon" aria-hidden="true">⌕</div><h2>Sin resultados para esos filtros</h2><p class="muted">Probá con otro rango de fechas o con más conceptos.</p></div>
+    }
+    else
+    {
+        <div class="stats"><div>Movimientos<strong>@resultado.Count.ToString("N0",ar)</strong></div><div>Débitos<strong>@FormatoImporte.Absoluto(debitos)</strong></div>
+            <div>Créditos<strong>@FormatoImporte.Absoluto(creditos)</strong></div><div>Diferencia (C − D)<strong>@FormatoImporte.Diferencia(creditos-debitos)</strong></div></div>
+        <div class="table-wrap tall"><table>
+            <thead><tr><th>Fecha</th><th>Concepto original</th><th>Descripción</th><th class="numeric">Débitos</th><th class="numeric">Créditos</th><th>Concepto estándar</th><th>Concepto final</th><th>Cuenta final</th><th>Perfil</th></tr></thead>
+            <tbody><Virtualize Items="resultado" Context="m" ItemSize="43">
+                <tr><td>@m.Fecha.ToString("dd/MM/yyyy")</td><td>@m.ConceptoOriginal</td><td>@m.DescripcionOriginal</td>
+                    <td class="numeric @(FormatoImporte.EsCero(m.Debitos)?"cero":"")">@FormatoImporte.Absoluto(m.Debitos)</td><td class="numeric @(FormatoImporte.EsCero(m.Creditos)?"cero":"")">@FormatoImporte.Absoluto(m.Creditos)</td>
+                    <td>@m.ConceptoEstandar</td><td>@m.ConceptoFinal</td><td>@m.CuentaFinal</td><td>@m.NombrePerfil</td></tr>
+            </Virtualize></tbody>
+        </table></div>
+    }
+</section>
+@code {
+    static readonly System.Globalization.CultureInfo ar=new("es-AR");
+    DateTime desde=new(DateTime.Today.Year,DateTime.Today.Month,1),hasta=DateTime.Today;
+    List<string> conceptos=new();
+    HashSet<string> marcados=new();
+    List<MovimientoConsulta>? resultado;
+    decimal debitos,creditos;
+    string? error,errHasta,errConceptos;
+    bool ocupado;
+    protected override async Task OnInitializedAsync()
+    {
+        try{conceptos=await Task.Run(()=>ConsultaMovimientosService.ObtenerConceptos());}
+        catch(Exception){error="No se pudieron cargar los conceptos finales. Recargá la página para reintentar.";}
+    }
+    void Invalidar(){resultado=null;errHasta=errConceptos=null;}
+    void Marcar(string c,bool marcar){if(marcar)marcados.Add(c);else marcados.Remove(c);Invalidar();}
+    void MarcarTodos(bool marcar){marcados=marcar?new(conceptos):new();Invalidar();}
+    async Task Consultar()
+    {
+        error=errHasta=errConceptos=null;resultado=null;
+        if(desde.Date>hasta.Date){errHasta="Debe ser igual o posterior a «Desde».";return;}
+        if(marcados.Count==0){errConceptos="Elegí al menos un concepto final.";return;}
+        ocupado=true;
+        try
+        {
+            var filas=await Task.Run(()=>ConsultaMovimientosService.Consultar(desde,hasta,marcados));
+            debitos=filas.Sum(m=>m.Debitos??0);creditos=filas.Sum(m=>m.Creditos??0);resultado=filas;
+        }
+        catch(ArgumentException ex){error=ex.Message;}
+        catch(Exception ex){error="No se pudo consultar: "+ex.Message;}
+        finally{ocupado=false;}
+    }
+    async Task Exportar()
+    {
+        if(resultado==null||resultado.Count==0)return;
+        try
+        {
+            await Access.Require("AgrHomologaciones");
+            var bytes=await Task.Run(()=>ConsultaMovimientosService.ExportarBytes(resultado));
+            using var stream=new MemoryStream(bytes);using var referencia=new DotNetStreamReference(stream);
+            await JS.InvokeVoidAsync("downloadFile",$"Movimientos_{desde:yyyyMMdd}_{hasta:yyyyMMdd}.xlsx",referencia);
+        }
+        catch(UnauthorizedAccessException ex){error=ex.Message;}
+        catch(Exception ex){error="No se pudo exportar: "+ex.Message;}
+    }
+}

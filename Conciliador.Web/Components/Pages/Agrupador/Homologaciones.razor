@@ -1,0 +1,149 @@
+@page "/agrupador/homologaciones"
+@attribute [Authorize(Policy="AgrHomologaciones")]
+@inject AccessGuard Access
+@inject NavigationManager Nav
+@* Fecha: 14/10/2026 - TAREA: 00097 - Linea: 3 - Alta, edición y baja de las homologaciones de un perfil (equivale a GestionHomologacionesForm). La baja no es un DELETE suelto: el concepto quedó escrito en cada movimiento, así que se decide qué pasa con ellos. *@
+<PageTitle>Homologaciones · Agrupador</PageTitle>
+<div class="page-heading"><div><p class="eyebrow">AGRUPADOR DE CONCEPTOS</p><h1>Gestión de homologaciones</h1><p>Reglas que traducen el texto del banco a un concepto estándar.</p></div></div>
+<div class="context-strip"><div><span class="eyebrow">PERFIL</span>
+    <select style="width:260px" aria-label="Perfil" value="@idPerfil" @onchange="CambiarPerfil"><option value="0">(Todos los perfiles)</option>@foreach(var p in perfiles){<option value="@p.Id">@p.NombreBanco</option>}</select></div></div>
+<div style="height:16px"></div>
+@if(aviso!=null){<div class="notice" role="status">@aviso</div>}
+@if(error!=null){<div class="notice error" role="alert">@error</div>}
+<section class="panel">
+    <div class="actions"><button class="primary" @onclick="Nueva" disabled="@(idPerfil==0||ocupado)" title="@(idPerfil==0?"Elegí un perfil para dar de alta una homologación":"")">Nueva</button>
+        <button @onclick="Editar" disabled="@(seleccionada==null||ocupado)">Editar</button><button @onclick="Eliminar" disabled="@(seleccionada==null||ocupado)">Eliminar</button>
+        <a class="button" href="/agrupador/conceptos">Conceptos estándar…</a><a class="button" href="/agrupador/consulta">Consultar movimientos…</a></div>
+    @if(filas==null){<p class="muted">Cargando…</p>}
+    else if(filas.Count==0)
+    {
+        <div class="empty"><div class="empty-icon" aria-hidden="true">≡</div><h2>@(idPerfil==0?"Todavía no hay reglas":"Este perfil todavía no tiene reglas")</h2><p class="muted">Se crean desde el Procesador, homologando una fila, o con «Nueva».</p></div>
+    }
+    else
+    {
+        <div class="table-wrap tall"><table>
+            <thead><tr><th>Perfil / Banco</th><th>Valor del banco</th><th>Concepto estándar</th><th class="numeric">Movimientos</th></tr></thead>
+            <tbody><Virtualize Items="filas" Context="f" ItemSize="43">
+                <tr class="@(seleccionada?.Id==f.Id?"sel":"")" @onclick="()=>seleccionada=f" style="cursor:pointer"><td>@f.Banco</td><td>@f.ValorOriginal</td><td>@f.ConceptoEstandar</td><td class="numeric">@f.Movimientos.ToString("N0",ar)</td></tr>
+            </Virtualize></tbody>
+        </table></div>
+        <p class="note">@filas.Count.ToString("N0",ar) regla(s). El orden es el de precedencia del matcher (valor del banco, de mayor a menor): la lista se lee como la directiva que efectivamente rige. «Movimientos» cuenta los que hoy resuelve cada regla.</p>
+    }
+</section>
+@if(dialogo==Dialogo.Nueva&&perfilDialogo!=null){<HomologarDialog IdPerfil="perfilDialogo.Id" Subtitulo="@("Perfil "+perfilDialogo.NombreBanco)" OnCerrar="TrasNueva" />}
+@if(dialogo==Dialogo.Editar&&perfilDialogo!=null&&seleccionada!=null){<HomologarDialog IdPerfil="perfilDialogo.Id" Valor="@seleccionada.ValorOriginal" BloquearValor="true" SoloSeleccionar="true" ConceptoInicial="@seleccionada.ConceptoEstandar" Titulo="Editar homologación" Subtitulo="@("Perfil "+perfilDialogo.NombreBanco+" · para cambiar la clave, eliminá la regla y creala de nuevo")" OnCerrar="TrasEditar" />}
+@if(dialogo==Dialogo.Baja&&seleccionada!=null&&impacto!=null){<BajaHomologacionDialog Regla="seleccionada" Impacto="impacto" Desglose="desglose" Conceptos="nombresConceptos" OnCerrar="TrasBaja" />}
+@if(dialogo==Dialogo.ConfirmarBaja&&seleccionada!=null)
+{
+    <div class="backdrop"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="titulo-confirmar"><h2 id="titulo-confirmar">Eliminar homologación</h2>
+        <div class="sub">Ningún movimiento depende de esta regla.</div><p>¿Eliminar la homologación «@seleccionada.ValorOriginal» → «@seleccionada.ConceptoEstandar»?</p>
+        <div class="foot"><button @onclick="CerrarDialogo">Cancelar</button><button class="primary" @onclick="()=>AplicarBaja(null)" disabled="@ocupado">Eliminar</button></div></div></div>
+}
+@code {
+    enum Dialogo{Ninguno,Nueva,Editar,Baja,ConfirmarBaja}
+    static readonly System.Globalization.CultureInfo ar=new("es-AR");
+    [SupplyParameterFromQuery(Name="perfil")] public int? PerfilInicial{get;set;}
+    List<PerfilBanco> perfiles=new();
+    List<HomologacionListado>? filas;
+    HomologacionListado? seleccionada;
+    PerfilBanco? perfilDialogo;
+    ImpactoHomologacion? impacto;
+    List<ImpactoPorArchivo> desglose=new();
+    List<string> nombresConceptos=new();
+    Dialogo dialogo;
+    int idPerfil;
+    string? aviso,error;
+    bool ocupado;
+    protected override async Task OnInitializedAsync()
+    {
+        try{perfiles=(await Task.Run(()=>PerfilBancoStorage.ObtenerTodos())).OrderBy(p=>p.NombreBanco).ToList();}
+        catch(Exception){error="No se pudieron leer los perfiles de banco.";}
+        idPerfil=PerfilInicial.HasValue&&perfiles.Any(p=>p.Id==PerfilInicial.Value)?PerfilInicial.Value:0;
+        await Cargar();
+    }
+    async Task CambiarPerfil(ChangeEventArgs e){idPerfil=int.TryParse(e.Value?.ToString(),out var id)?id:0;aviso=error=null;await Cargar();}
+    async Task Cargar()
+    {
+        ocupado=true;seleccionada=null;
+        try
+        {
+            var todas=await Task.Run(()=>
+            {
+                int? filtro=idPerfil==0?null:idPerfil;
+                var lista=HomologacionStorage.ObtenerListado(filtro);
+                // El conteo de uso no sale del SQL: que regla resuelve cada movimiento lo decide el matcher. Se calcula perfil por perfil.
+                foreach(var grupo in lista.GroupBy(f=>f.IdPerfilBanco))
+                {
+                    var perfil=perfiles.FirstOrDefault(p=>p.Id==grupo.Key)??PerfilBancoStorage.ObtenerPorId(grupo.Key);
+                    if(perfil==null)continue;
+                    var uso=HomologacionAdminService.ContarUsoPorRegla(perfil);
+                    foreach(var fila in grupo)fila.Movimientos=uso.TryGetValue(fila.ValorOriginal,out int n)?n:0;
+                }
+                return lista;
+            });
+            filas=todas.OrderBy(f=>f.Banco,StringComparer.OrdinalIgnoreCase).ThenByDescending(f=>f.ValorOriginal,StringComparer.Ordinal).ToList();
+        }
+        catch(Exception ex){filas=new();error="No se pudieron leer las homologaciones: "+ex.Message;}
+        finally{ocupado=false;}
+    }
+    PerfilBanco? PerfilDeLaFila(HomologacionListado f)=>perfiles.FirstOrDefault(p=>p.Id==f.IdPerfilBanco);
+    void CerrarDialogo(){dialogo=Dialogo.Ninguno;impacto=null;}
+    void Nueva(){aviso=error=null;perfilDialogo=perfiles.FirstOrDefault(p=>p.Id==idPerfil);if(perfilDialogo!=null)dialogo=Dialogo.Nueva;}
+    async Task TrasNueva(ResultadoHomologar r){CerrarDialogo();if(!r.Exitosa)return;aviso=$"Homologación creada: «{r.Valor}» → «{r.Concepto}».";await Cargar();}
+    void Editar(){aviso=error=null;if(seleccionada==null)return;perfilDialogo=PerfilDeLaFila(seleccionada);if(perfilDialogo!=null)dialogo=Dialogo.Editar;}
+    async Task TrasEditar(ResultadoHomologar r)
+    {
+        var fila=seleccionada;var perfil=perfilDialogo;CerrarDialogo();
+        if(!r.Exitosa||fila==null||perfil==null)return;
+        ocupado=true;
+        try
+        {
+            await Access.Require("AgrHomologaciones");
+            // La cuenta se guarda aunque el concepto no cambie: si sólo se corrigió la cuenta, no hay movimientos que arrastrar.
+            bool cambio=!string.Equals(r.Concepto,fila.ConceptoEstandar,StringComparison.OrdinalIgnoreCase);
+            int idConcepto=await Task.Run(()=>cambio?HomologacionAdminService.Reapuntar(fila,perfil,r.Concepto):fila.IdConceptoEstandar);
+            await Task.Run(()=>HomologacionStorage.ActualizarCuentaConcepto(idConcepto,r.IdCuentaContable));
+            aviso=$"Homologación actualizada: «{fila.ValorOriginal}» → «{r.Concepto}».";
+        }
+        catch(UnauthorizedAccessException ex){error=ex.Message;}
+        catch(Exception ex){error="Error al editar la homologación: "+ex.Message;}
+        finally{ocupado=false;}
+        await Cargar();
+    }
+    async Task Eliminar()
+    {
+        aviso=error=null;if(seleccionada==null)return;
+        var fila=seleccionada;var perfil=PerfilDeLaFila(fila);if(perfil==null)return;
+        ocupado=true;
+        try
+        {
+            (impacto,desglose,nombresConceptos)=await Task.Run(()=>
+            {
+                var imp=HomologacionAdminService.CalcularImpactoBaja(fila,perfil);
+                return (imp,imp.Total==0?new List<ImpactoPorArchivo>():HomologacionAdminService.DesglosarPorArchivo(imp,fila.IdPerfilBanco),
+                    HomologacionStorage.ObtenerConceptosEstandar().Select(c=>c.Nombre).ToList());
+            });
+            // Sin movimientos que dependan de la regla no hay nada que preguntar: alcanza con confirmar.
+            dialogo=impacto.Total==0?Dialogo.ConfirmarBaja:Dialogo.Baja;
+        }
+        catch(Exception ex){error="No se pudo calcular el impacto de la baja: "+ex.Message;}
+        finally{ocupado=false;}
+    }
+    async Task TrasBaja((bool Confirmada,string? Destino) r){if(!r.Confirmada){CerrarDialogo();return;}await AplicarBaja(r.Destino);}
+    async Task AplicarBaja(string? destino)
+    {
+        var fila=seleccionada;var imp=impacto;CerrarDialogo();
+        if(fila==null||imp==null)return;
+        ocupado=true;
+        try
+        {
+            await Access.Require("AgrHomologaciones");
+            await Task.Run(()=>HomologacionAdminService.AplicarBaja(fila,imp,destino));
+            aviso=$"Homologación eliminada: «{fila.ValorOriginal}».";
+        }
+        catch(UnauthorizedAccessException ex){error=ex.Message;}
+        catch(Exception ex){error="Error al eliminar la homologación: "+ex.Message;}
+        finally{ocupado=false;}
+        await Cargar();
+    }
+}

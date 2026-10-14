@@ -1,0 +1,68 @@
+@inject AccessGuard Access
+@* Fecha: 14/10/2026 - TAREA: 00097 - Linea: 3 - Alta y edición de una homologación (equivale a HomologarForm); lo comparten la gestión de homologaciones y el Procesador. *@
+<div class="backdrop"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="titulo-homologar">
+    <h2 id="titulo-homologar">@Titulo</h2>
+    <div class="sub">@Subtitulo</div>
+    @if(error!=null){<div class="notice error" role="alert">@error</div>}
+    <label>Concepto de banco<input class="@(errValor!=null?"err":"")" @bind="valor" readonly="@BloquearValor" maxlength="400" />
+        @if(!BloquearValor){<small>Si es una descripción larga, podés acortar el texto para que busque esa palabra clave (ej. «TRANSF»).</small>}
+        @if(errValor!=null){<div class="ferr">@errValor</div>}</label>
+    <div style="height:12px"></div>
+    <label>Concepto estándar<input class="@(errConcepto!=null?"err":"")" list="conceptos-estandar" @bind="concepto" @bind:after="PrecargarCuenta" maxlength="200" autocomplete="off" />
+        <datalist id="conceptos-estandar">@foreach(var c in conceptos){<option value="@c.Nombre"></option>}</datalist>
+        <small>Elegí uno existente o escribí uno nuevo.</small>
+        @if(errConcepto!=null){<div class="ferr">@errConcepto</div>}</label>
+    <div style="height:12px"></div>
+    <label>Cuenta contable<select @bind="idCuenta"><option value="0">(sin asignar)</option>@foreach(var o in cuentas){<option value="@o.Id">@o.DisplayName</option>}</select>
+        <small>Se guarda en el concepto estándar y la heredan sus movimientos.</small></label>
+    <div class="foot"><button @onclick="Cancelar">Cancelar</button><button class="primary" @onclick="Guardar" disabled="@ocupado">Guardar homologación</button></div>
+</div></div>
+@code {
+    [Parameter,EditorRequired] public int IdPerfil{get;set;}
+    [Parameter] public string Valor{get;set;}="";
+    [Parameter] public bool BloquearValor{get;set;}
+    /// <summary>Sólo devuelve el concepto elegido: la edición necesita guardar la regla y arrastrar los movimientos en una sola transacción.</summary>
+    [Parameter] public bool SoloSeleccionar{get;set;}
+    [Parameter] public string? ConceptoInicial{get;set;}
+    [Parameter] public string Titulo{get;set;}="Crear homologación de conceptos";
+    [Parameter] public string Subtitulo{get;set;}="";
+    [Parameter] public string Permiso{get;set;}="AgrHomologaciones";
+    [Parameter] public EventCallback<ResultadoHomologar> OnCerrar{get;set;}
+    List<ConceptoEstandar> conceptos=new();
+    List<CuentaContable> cuentas=new();
+    string valor="",concepto="";
+    int idCuenta;
+    string? error,errValor,errConcepto;
+    bool ocupado;
+    protected override async Task OnInitializedAsync()
+    {
+        valor=Valor??"";concepto=ConceptoInicial??"";
+        try{(conceptos,cuentas)=await Task.Run(()=>(HomologacionStorage.ObtenerConceptosEstandar(),CuentaContableStorage.ObtenerTodas()));PrecargarCuenta();}
+        catch(Exception){error="No se pudieron leer los conceptos y las cuentas. Cerrá y volvé a abrir el diálogo.";}
+    }
+    // Si el concepto ya existe, trae su cuenta: guardar sin esto borraría en silencio la cuenta que ya tenía asignada.
+    void PrecargarCuenta()=>idCuenta=conceptos.Find(c=>string.Equals(c.Nombre,concepto.Trim(),StringComparison.OrdinalIgnoreCase))?.IdCuentaContable??0;
+    async Task Cancelar()=>await OnCerrar.InvokeAsync(new ResultadoHomologar(false));
+    async Task Guardar()
+    {
+        error=errValor=errConcepto=null;
+        string conceptoTexto=concepto.Trim(),clave=valor.Trim();
+        if(conceptoTexto.Length==0){errConcepto="Debe ingresar o seleccionar un concepto estándar.";return;}
+        if(clave.Length==0){errValor="Debe indicar el concepto o la palabra clave del banco.";return;}
+        int? cuenta=idCuenta==0?null:idCuenta;
+        ocupado=true;
+        try
+        {
+            await Access.Require(Permiso);
+            if(!SoloSeleccionar)
+            {
+                int idConcepto=await Task.Run(()=>HomologacionStorage.Guardar(IdPerfil,clave,conceptoTexto));
+                await Task.Run(()=>HomologacionStorage.ActualizarCuentaConcepto(idConcepto,cuenta));
+            }
+            await OnCerrar.InvokeAsync(new ResultadoHomologar(true,conceptoTexto,clave,cuenta));
+        }
+        catch(UnauthorizedAccessException ex){error=ex.Message;}
+        catch(Exception ex){error="Error al guardar la homologación: "+ex.Message;}
+        finally{ocupado=false;}
+    }
+}

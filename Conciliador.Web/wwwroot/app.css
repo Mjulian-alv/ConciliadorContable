@@ -54,3 +54,5 @@ th.numeric{text-align:right}
 .ok{color:#24764f;font-weight:700}.no{color:#a2392a;font-weight:700}
 @media(max-width:1100px){.modal{width:calc(100% - 60px)}.grid3{grid-template-columns:1fr 1fr}.cols{columns:2}}
 @media(max-width:760px){.grid2,.grid3{grid-template-columns:1fr}.cols{columns:1}}
+/* Fecha: 14/10/2026 - TAREA: 00097 - Linea: 3 - Las listas virtualizadas necesitan filas de altura uniforme: una línea por celda, con puntos suspensivos si el texto no entra. */
+.table-wrap.tall td{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px}

@@ -319,3 +319,21 @@ Diferencias entre lo construido y las maquetas aprobadas, con su motivo.
   como el escritorio.
 - **Cuentas contables:** la columna «Conceptos asignados» se calcula con los conceptos estándar que apuntan a cada
   cuenta; el pie dice cuántas cuentas hay (la fecha de importación de la maqueta no existe en los datos).
+
+### Línea 3 (14/10/2026)
+
+- **Lista de homologaciones:** las columnas son las del escritorio —**Perfil / Banco, Valor del banco, Concepto
+  estándar y Movimientos**—, no las de la maqueta `03-homologaciones.png` («Coincidencia», «Cuenta»), que no existen en
+  los datos. El orden es el de precedencia del matcher (valor del banco de mayor a menor), agrupado por perfil cuando
+  se ven todos.
+- **Baja con impacto:** como `BajaHomologacionDialog`: un resumen («resuelve hoy N movimientos, K quedan sin regla,
+  los otros M los sigue resolviendo otra») y el desglose **por archivo** con *Quedan sin regla*, *Los toma otra regla*
+  y los débitos y créditos afectados, en absoluto y con miles y decimales. La maqueta `03-baja-impacto.png` era una
+  simplificación. Si ningún movimiento depende de la regla sólo se pide confirmar.
+- **Homologar, alta y edición:** el diálogo deja **elegir la cuenta contable** (se guarda en el concepto estándar y se
+  precarga si el concepto ya existe), como `HomologarForm`; la maqueta `02-homologar-fila.png` la mostraba sólo de
+  lectura. El diálogo es un componente compartido, que reutiliza el Procesador (Línea 2). El concepto estándar admite
+  escribir uno nuevo. En la edición la clave queda bloqueada.
+- **Consulta de movimientos:** los filtros se invalidan al cambiarlos (no se exportan filas de filtros anteriores) y
+  se agrega el contador de conceptos seleccionados. La descarga sale por `ExportarBytes`, nuevo en
+  `ConsultaMovimientosService` y `TablaExcelExporter`.

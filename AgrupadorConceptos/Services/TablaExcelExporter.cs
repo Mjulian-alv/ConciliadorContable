@@ -1,5 +1,7 @@
 using System;
+// Fecha: 14/10/2026 - TAREA: 00097 - Linea: 3 - La web descarga el libro como bytes: el armado se separa de dónde se guarda, sin cambiar lo que se produce.
 using System.Collections.Generic;
+using System.IO;
 using ClosedXML.Excel;
 
 namespace AgrupadorConceptos.Services
@@ -21,13 +23,30 @@ namespace AgrupadorConceptos.Services
             List<string> encabezados, List<object[]> filas, string titulo, string rutaDestino,
             string nombreHoja = "Datos")
         {
+            using var wb = Construir(encabezados, filas, titulo, nombreHoja);
+            wb.SaveAs(rutaDestino);
+        }
+
+        /// <summary>El mismo libro que Exportar, como bytes (descarga desde la web).</summary>
+        public static byte[] ExportarBytes(
+            List<string> encabezados, List<object[]> filas, string titulo, string nombreHoja = "Datos")
+        {
+            using var wb = Construir(encabezados, filas, titulo, nombreHoja);
+            using var ms = new MemoryStream();
+            wb.SaveAs(ms);
+            return ms.ToArray();
+        }
+
+        private static XLWorkbook Construir(
+            List<string> encabezados, List<object[]> filas, string titulo, string nombreHoja)
+        {
             if (encabezados == null || encabezados.Count == 0)
                 throw new ArgumentException("No hay columnas para exportar.", nameof(encabezados));
 
             filas ??= new List<object[]>();
             int columnas = encabezados.Count;
 
-            using var wb = new XLWorkbook();
+            var wb = new XLWorkbook();
             var ws = wb.Worksheets.Add(nombreHoja);
 
             ws.Cell(1, 1).Value = titulo;
@@ -81,7 +100,7 @@ namespace AgrupadorConceptos.Services
             dataRange.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
             dataRange.Style.Border.OutsideBorderColor = XLColor.Gray;
 
-            wb.SaveAs(rutaDestino);
+            return wb;
         }
     }
 }
