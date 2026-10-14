@@ -17,7 +17,7 @@ public static class MenuPrincipal
         new(ModArca, "arca-perfiles", "▤", "Perfiles de comprobantes", "Formatos de archivo, listas de CUIT y directivas.", "/arca/perfiles", "ArcaPerfiles", true),
         new(ModArca, "arca-pyr", "⇄", "Percepciones y retenciones", "Conciliación de percepciones y retenciones de ARCA contra los mayores.", "/pyr", "ArcaPyR", true),
         new(ModArca, "arca-pyr-perfiles", "▤", "Perfiles PyR", "Cuentas, mayores y directivas de percepciones y retenciones.", "/pyr/perfiles", "ArcaPyR", true),
-        new(ModAgrupador, "agr-procesador", "▦", "Procesador de movimientos", "Importá extractos bancarios y homologá sus conceptos.", "/agrupador/procesador", "AgrProcesador", false, true),
+        new(ModAgrupador, "agr-procesador", "▦", "Procesador de movimientos", "Importá extractos bancarios y homologá sus conceptos.", "/agrupador/procesador", "AgrProcesador", true, true),
         new(ModAgrupador, "agr-homologaciones", "≡", "Gestión de homologaciones", "Reglas que traducen el texto del banco a un concepto estándar.", "/agrupador/homologaciones", "AgrHomologaciones", true, true),
         new(ModAgrupador, "agr-consulta", "⌕", "Consulta de movimientos", "Movimientos por rango de fechas y conceptos, con exportación.", "/agrupador/consulta", "AgrHomologaciones", true, true),
         new(ModAgrupador, "agr-externa", "⇄", "Conciliación externa", "Conciliá el extracto contra un listado del ERP, por sesiones.", "/agrupador/conciliacion-externa", "AgrConciliacion", false, true),

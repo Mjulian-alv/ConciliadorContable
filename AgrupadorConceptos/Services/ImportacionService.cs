@@ -49,6 +49,19 @@ namespace AgrupadorConceptos.Services
         public static List<MovimientoProcesado> ImportarArchivo(
             string filePath, PerfilBanco perfil, Action<ProgresoImportacion> progreso = null)
         {
+            using var stream = File.Open(filePath, FileMode.Open, FileAccess.Read);
+            return Importar(stream, Path.GetExtension(filePath), Path.GetFileName(filePath), filePath, perfil, progreso);
+        }
+
+        // Fecha: 14/10/2026 - TAREA: 00097 - Linea: 2 - La web recibe el archivo como flujo: misma lectura, mismas incidencias y misma transacción que por ruta.
+        /// <summary>Importa un extracto que llega como flujo (la web). El nombre se guarda en la cabecera y se usa en los mensajes.</summary>
+        public static List<MovimientoProcesado> ImportarArchivo(
+            Stream stream, string nombreArchivo, PerfilBanco perfil, Action<ProgresoImportacion> progreso = null) =>
+            Importar(stream, Path.GetExtension(nombreArchivo), nombreArchivo, nombreArchivo, perfil, progreso);
+
+        private static List<MovimientoProcesado> Importar(
+            Stream stream, string extension, string nombreArchivo, string referencia, PerfilBanco perfil, Action<ProgresoImportacion> progreso)
+        {
             var swTotal = Stopwatch.StartNew();
             var swParseo = new Stopwatch();
             var swGuardado = new Stopwatch();
@@ -61,7 +74,7 @@ namespace AgrupadorConceptos.Services
             var cuentasPorConcepto = HomologacionStorage.ObtenerCuentasPorConcepto();
 
             swParseo.Start();
-            var movimientos = Parsear(filePath, perfil, dicHomologacion, cuentasPorConcepto);
+            var movimientos = Parsear(stream, extension, referencia, perfil, dicHomologacion, cuentasPorConcepto);
             swParseo.Stop();
 
             // La cabecera del archivo se inserta recién acá, con el parseo ya resuelto:
@@ -71,7 +84,7 @@ namespace AgrupadorConceptos.Services
             swGuardado.Start();
 
             // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Un fallo SQL tampoco debe dejar una importación parcial.
-            ImportacionStorage.GuardarArchivo(perfil.Id, Path.GetFileName(filePath), DateTime.Now, movimientos, (guardados, total) =>
+            ImportacionStorage.GuardarArchivo(perfil.Id, nombreArchivo, DateTime.Now, movimientos, (guardados, total) =>
                 progreso?.Invoke(new ProgresoImportacion(ProgresoImportacion.PasoGuardando, guardados, total)));
 
             swGuardado.Stop();
@@ -85,15 +98,14 @@ namespace AgrupadorConceptos.Services
         /// El archivo no tiene, en la fila de encabezado del perfil, la columna del concepto.
         /// </exception>
         private static List<MovimientoProcesado> Parsear(
-            string filePath, PerfilBanco perfil, IDictionary<string, string> dicHomologacion,
+            Stream stream, string extension, string filePath, PerfilBanco perfil, IDictionary<string, string> dicHomologacion,
             IDictionary<string, string> cuentasPorConcepto)
         {
             var movimientos = new List<MovimientoProcesado>();
             // Fecha: 13/10/2026 - TAREA: 00083 - Linea: 1 - Acumular incidencias sin perder el tipo original de la celda Excel.
             var incidencias = new List<IncidenciaFechaImportacion>();
 
-            using var stream = File.Open(filePath, FileMode.Open, FileAccess.Read);
-            string ext = Path.GetExtension(filePath).ToLowerInvariant();
+            string ext = (extension ?? "").ToLowerInvariant();
 
             // Fecha: 14/09/2026 - TAREA: 00039 - Linea: 1 - Error al parsear csv que tiene con punto y coma. 
             // TODO: debo poner un selector de separacion para el archivo - esto lo pone fijo
@@ -183,6 +195,20 @@ namespace AgrupadorConceptos.Services
 
             if (incidencias.Count > 0) throw new FechasImportacionException(incidencias);
             return movimientos;
+        }
+
+        // Fecha: 14/10/2026 - TAREA: 00097 - Linea: 2 - Encabezados de la fila elegida, para armar el perfil de un banco desde un archivo de ejemplo (lo que hacía MainForm).
+        /// <summary>Encabezados de la fila indicada (1 es la primera) de un Excel o CSV.</summary>
+        /// <exception cref="InvalidOperationException">El archivo no tiene esa fila.</exception>
+        public static List<string> LeerEncabezados(Stream stream, string extension, int filaEncabezado)
+        {
+            string ext = (extension ?? "").ToLowerInvariant();
+            using var reader = ext == ".csv" ? ExcelReaderFactory.CreateCsvReader(stream) : ExcelReaderFactory.CreateReader(stream);
+            for (int i = 1; i < filaEncabezado; i++) reader.Read();
+            if (!reader.Read()) throw new InvalidOperationException("El archivo está vacío o no tiene esa fila de encabezados.");
+            var headers = new List<string>();
+            for (int i = 0; i < reader.FieldCount; i++) headers.Add(reader.GetValue(i)?.ToString()?.Trim() ?? $"Columna{i}");
+            return headers;
         }
 
         /// <summary>

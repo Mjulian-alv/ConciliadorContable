@@ -1,0 +1,83 @@
+@page "/agrupador/procesador"
+@attribute [Authorize(Policy="AgrProcesador")]
+@* Fecha: 14/10/2026 - TAREA: 00097 - Linea: 2 - Procesador de movimientos de banco: importar el extracto, homologar los conceptos y exportar el resultado (equivale a ProcesadorForm). La lógica está en Procesador.razor.cs. *@
+<PageTitle>Procesador · Agrupador</PageTitle>
+<div class="page-heading"><div><p class="eyebrow">AGRUPADOR DE CONCEPTOS</p><h1>Procesador de movimientos</h1><p>Importá el extracto, homologá los conceptos y exportá el resultado.</p></div></div>
+@if(aviso!=null){<div class="notice" role="status">@aviso</div>}
+@if(error!=null){<div class="notice error" role="alert">@error</div>}
+<div class="context-strip"><div><span class="eyebrow">PERFIL DE BANCO</span>
+    <select style="width:260px" aria-label="Perfil de banco" @bind="perfilId" @bind:after="CambioPerfil" disabled="@importando"><option value="0">Elegí un perfil…</option>@foreach(var p in perfiles){<option value="@p.Id">@p.NombreBanco</option>}</select>
+    <a class="button" href="/agrupador/perfiles">+ Nuevo perfil</a>
+    @if(Perfil!=null){<a class="button" href="@($"/agrupador/perfiles/{Perfil.Id}")">Editar perfil</a>}else{<button disabled>Editar perfil</button>}
+    @if(Perfil!=null){<span>Perfil @Perfil.Id · @(Perfil.TipoImporte==1?$"importe único en «{Perfil.ColumnaImporteUnico}»":$"Debe «{Perfil.ColumnaDebe}» / Haber «{Perfil.ColumnaHaber}»") · encabezado en la fila @Perfil.FilaEncabezado</span>}</div></div>
+<div style="height:16px"></div>
+<section class="panel">
+    <div class="section-heading"><span class="step-number">1</span><div><h2>Cargar archivo del banco</h2><p>Se lee, se homologa y se guarda. Si alguna fecha es inválida, no se guarda nada.</p></div></div>
+    <div class="form-row"><label>Archivo del banco<InputFile OnChange="Elegir" accept=".xls,.xlsx,.csv" disabled="@importando" /><small>@(subido==null?".xls, .xlsx o .csv · hasta 25 MB":$"{subido.Nombre} · {Math.Max(1,subido.Tamano/1024):N0} KB")</small></label>
+        <button class="primary" @onclick="Importar" disabled="@(importando||subido==null||Perfil==null)">Importar archivo</button></div>
+    @if(importando)
+    {
+        <div class="stepper" role="status"><span class="@Clase(0)">@Marca(0) Leyendo archivo</span><span class="@Clase(1)">@Marca(1) Homologando</span>
+            <span class="@Clase(2)">@Marca(2) Guardando en la base@(paso==2&&total>0?$" · {guardados:N0} / {total:N0}":"")</span><span class="@Clase(3)">@Marca(3) Mostrando datos</span></div>
+        <div class="bar"><i style="width:@(Porcentaje())%"></i></div>
+        <p class="note">Una importación por vez. Mientras corre no se puede borrar ni cargar otro archivo. Si cerrás la página, la importación se cancela y no queda nada a medias.</p>
+    }
+</section>
+@if(incidencias!=null)
+{
+    <div class="notice error" role="alert"><strong>No se importó el archivo.</strong> Hay @incidencias.Count.ToString("N0",ar) fecha(s) vacía(s) o inválida(s). <strong>No se guardó ningún movimiento ni la cabecera.</strong> Corregí esas filas en el Excel y volvé a importarlo.</div>
+    <section class="panel"><div class="section-heading"><div><h2>Filas con problemas</h2><p>Los números de fila son los del Excel.@(incidencias.Count>200?" Se muestran las primeras 200.":"")</p></div></div>
+        <div class="table-wrap tall" style="max-height:320px"><table><thead><tr><th>Archivo</th><th>Hoja</th><th class="numeric">Fila</th><th>Valor leído</th><th>Motivo</th></tr></thead>
+            <tbody>@foreach(var i in incidencias.Take(200)){<tr><td>@i.Archivo</td><td>@i.Hoja</td><td class="numeric">@i.Fila.ToString("N0",ar)</td><td>@(string.IsNullOrWhiteSpace(i.ValorOriginal)?"(vacía)":i.ValorOriginal)</td><td>@i.Motivo</td></tr>}</tbody></table></div></section>
+}
+<section class="panel">
+    <div class="section-heading"><span class="step-number">2</span><div><h2>Archivo en trabajo</h2></div></div>
+    <div class="form-row"><label>Archivos leídos<select aria-label="Archivos leídos" @bind="archivoSel" disabled="@(importando||archivos.Count==0)">@if(archivos.Count==0){<option value="0">(este perfil no tiene archivos)</option>}@foreach(var a in archivos){<option value="@a.Id">@a.DisplayName</option>}</select></label>
+        <button @onclick="CargarDatos" disabled="@(importando||archivoSel==0)">Cargar datos</button><button @onclick="PedirBorrarArchivo" disabled="@(importando||archivoSel==0)">Borrar archivo</button></div>
+</section>
+@if(Movs==null)
+{
+    <section class="panel"><div class="empty"><div class="empty-icon" aria-hidden="true">▦</div><h2>Todavía no hay un archivo en trabajo</h2>
+        <p class="muted">Elegí un perfil de banco, importá un extracto o abrí uno de los archivos ya leídos.<br>Si el banco no tiene perfil, creá uno con «+ Nuevo perfil».</p></div></section>
+}
+else
+{
+    <section class="panel">
+        <div class="stats"><div>Registros leídos<strong>@Movs.Count.ToString("N0",ar)</strong></div><div>Homologados<strong>@homologados.ToString("N0",ar)</strong></div><div>Pendientes<strong>@(Movs.Count-homologados)</strong></div>
+            <div>Débitos<strong>@FormatoImporte.Absoluto(sumaDebitos)</strong></div><div>Créditos<strong>@FormatoImporte.Absoluto(sumaCreditos)</strong></div><div>Diferencia (C − D)<strong>@FormatoImporte.Diferencia(sumaCreditos-sumaDebitos)</strong></div></div>
+        <div class="actions"><button class="primary" @onclick="AbrirHomologar" disabled="@(actual==null||ocupado)">Homologar fila seleccionada…</button><button @onclick="()=>dialogo=Dialogo.Pendientes" disabled="@ocupado">Pendientes agrupados…</button>
+            <button @onclick="AbrirConsolidado" disabled="@ocupado">Exportar consolidado…</button><button @onclick="ExportarDetalle" disabled="@(ocupado||vista.Count==0)">Exportar detalle…</button>
+            <span class="grow"></span><input class="search" placeholder="Filtrar movimientos…" aria-label="Filtrar movimientos" @bind="filtro" @bind:event="oninput" @bind:after="Recalcular" />
+            <label class="check"><input type="checkbox" @bind="soloPendientes" @bind:after="Recalcular" /> Sólo pendientes</label>
+            <button @onclick="PedirEliminarSeleccion" disabled="@(ocupado||SeleccionVisible().Count==0)">Eliminar seleccionados (@SeleccionVisible().Count)</button></div>
+        @if(vista.Count==0){<div class="empty"><p class="muted">Ningún movimiento coincide con el filtro.</p></div>}
+        else
+        {
+            <div class="table-wrap tall" style="max-height:620px"><table>
+                <thead><tr><th style="width:36px"><input type="checkbox" aria-label="Marcar los movimientos visibles" checked="@(vista.Count>0&&vista.All(m=>seleccion.Contains(m.Id)))" @onchange="e=>MarcarVisibles((bool)e.Value!)" /></th>
+                    <th><button class="th-sort" @onclick='()=>Ordenar("fecha")'>Fecha@(Flecha("fecha"))</button></th><th><button class="th-sort" @onclick='()=>Ordenar("concepto")'>Concepto original@(Flecha("concepto"))</button></th>
+                    <th><button class="th-sort" @onclick='()=>Ordenar("descripcion")'>Descripción@(Flecha("descripcion"))</button></th><th><button class="th-sort" @onclick='()=>Ordenar("estandar")'>Concepto estándar@(Flecha("estandar"))</button></th>
+                    <th class="numeric"><button class="th-sort" @onclick='()=>Ordenar("debitos")'>Débitos@(Flecha("debitos"))</button></th><th class="numeric"><button class="th-sort" @onclick='()=>Ordenar("creditos")'>Créditos@(Flecha("creditos"))</button></th>
+                    <th>Concepto final</th><th>Cuenta final</th></tr></thead>
+                <tbody><Virtualize Items="vista" Context="m" ItemSize="48">
+                    <tr class="@ClaseFila(m)" @onclick="()=>actual=m" @ondblclick="AbrirHomologar">
+                        <td><input type="checkbox" aria-label="Marcar movimiento" checked="@seleccion.Contains(m.Id)" @onchange="e=>Marcar(m.Id,(bool)e.Value!)" @onclick:stopPropagation="true" /></td>
+                        <td>@m.Fecha.ToString("dd/MM/yyyy")</td><td>@m.ConceptoOriginal</td><td>@m.DescripcionOriginal</td>
+                        <td>@if(EsPendiente(m)){<span class="badge warn">Pendiente de homologar</span>}else{@m.ConceptoEstandar}</td>
+                        <td class="numeric @(FormatoImporte.EsCero(m.Debitos)?"cero":"")">@FormatoImporte.Absoluto(m.Debitos)</td><td class="numeric @(FormatoImporte.EsCero(m.Creditos)?"cero":"")">@FormatoImporte.Absoluto(m.Creditos)</td>
+                        <td><input class="celda" aria-label="Concepto final" value="@m.ConceptoFinal" @onchange="e=>CambioConceptoFinal(m,e)" @onclick:stopPropagation="true" @ondblclick:stopPropagation="true" /></td>
+                        <td><input class="celda corta" aria-label="Cuenta final" value="@m.CuentaFinal" @onchange="e=>CambioCuentaFinal(m,e)" @onclick:stopPropagation="true" @ondblclick:stopPropagation="true" /></td></tr>
+                </Virtualize></tbody>
+            </table></div>
+            <p class="note">@vista.Count.ToString("N0",ar) de @Movs.Count.ToString("N0",ar) filas. «Concepto final» y «Cuenta final» se editan en el lugar y se guardan al salir de la celda. Doble clic en una fila para homologarla.</p>
+        }
+    </section>
+}
+@if(dialogo==Dialogo.Homologar&&Perfil!=null&&actual!=null){<HomologarDialog IdPerfil="Perfil.Id" Valor="@actual.ConceptoOriginal" Permiso="AgrProcesador" Subtitulo="@("Perfil "+Perfil.NombreBanco)" OnCerrar="TrasHomologar" />}
+@if(dialogo==Dialogo.ConfirmarRehomologar&&actual!=null){<AvisoDialog Titulo="Movimiento ya homologado" Mensaje="@($"El movimiento ya se encuentra homologado como «{actual.ConceptoEstandar}». ¿Querés crear una nueva homologación para «{actual.ConceptoOriginal}»?")" Confirmar="Crear nueva homologación" OnCerrar="TrasConfirmarRehomologar" />}
+@if(dialogo==Dialogo.Pendientes&&Perfil!=null){<PendientesAgrupadosDialog Grupos="GruposPendientes()" OnHomologar="HomologarGrupo" OnCerrar="()=>dialogo=Dialogo.Ninguno" />}
+@if(dialogo==Dialogo.PendientesHomologar&&Perfil!=null){<HomologarDialog IdPerfil="Perfil.Id" Valor="@valorGrupo" Permiso="AgrProcesador" Subtitulo="@("Perfil "+Perfil.NombreBanco+" · homologa todo el grupo")" OnCerrar="TrasHomologarGrupo" />}
+@if(dialogo==Dialogo.Consolidado){<ConsolidadoDialog Lineas="lineasConsolidado" Titulo="@tituloConsolidado" Pendientes="pendientesConsolidado" OnExportar="ExportarConsolidado" OnCerrar="()=>dialogo=Dialogo.Ninguno" />}
+@if(dialogo==Dialogo.BorrarArchivo&&archivoSeleccionado!=null){<AvisoDialog Titulo="Borrar archivo" Subtitulo="@archivoSeleccionado.NombreArchivo" Mensaje="@($"¿Borrar el archivo «{archivoSeleccionado.NombreArchivo}» y todos sus movimientos?")" Nota="No se puede deshacer. Si algún movimiento está tomado por una conciliación, no se borra nada y se informa el motivo." Confirmar="Borrar archivo" Ocupado="ocupado" OnCerrar="TrasBorrarArchivo" />}
+@if(dialogo==Dialogo.EliminarSeleccion){<AvisoDialog Titulo="Eliminar movimientos" Mensaje="@($"¿Eliminar definitivamente {SeleccionVisible().Count.ToString("N0",ar)} movimiento(s) de «{archivoSeleccionado?.NombreArchivo}»?")" Nota="No se puede deshacer. Si alguno está tomado por una conciliación, no se elimina ninguno y se informa el motivo." Confirmar="Eliminar" Ocupado="ocupado" OnCerrar="TrasEliminarSeleccion" />}
+@if(dialogo==Dialogo.Bloqueo){<AvisoDialog Titulo="No se puede borrar" Subtitulo="@archivoSeleccionado?.NombreArchivo" Mensaje="@mensajeBloqueo" Error="true" Nota="Los motivos posibles: movimientos tomados por pares de conciliación, o una sesión externa o interna en proceso o finalizada que alcanza el archivo. Un error de base de datos se informa aparte, con su mensaje." OnCerrar="()=>dialogo=Dialogo.Ninguno" />}

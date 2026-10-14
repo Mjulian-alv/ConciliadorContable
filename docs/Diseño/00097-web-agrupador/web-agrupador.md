@@ -337,3 +337,18 @@ Diferencias entre lo construido y las maquetas aprobadas, con su motivo.
 - **Consulta de movimientos:** los filtros se invalidan al cambiarlos (no se exportan filas de filtros anteriores) y
   se agrega el contador de conceptos seleccionados. La descarga sale por `ExportarBytes`, nuevo en
   `ConsultaMovimientosService` y `TablaExcelExporter`.
+
+### Línea 2 (14/10/2026)
+
+- **Grilla de movimientos:** además de lo maquetado se agregan filtro de texto, orden por columna (fecha, concepto,
+  débitos, créditos) y el interruptor «Sólo pendientes». Con 7.840 filas hacía falta para trabajar; la grilla es
+  virtualizada. El conteo «N de M filas» acompaña al filtro.
+- **Homologar fila:** el diálogo (compartido con la Línea 3) deja elegir la cuenta contable; tras guardar se
+  rehomologa el resto de los movimientos con la misma regla.
+- **Pendientes:** el texto de la insignia es «Pendiente de homologar»; el valor guardado sigue siendo
+  «Pendiente Homologar».
+- **Perfil de banco:** valida el nombre, la fecha, el concepto y el/los importes antes de guardar, marcando el campo.
+  Al cargar un ejemplo cada combo arranca en la primera columna, como el escritorio.
+- **Consolidado:** la vista previa muestra débitos, créditos y saldo por concepto con totales, y avisa si hay
+  pendientes (sólo se exportan los homologados).
+- **Borrar archivo:** si una conciliación toma movimientos, no se borra nada y un aviso dice el motivo.

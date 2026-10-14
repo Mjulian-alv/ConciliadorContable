@@ -1,0 +1,23 @@
+@* Fecha: 14/10/2026 - TAREA: 00097 - Linea: 2 - Vista previa del consolidado bancario antes de exportarlo (equivale a ConsolidadoPreviewForm): el usuario controla los totales y recién después decide si baja el Excel. *@
+<div class="backdrop"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="titulo-consolidado">
+    <h2 id="titulo-consolidado">Vista previa del consolidado</h2>
+    <div class="sub">@Titulo</div>
+    @if(Pendientes>0){<div class="notice" role="status">Hay <strong>@Pendientes.ToString("N0",ar) movimiento(s) sin homologar</strong>. Se exportan sólo los homologados; el total puede no coincidir con el extracto.</div>}
+    <div class="table-wrap tall" style="max-height:380px"><table>
+        <thead><tr><th>Concepto final</th><th class="numeric">Débitos</th><th class="numeric">Créditos</th><th class="numeric">Saldo</th></tr></thead>
+        <tbody>@foreach(var l in Lineas){<tr><td>@l.Concepto</td><td class="numeric @(FormatoImporte.EsCero(l.Debitos)?"cero":"")">@FormatoImporte.Absoluto(l.Debitos)</td>
+            <td class="numeric @(FormatoImporte.EsCero(l.Creditos)?"cero":"")">@FormatoImporte.Absoluto(l.Creditos)</td><td class="numeric">@FormatoImporte.Diferencia(l.Saldo)</td></tr>}
+            <tr class="sel"><td><strong>Totales (@Lineas.Count.ToString("N0",ar) conceptos)</strong></td><td class="numeric"><strong>@FormatoImporte.Absoluto(Lineas.Sum(l=>l.Debitos))</strong></td>
+                <td class="numeric"><strong>@FormatoImporte.Absoluto(Lineas.Sum(l=>l.Creditos))</strong></td><td class="numeric"><strong>@FormatoImporte.Diferencia(Lineas.Sum(l=>l.Saldo))</strong></td></tr></tbody>
+    </table></div>
+    <p class="note">En Excel los importes salen como números con formato #.##0,00, en valor absoluto y en su columna; el saldo es créditos menos débitos y lleva signo.</p>
+    <div class="foot"><button @onclick="OnCerrar">Cerrar</button><button class="primary" @onclick="OnExportar" disabled="@(Lineas.Count==0)">Exportar a Excel</button></div>
+</div></div>
+@code {
+    static readonly System.Globalization.CultureInfo ar=new("es-AR");
+    [Parameter,EditorRequired] public List<LineaConsolidado> Lineas{get;set;}=new();
+    [Parameter] public string Titulo{get;set;}="";
+    [Parameter] public int Pendientes{get;set;}
+    [Parameter] public EventCallback OnExportar{get;set;}
+    [Parameter] public EventCallback OnCerrar{get;set;}
+}

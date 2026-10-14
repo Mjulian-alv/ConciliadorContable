@@ -1,0 +1,20 @@
+@* Fecha: 14/10/2026 - TAREA: 00097 - Linea: 2 - Diálogo simple de confirmación o aviso, para las bajas y los motivos de bloqueo del Procesador. *@
+<div class="backdrop"><div class="modal" style="max-width:560px" role="dialog" aria-modal="true" aria-labelledby="titulo-aviso">
+    <h2 id="titulo-aviso">@Titulo</h2>
+    @if(!string.IsNullOrEmpty(Subtitulo)){<div class="sub">@Subtitulo</div>}
+    <div class="notice@(Error?" error":"")" role="@(Error?"alert":"status")">@Mensaje</div>
+    @if(!string.IsNullOrEmpty(Nota)){<p class="note">@Nota</p>}
+    <div class="foot">@if(Confirmar!=null){<button @onclick="()=>OnCerrar.InvokeAsync(false)">Cancelar</button><button class="primary" @onclick="()=>OnCerrar.InvokeAsync(true)" disabled="@Ocupado">@Confirmar</button>}
+        else{<button class="primary" @onclick="()=>OnCerrar.InvokeAsync(false)">Entendido</button>}</div>
+</div></div>
+@code {
+    [Parameter,EditorRequired] public string Titulo{get;set;}="";
+    [Parameter] public string? Subtitulo{get;set;}
+    [Parameter,EditorRequired] public string Mensaje{get;set;}="";
+    [Parameter] public string? Nota{get;set;}
+    [Parameter] public bool Error{get;set;}
+    /// <summary>Texto del botón que confirma; sin él, el diálogo sólo informa.</summary>
+    [Parameter] public string? Confirmar{get;set;}
+    [Parameter] public bool Ocupado{get;set;}
+    [Parameter] public EventCallback<bool> OnCerrar{get;set;}
+}

@@ -33,6 +33,8 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 builder.Services.AddAuthorization(Permisos.Registrar);
 builder.Services.AddCascadingAuthenticationState();builder.Services.AddScoped<AccessGuard>();builder.Services.AddScoped<Workspace>();
 builder.Services.AddScoped<PyRWorkspace>();
+// Fecha: 14/10/2026 - TAREA: 00097 - Linea: 2 - Estado del Procesador por circuito.
+builder.Services.AddScoped<AgrupadorWorkspace>();
 builder.Services.AddRazorComponents().AddInteractiveServerComponents(o=>{o.DisconnectedCircuitRetentionPeriod=TimeSpan.FromMinutes(2);});
 builder.Services.AddRazorPages();
 builder.Services.AddRateLimiter(o=>{o.RejectionStatusCode=429;o.AddPolicy("login",context=>RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString()??"unknown",_=>new FixedWindowRateLimiterOptions{PermitLimit=10,Window=TimeSpan.FromMinutes(1),QueueLimit=0}));});

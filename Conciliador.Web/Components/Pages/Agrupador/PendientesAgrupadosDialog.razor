@@ -1,0 +1,24 @@
+@* Fecha: 14/10/2026 - TAREA: 00097 - Linea: 2 - Pendientes de homologar agrupados por concepto y descripción (equivale a HomologacionMasivaForm): homologar un grupo crea la regla y se aplica a todos sus movimientos. *@
+<div class="backdrop"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="titulo-pendientes">
+    <h2 id="titulo-pendientes">Pendientes agrupados</h2>
+    <div class="sub">@Total.ToString("N0",ar) movimiento(s) sin homologar, agrupados por concepto original. Homologar un grupo asigna la regla a todos sus movimientos.</div>
+    @if(Grupos.Count==0){<div class="empty"><p class="muted">No quedan movimientos pendientes de homologar.</p></div>}
+    else
+    {
+        <div class="table-wrap tall" style="max-height:380px"><table>
+            <thead><tr><th>Concepto original</th><th>Descripción</th><th class="numeric">Movimientos</th><th class="numeric">Débitos</th><th class="numeric">Créditos</th><th></th></tr></thead>
+            <tbody>@foreach(var g in Grupos){
+                <tr><td>@g.ConceptoOriginal</td><td>@g.DescripcionOriginal</td><td class="numeric">@g.Cantidad.ToString("N0",ar)</td>
+                    <td class="numeric @(FormatoImporte.EsCero(g.TotalDebitos)?"cero":"")">@FormatoImporte.Absoluto(g.TotalDebitos)</td><td class="numeric @(FormatoImporte.EsCero(g.TotalCreditos)?"cero":"")">@FormatoImporte.Absoluto(g.TotalCreditos)</td>
+                    <td><button @onclick="()=>OnHomologar.InvokeAsync(g)">Homologar</button></td></tr>}</tbody>
+        </table></div>
+    }
+    <div class="foot"><button class="primary" @onclick="OnCerrar">Cerrar</button></div>
+</div></div>
+@code {
+    static readonly System.Globalization.CultureInfo ar=new("es-AR");
+    [Parameter,EditorRequired] public List<PendienteAgrupado> Grupos{get;set;}=new();
+    [Parameter] public EventCallback<PendienteAgrupado> OnHomologar{get;set;}
+    [Parameter] public EventCallback OnCerrar{get;set;}
+    int Total=>Grupos.Sum(g=>g.Cantidad);
+}

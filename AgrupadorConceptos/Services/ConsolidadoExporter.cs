@@ -58,5 +58,13 @@ namespace AgrupadorConceptos.Services
 
             TablaExcelExporter.Exportar(encabezados, filas, titulo, rutaDestino, "Consolidado");
         }
+
+        // Fecha: 14/10/2026 - TAREA: 00097 - Linea: 2 - La web descarga el mismo libro como bytes.
+        public static byte[] ExportarBytes(List<LineaConsolidado> lineas, string titulo)
+        {
+            var encabezados = new List<string> { "Concepto Final", "Débitos", "Créditos", "Saldo" };
+            var filas = lineas.Select(i => new object[] { i.Concepto, i.Debitos, i.Creditos, i.Saldo }).ToList();
+            return TablaExcelExporter.ExportarBytes(encabezados, filas, titulo, "Consolidado");
+        }
     }
 }

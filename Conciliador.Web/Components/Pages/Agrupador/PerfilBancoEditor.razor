@@ -1,0 +1,119 @@
+@page "/agrupador/perfiles"
+@page "/agrupador/perfiles/{Id:int}"
+@attribute [Authorize(Policy="AgrProcesador")]
+@inject AccessGuard Access
+@inject NavigationManager Nav
+@* Fecha: 14/10/2026 - TAREA: 00097 - Linea: 2 - Alta y edición del perfil de un banco: columnas del extracto, fila de encabezados e importe único o Debe/Haber (equivale a MainForm). *@
+<PageTitle>Perfil de banco · Agrupador</PageTitle>
+<div class="page-heading"><div><p class="eyebrow">AGRUPADOR DE CONCEPTOS</p><h1>@(Id.HasValue?"Editar perfil de banco":"Perfil de banco")</h1><p>Indicá cómo está armado el extracto de este banco.</p></div></div>
+@if(error!=null){<div class="notice error" role="alert">@error</div>}
+@if(cargando){<p class="muted">Cargando…</p>}
+else
+{
+    <section class="panel"><div class="section-heading"><span class="step-number">1</span><div><h2>Banco</h2></div></div>
+        <div class="form-row"><label>Nombre del banco<input class="@(errNombre!=null?"err":"")" @bind="nombre" maxlength="100" />@if(errNombre!=null){<div class="ferr">@errNombre</div>}</label>
+            <label>Cuenta contable (opcional)<select @bind="idCuenta"><option value="0">(sin asignar)</option>@foreach(var c in cuentas){<option value="@c.Id">@c.DisplayName</option>}</select><small>Sólo de referencia; no define la cuenta de los movimientos.</small></label></div></section>
+    <section class="panel"><div class="section-heading"><span class="step-number">2</span><div><h2>Mapeo de columnas</h2></div></div>
+        <div class="form-row"><label>Cargar ejemplo de Excel<InputFile OnChange="ElegirEjemplo" accept=".xls,.xlsx,.csv" /><small>@(ejemplo==null?"Sirve para ver los encabezados y elegir las columnas.":$"{ejemplo.Nombre} · encabezados leídos de la fila {filaEncabezado}")</small></label>
+            <label>Fila de encabezados<input type="number" min="1" max="500" @bind="filaEncabezado" @bind:after="ReleerEncabezados" />
+                <small>@(encabezados.Count>0?"Encabezados detectados: "+string.Join(" · ",encabezados.Take(8))+(encabezados.Count>8?" …":""):"Cargá un ejemplo para ver las columnas.")</small></label></div>
+        <div class="grid3" style="margin-top:14px">
+            @Combo("Columna fecha",colFecha,v=>colFecha=v,errFecha)
+            @Combo("Columna concepto / id",colConcepto,v=>colConcepto=v,errConcepto)
+            @Combo("Columna descripción (opcional)",colDescripcion,v=>colDescripcion=v,null,true)
+        </div>
+        <label class="check" style="margin-top:12px"><input type="checkbox" @bind="esCodigo" /> ¿Es código exacto? (si no, es un texto largo)</label></section>
+    <section class="panel"><div class="section-heading"><span class="step-number">3</span><div><h2>Mapeo de importes</h2></div></div>
+        <div class="actions"><label class="check"><input type="radio" name="tipo" checked="@(tipoImporte==1)" @onchange="()=>tipoImporte=1" /> Importe único (positivo = crédito, negativo = débito)</label>
+            <label class="check"><input type="radio" name="tipo" checked="@(tipoImporte==2)" @onchange="()=>tipoImporte=2" /> Debe / Haber (dos columnas)</label></div>
+        <div class="grid3" style="margin-top:14px">
+            @if(tipoImporte==1){@Combo("Columna importe",colImporte,v=>colImporte=v,errImporte)}
+            else{@Combo("Columna debe",colDebe,v=>colDebe=v,errImporte)@Combo("Columna haber",colHaber,v=>colHaber=v,errImporte)}
+        </div></section>
+    <div class="actions"><button class="primary" @onclick="Guardar" disabled="@ocupado">Guardar perfil</button><a class="button" href="/agrupador/procesador">Cancelar</a></div>
+}
+@code {
+    [Parameter] public int? Id{get;set;}
+    List<CuentaContable> cuentas=new();
+    List<string> encabezados=new();
+    ArchivoSubido? ejemplo;
+    string nombre="",colFecha="",colConcepto="",colDescripcion="",colImporte="",colDebe="",colHaber="";
+    int filaEncabezado=1,tipoImporte=1,idCuenta;
+    bool esCodigo=true,cargando=true,ocupado;
+    string? error,errNombre,errFecha,errConcepto,errImporte;
+    // Cada combo ofrece los encabezados leídos (o los ya guardados, al editar); «Elegí…» deja el valor vacío.
+    RenderFragment Combo(string etiqueta,string valor,Action<string> asignar,string? err,bool opcional=false)=>@<label>@etiqueta
+        <select class="@(err!=null?"err":"")" value="@valor" @onchange="e=>asignar(e.Value?.ToString()??string.Empty)"><option value="">@(opcional?"(ninguna)":"Elegí…")</option>@foreach(var h in OpcionesCon(valor)){<option value="@h" selected="@(h==valor)">@h</option>}</select>
+        @if(err!=null){<div class="ferr">@err</div>}</label>;
+    IEnumerable<string> OpcionesCon(string valor)=>string.IsNullOrEmpty(valor)||encabezados.Contains(valor)?encabezados:encabezados.Append(valor);
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            cuentas=await Task.Run(()=>CuentaContableStorage.ObtenerTodas());
+            if(Id.HasValue)
+            {
+                var p=await Task.Run(()=>PerfilBancoStorage.ObtenerPorId(Id.Value));
+                if(p==null){error="El perfil ya no existe.";}
+                else
+                {
+                    nombre=p.NombreBanco;filaEncabezado=p.FilaEncabezado;esCodigo=p.EsCodigo;tipoImporte=p.TipoImporte==2?2:1;idCuenta=p.IdCuentaContable??0;
+                    colFecha=p.ColumnaFecha??"";colConcepto=p.ColumnaConcepto??"";colDescripcion=p.ColumnaDescripcion??"";colImporte=p.ColumnaImporteUnico??"";colDebe=p.ColumnaDebe??"";colHaber=p.ColumnaHaber??"";
+                    encabezados=new[]{colFecha,colConcepto,colDescripcion,colImporte,colDebe,colHaber}.Where(x=>!string.IsNullOrEmpty(x)).Distinct().ToList();
+                }
+            }
+        }
+        catch(Exception ex){error="No se pudo leer el perfil: "+ex.Message;}
+        cargando=false;
+    }
+    async Task ElegirEjemplo(InputFileChangeEventArgs e)
+    {
+        error=null;
+        try{ejemplo=await ArchivosWeb.LeerAsync(e.File);LeerEncabezados(reiniciar:true);}
+        catch(Exception ex){ejemplo=null;error="No se pudo leer el ejemplo: "+ex.Message;}
+    }
+    void ReleerEncabezados(){if(ejemplo!=null)LeerEncabezados(reiniciar:false);}
+    void LeerEncabezados(bool reiniciar)
+    {
+        error=null;
+        try
+        {
+            encabezados=ImportacionService.LeerEncabezados(ejemplo!.Abrir(),ejemplo.Extension,Math.Max(1,filaEncabezado));
+            // Como el escritorio, al cargar un ejemplo cada combo arranca en la primera columna; hay que ajustarlas.
+            if(reiniciar&&encabezados.Count>0){colFecha=colConcepto=colDescripcion=colImporte=colDebe=colHaber=encabezados[0];}
+        }
+        catch(Exception ex){error="Error al leer el Excel: "+ex.Message;}
+    }
+    async Task Guardar()
+    {
+        error=errNombre=errFecha=errConcepto=errImporte=null;
+        if(string.IsNullOrWhiteSpace(nombre))errNombre="Escribí el nombre del banco";
+        if(string.IsNullOrEmpty(colFecha))errFecha="Elegí la columna de fecha";
+        if(string.IsNullOrEmpty(colConcepto))errConcepto="Elegí la columna del concepto";
+        if(tipoImporte==1&&string.IsNullOrEmpty(colImporte))errImporte="Elegí la columna del importe";
+        if(tipoImporte==2&&(string.IsNullOrEmpty(colDebe)||string.IsNullOrEmpty(colHaber)))errImporte="Elegí las columnas debe y haber";
+        if(errNombre!=null||errFecha!=null||errConcepto!=null||errImporte!=null){error="No se pudo guardar el perfil. Revisá los campos marcados.";return;}
+        var perfil=new PerfilBanco
+        {
+            Id=Id??0,NombreBanco=nombre.Trim(),ColumnaConcepto=colConcepto,ColumnaDescripcion=colDescripcion??"",EsCodigo=esCodigo,FilaEncabezado=Math.Max(1,filaEncabezado),TipoImporte=tipoImporte,
+            ColumnaImporteUnico=tipoImporte==1?colImporte:null,ColumnaDebe=tipoImporte==2?colDebe:null,ColumnaHaber=tipoImporte==2?colHaber:null,ColumnaFecha=colFecha,
+            IdCuentaContable=idCuenta==0?null:idCuenta
+        };
+        ocupado=true;
+        try
+        {
+            await Access.Require("AgrProcesador");
+            int idGuardado=Id??0;
+            if(Id.HasValue)await Task.Run(()=>PerfilBancoStorage.Actualizar(perfil));
+            else
+            {
+                await Task.Run(()=>PerfilBancoStorage.Insertar(perfil));
+                idGuardado=(await Task.Run(()=>PerfilBancoStorage.ObtenerTodos())).Where(p=>p.NombreBanco==perfil.NombreBanco).Select(p=>p.Id).DefaultIfEmpty(0).Max();
+            }
+            Nav.NavigateTo(idGuardado>0?$"/agrupador/procesador?perfil={idGuardado}":"/agrupador/procesador");
+        }
+        catch(UnauthorizedAccessException ex){error=ex.Message;}
+        catch(Exception ex){error="Error al guardar en la base de datos: "+ex.Message;}
+        finally{ocupado=false;}
+    }
+}
