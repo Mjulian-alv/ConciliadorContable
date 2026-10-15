@@ -14,8 +14,11 @@ namespace AgrupadorConceptos.Data
     /// </summary>
     internal static class MovimientoStorage
     {
+        // Fecha: 15/10/2026 - TAREA: 00098 - Linea: 1 - Traer el nombre de la cuenta final (LEFT JOIN con bancos.CuentasContables)
         private const string SelectPorArchivo =
-            "SELECT * FROM bancos.MovimientosArchivo WHERE IdArchivo = @IdArchivo";
+            $@"SELECT mov.*,cc.descripcion as nombrecuenta FROM bancos.MovimientosArchivo mov 
+            LEFT JOIN bancos.CuentasContables CC on mov.cuentafinal = cc.cuenta 
+            WHERE mov.IdArchivo = @IdArchivo";
 
         // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Persistir tambien CuentaFinal
         private const string UpdateConceptos =

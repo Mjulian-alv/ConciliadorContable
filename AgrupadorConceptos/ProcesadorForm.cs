@@ -391,7 +391,8 @@ namespace AgrupadorConceptos
             {
                 // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - CuentaFinal tambien editable inline
                 col.ReadOnly = col.Name != "ConceptoFinal" && col.Name != "CuentaFinal";
-                col.IsVisible = col.Name != "Id" && col.Name !="IdArchivo";
+                // Fecha: 15/10/2026 - TAREA: 00098 - Linea: 2 - Ocultar la columna NombreBanco en la grilla
+                col.IsVisible = col.Name != "Id" && col.Name !="IdArchivo" && col.Name != "NombreBanco";
             }
         }
 

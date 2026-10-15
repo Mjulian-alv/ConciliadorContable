@@ -1230,3 +1230,20 @@ Límite: no se probó una conciliación 1:N desde la pantalla (sí en la prueba 
 5 y 6 de la guía (importe único con signo y cero en la columna opuesta), que se dieron por aceptadas
 al aprobar las maquetas. Falta desplegar la web y, para el escritorio, copiar `bin/Release` a los
 puestos si se quiere el Excel con importes en absoluto.
+
+## TAREA 00098 — 15/10/2026 — Nombre de cuenta en movimientos y columna NombreBanco oculta
+
+**Pedido (cambios hechos a mano por el usuario, registrados después):**
+1. En el modelo de movimientos y en el select del servicio, traer el nombre de la cuenta.
+2. En `ProcesadorForm`, ocultar una columna.
+
+**Ejecutado.**
+1. `MovimientoStorage.SelectPorArchivo` hace LEFT JOIN con `bancos.CuentasContables` por
+   `CuentaFinal` y trae `descripcion` como `nombrecuenta`; `MovimientoProcesado` suma `NombreCuenta`.
+2. `ProcesadorForm` oculta la columna `NombreBanco` de la grilla.
+
+Aparte, el Designer de `ConciliacionInternaForm` había perdido por accidente las suscripciones a
+`FechasPresentacion.AlEnlazar` (TAREA 00083); se restauró con `git checkout` y no forma parte de esta tarea.
+
+Sin pruebas nuevas. Revisión de Codex: no corrida (cambio chico, a pedido). Rama
+`feature/00097-web-agrupador`, sin mergear.

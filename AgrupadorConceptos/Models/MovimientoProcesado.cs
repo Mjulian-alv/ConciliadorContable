@@ -15,5 +15,7 @@ namespace AgrupadorConceptos.Models
         // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Cuenta final, mismo patron que ConceptoFinal
         public string CuentaFinal { get; set; }
         public string NombreBanco { get; set; }
+        // Fecha: 15/10/2026 - TAREA: 00098 - Linea: 1 - Nombre de la cuenta final (join con CuentasContables), solo lectura
+        public string NombreCuenta { get; set; }
     }
 }
