@@ -1,6 +1,7 @@
 <Solution>
-  <Project Path="AgrupadorConceptos/AgrupadorConceptos.csproj" />
   <Project Path="AgrupadorConceptos.Core/AgrupadorConceptos.Core.csproj" />
+  <Project Path="AgrupadorConceptos/AgrupadorConceptos.csproj" />
+  <Project Path="ArcaCliente.Core/ArcaCliente.Core.csproj" />
   <Project Path="ArcaCliente/ArcaCliente.csproj" />
   <Project Path="Conciliador.Comun/Conciliador.Comun.csproj" />
   <Project Path="ConciliadorContable/ConciliadorContable.csproj" />
