@@ -1271,4 +1271,4 @@ Prueba nueva en `Tools/ArcaWeb.Tests/PyRWebTests.cs` (bordes, antes, después, s
 rango): 35 correctas. `ArcaCliente` y `Conciliador.Web` compilan. No se probó a ojo en la pantalla.
 Rama `feature/00112-pyr-rango-fechas`, sin mergear.
 
-**Revisión de Codex:** pendiente.
+**Revisión de Codex: omitida** por decisión del usuario. Sin archivos en `Docs/Revisiones/`.
