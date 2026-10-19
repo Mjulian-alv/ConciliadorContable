@@ -225,6 +225,8 @@ namespace ArcaCliente
             var avisos = _resultado.FueraDeAlcance
                 .Select(kv => $"{N(kv.Value)} registros de ARCA fuera de alcance: {kv.Key}")
                 .ToList();
+            // Fecha: 19/10/2026 - TAREA: 00112 - Linea: 1 - Avisar las filas de ARCA recortadas por el rango de fechas
+            avisos.AddRange(_resultado.AvisosFueraDeRango());
             if (_resultado.ArcaImporteCero > 0)
                 avisos.Add($"{N(_resultado.ArcaImporteCero)} registros de ARCA con importe 0 excluidos");
             lblAlcance.Text    = avisos.Count == 0 ? "ⓘ Toda la carpeta de ARCA quedó dentro del alcance." : "ⓘ " + string.Join("   ·   ", avisos);

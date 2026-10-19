@@ -86,6 +86,9 @@ namespace ArcaCliente.Services
             fila++;
             foreach (var (grupo, n) in resultado.FueraDeAlcance)
                 wr.Cell(fila++, 1).Value = $"{n} registros de ARCA fuera de alcance: {grupo} (sin mayor cargado)";
+            // Fecha: 19/10/2026 - TAREA: 00112 - Linea: 1 - También queda escrito lo recortado por el rango de fechas
+            foreach (var aviso in resultado.AvisosFueraDeRango())
+                wr.Cell(fila++, 1).Value = aviso;
             if (resultado.ArcaImporteCero > 0)
                 wr.Cell(fila++, 1).Value = $"{resultado.ArcaImporteCero} registros de ARCA con importe 0 excluidos";
             foreach (var (dir, n) in resultado.PorDirectiva)

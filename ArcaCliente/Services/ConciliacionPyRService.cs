@@ -34,14 +34,38 @@ namespace ArcaCliente.Services
                 .GroupBy(m => (m.Cuenta.Impuesto, m.Cuenta.Tipo))
                 .ToDictionary(g => g.Key, g => g.ToList());
 
+            // Fecha: 19/10/2026 - TAREA: 00112 - Linea: 1 - Rango de fechas por grupo
+            // Rango máximo de los mayores del grupo (fecha más vieja a fecha más nueva de todas sus
+            // filas). Se toma por grupo y no por cuenta porque ARCA se reparte por (impuesto, tipo):
+            // si un grupo tiene dos cuentas, el rango es la unión de las dos. Un grupo cuyo mayor no
+            // tiene ninguna fecha legible no se recorta: sin rango no hay con qué comparar.
+            var rangoPorGrupo = new Dictionary<(ImpuestoPyR, TipoOperacionPyR), (DateTime Desde, DateTime Hasta)>();
+            foreach (var (claveGrupo, mayoresDelGrupo) in grupos)
+            {
+                var fechas = mayoresDelGrupo.SelectMany(m => m.Registros)
+                    .Where(r => r.Fecha.HasValue).Select(r => r.Fecha.Value.Date).ToList();
+                if (fechas.Count > 0) rangoPorGrupo[claveGrupo] = (fechas.Min(), fechas.Max());
+            }
+
             var arcaPorGrupo = grupos.Keys.ToDictionary(k => k, _ => new List<RegistroArcaPyR>());
             foreach (var a in registrosArca)
             {
                 var clave = (a.Impuesto, a.Operacion);
+                var texto = $"{CuentaPyR.NombreImpuesto(a.Impuesto)} · {CuentaPyR.NombreTipo(a.Operacion)}";
                 if (!arcaPorGrupo.TryGetValue(clave, out var lista))
                 {
-                    var texto = $"{CuentaPyR.NombreImpuesto(a.Impuesto)} · {CuentaPyR.NombreTipo(a.Operacion)}";
                     resultado.FueraDeAlcance[texto] = resultado.FueraDeAlcance.GetValueOrDefault(texto) + 1;
+                    continue;
+                }
+                // Fecha: 19/10/2026 - TAREA: 00112 - Linea: 1 - Comprobante de ARCA fuera del rango del mayor
+                // Sin esto, todo lo de ARCA anterior o posterior al período del mayor aparecía como
+                // "Sólo ARCA" aunque nunca pudo estar en ese mayor. Un registro de ARCA sin fecha se
+                // conserva: no se puede probar que esté afuera.
+                if (a.Fecha.HasValue && rangoPorGrupo.TryGetValue(clave, out var rango)
+                    && (a.Fecha.Value.Date < rango.Desde || a.Fecha.Value.Date > rango.Hasta))
+                {
+                    resultado.FueraDeRango[texto] = resultado.FueraDeRango.GetValueOrDefault(texto) + 1;
+                    resultado.RangoFechas[texto]  = rango;
                     continue;
                 }
                 // ── 2. Importe cero ──────────────────────────────────────────────

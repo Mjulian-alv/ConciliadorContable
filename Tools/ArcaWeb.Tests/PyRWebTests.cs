@@ -60,6 +60,30 @@ static class PyRWebTests
                     foreach(var cell in e.CellsUsed()){var compared=a.Cell(cell.Address.RowNumber,cell.Address.ColumnNumber);Check(cell.Value.Equals(compared.Value)&&cell.Style.Equals(compared.Style),"Diferencia de valor o estilo en Excel PyR");}}
             }finally{File.Delete(path);}
         });
+        // Fecha: 19/10/2026 - TAREA: 00112 - Linea: 1 - Rango de fechas de los mayores aplicado a ARCA
+        test("PyR: ARCA se recorta al rango máximo de fechas de los mayores del grupo",()=>{
+            var iva=new CuentaPyR{Codigo="1",Nombre="IVA",Tipo=TipoOperacionPyR.Percepcion,Impuesto=ImpuestoPyR.Iva};
+            var iibb=new CuentaPyR{Codigo="2",Nombre="IIBB",Tipo=TipoOperacionPyR.Retencion,Impuesto=ImpuestoPyR.Iibb};
+            RegistroPreseaPyR P(CuentaPyR c,string n,DateTime? f)=>new(){Cuenta=c,Numero=n,Importe=100m,Fecha=f};
+            RegistroArcaPyR A(ImpuestoPyR i,TipoOperacionPyR t,string n,DateTime? f)=>new(){Impuesto=i,Operacion=t,Numero=n,Importe=100m,Fecha=f};
+            var mayores=new List<MayorPreseaPyR>{
+                new(){Cuenta=iva,Registros={P(iva,"1",new(2026,7,10)),P(iva,"2",new(2026,7,31)),P(iva,"3",new(2026,7,1))}},
+                new(){Cuenta=iibb,Registros={P(iibb,"9",null)}}};   // sin ninguna fecha: no se recorta
+            var arca=new[]{
+                A(ImpuestoPyR.Iva,TipoOperacionPyR.Percepcion,"1",new(2026,7,10)),
+                A(ImpuestoPyR.Iva,TipoOperacionPyR.Percepcion,"4",new(2026,7,1)),    // borde inferior: queda
+                A(ImpuestoPyR.Iva,TipoOperacionPyR.Percepcion,"5",new(2026,7,31)),   // borde superior: queda
+                A(ImpuestoPyR.Iva,TipoOperacionPyR.Percepcion,"6",new(2026,6,30)),   // antes del rango
+                A(ImpuestoPyR.Iva,TipoOperacionPyR.Percepcion,"7",new(2026,8,1)),    // después del rango
+                A(ImpuestoPyR.Iva,TipoOperacionPyR.Percepcion,"8",null),             // sin fecha: queda
+                A(ImpuestoPyR.Iibb,TipoOperacionPyR.Retencion,"9",new(2020,1,1))};   // grupo sin rango: queda
+            var r=ConciliacionPyRService.Conciliar(arca,mayores,null);
+            Check(r.FueraDeRango["IVA · Percepción"]==2&&r.FueraDeRango.Count==1,"Debían quedar 2 registros fuera de rango");
+            Check(r.RangoFechas["IVA · Percepción"]==(new DateTime(2026,7,1),new DateTime(2026,7,31)));
+            Check(!r.Items.Any(i=>i.Arca?.Numero is "6" or "7"),"Un registro fuera de rango entró a la conciliación");
+            Check(r.Items.Count(i=>i.Arca!=null)==5,"Debían quedar 5 registros de ARCA conciliando");
+            Check(r.AvisosFueraDeRango().Single().Contains("01/07/2026 a 31/07/2026"));
+        });
         test("PyR: resultado caduca por carga fallida, cambio de carpeta, directivas y concurrencia",()=>{
             var store=new DemoPyRProfileStorage();var work=Work(store);var id=Wait(store.Profiles()).Single().Profile.Id;Wait(work.Select(id));Wait(work.Example());Wait(work.Reconcile());
             var other=Work(store);Wait(other.Select(id));Check(other.Arca==null&&other.Majors.Count==0&&other.Result==null);

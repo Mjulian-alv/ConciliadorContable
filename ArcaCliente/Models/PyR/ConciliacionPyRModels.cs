@@ -93,6 +93,18 @@ namespace ArcaCliente.Models
         /// <summary>"IIBB · Retención" → cantidad de filas de ARCA sin mayor cargado para ese grupo.</summary>
         public Dictionary<string, int> FueraDeAlcance { get; } = new();
 
+        // Fecha: 19/10/2026 - TAREA: 00112 - Linea: 1 - Filas de ARCA fuera del rango de fechas del mayor
+        /// <summary>"IVA · Percepción" → filas de ARCA con fecha fuera del rango máximo de sus mayores.</summary>
+        public Dictionary<string, int> FueraDeRango { get; } = new();
+
+        /// <summary>"IVA · Percepción" → rango (primera y última fecha de sus mayores) aplicado a ARCA.</summary>
+        public Dictionary<string, (DateTime Desde, DateTime Hasta)> RangoFechas { get; } = new();
+
+        /// <summary>Un texto por grupo con filas fuera de rango; lo comparten la pantalla, la web y el Excel.</summary>
+        public IEnumerable<string> AvisosFueraDeRango() => FueraDeRango.Select(kv =>
+            $"{kv.Value} registros de ARCA fuera del rango de fechas de los mayores " +
+            $"({RangoFechas[kv.Key].Desde:dd/MM/yyyy} a {RangoFechas[kv.Key].Hasta:dd/MM/yyyy}): {kv.Key}");
+
         /// <summary>Filas de ARCA con importe 0 dentro del alcance, excluidas (decisión del usuario).</summary>
         public int ArcaImporteCero { get; set; }
 
