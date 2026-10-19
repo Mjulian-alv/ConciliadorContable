@@ -1247,3 +1247,28 @@ Aparte, el Designer de `ConciliacionInternaForm` había perdido por accidente la
 
 Sin pruebas nuevas. Revisión de Codex: no corrida (cambio chico, a pedido). Rama
 `feature/00097-web-agrupador`, sin mergear.
+
+## TAREA 00112 — 19/10/2026 — PyR: ARCA se concilia sólo dentro del rango de fechas de los mayores
+
+**Pedido:**
+1. En la conciliación PyR, el rango de fechas con el que se filtran los comprobantes del archivo de
+   ARCA debe ser el rango máximo (fecha mínima a fecha máxima) de los archivos del sistema asignados
+   a la cuenta.
+
+**Ejecutado.**
+1. `ConciliacionPyRService.Conciliar` calcula, por grupo (impuesto, tipo), la fecha más vieja y la más
+   nueva de las filas de sus mayores, y deja afuera los registros de ARCA con fecha fuera de ese
+   rango (bordes incluidos). Antes todo ARCA entraba y lo anterior o posterior al período del mayor
+   salía como "Sólo ARCA". Se calcula por grupo y no por cuenta porque ARCA se reparte por
+   (impuesto, tipo): con dos cuentas en un grupo el rango es la unión de ambas. Un registro de ARCA
+   sin fecha y un grupo cuyo mayor no tiene ninguna fecha no se recortan. El servicio lo usan
+   WinForms y la web, así que el cambio rige en las dos.
+   `ResultadoConciliacionPyR` suma `FueraDeRango`, `RangoFechas` y `AvisosFueraDeRango()`; el aviso se
+   muestra en la pestaña Conciliación de WinForms, en `PyRResults.razor` y en el Excel exportado.
+   Sin diseño previo: una sola pantalla existente, sin cambio de flujo.
+
+Prueba nueva en `Tools/ArcaWeb.Tests/PyRWebTests.cs` (bordes, antes, después, sin fecha, grupo sin
+rango): 35 correctas. `ArcaCliente` y `Conciliador.Web` compilan. No se probó a ojo en la pantalla.
+Rama `feature/00112-pyr-rango-fechas`, sin mergear.
+
+**Revisión de Codex:** pendiente.
