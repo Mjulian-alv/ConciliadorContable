@@ -34,6 +34,7 @@ public partial class Procesador
     int paso, guardados, total;
     IReadOnlyList<IncidenciaFechaImportacion>? incidencias;
     List<LineaConsolidado> lineasConsolidado = new();
+    List<LineaAsiento> lineasAsiento = new(); // Fecha: 23/10/2026 - TAREA: 00126 - Linea: 1 - Hoja Asiento del Excel del consolidado
     int pendientesConsolidado;
 
     List<MovimientoProcesado>? Movs => Work.Movimientos;
@@ -246,6 +247,7 @@ public partial class Procesador
         aviso = error = null;
         if (Movs == null || Movs.Count == 0) { error = "No hay datos para exportar."; return; }
         lineasConsolidado = ConsolidadoExporter.Calcular(Movs);
+        lineasAsiento = ConsolidadoExporter.CalcularAsiento(Movs);
         pendientesConsolidado = ConsolidadoExporter.ContarPendientes(Movs);
         tituloConsolidado = $"Consolidado bancario - {DateTime.Now:dd/MM/yyyy HH:mm} - {archivoSeleccionado?.DisplayName}";
         dialogo = Dialogo.Consolidado;
@@ -255,7 +257,7 @@ public partial class Procesador
         try
         {
             await Access.Require("AgrProcesador");
-            var bytes = await Task.Run(() => ConsolidadoExporter.ExportarBytes(lineasConsolidado, tituloConsolidado ?? "Consolidado bancario"));
+            var bytes = await Task.Run(() => ConsolidadoExporter.ExportarBytes(lineasConsolidado, lineasAsiento, tituloConsolidado ?? "Consolidado bancario"));
             await Descargar($"Consolidado_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx", bytes);
         }
         catch (Exception ex) { error = ex is UnauthorizedAccessException ? ex.Message : "No se pudo exportar: " + ex.Message; dialogo = Dialogo.Ninguno; }

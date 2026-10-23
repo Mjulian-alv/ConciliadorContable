@@ -19,11 +19,14 @@ namespace AgrupadorConceptos
     public class ConsolidadoPreviewForm : Form
     {
         private readonly List<LineaConsolidado> _lineas;
+        // Fecha: 23/10/2026 - TAREA: 00126 - Linea: 1 - Líneas de la hoja Asiento del Excel (la vista previa sigue mostrando sólo el consolidado).
+        private readonly List<LineaAsiento> _asiento;
         private readonly string _titulo;
 
-        public ConsolidadoPreviewForm(List<LineaConsolidado> lineas, string titulo)
+        public ConsolidadoPreviewForm(List<LineaConsolidado> lineas, List<LineaAsiento> asiento, string titulo)
         {
             _lineas = lineas;
+            _asiento = asiento;
             _titulo = titulo;
 
             Text = "Vista previa del consolidado";
@@ -146,7 +149,7 @@ namespace AgrupadorConceptos
 
             try
             {
-                ConsolidadoExporter.ExportarAExcel(_lineas, _titulo, sfd.FileName);
+                ConsolidadoExporter.ExportarAExcel(_lineas, _asiento, _titulo, sfd.FileName);
                 MessageBox.Show("Consolidado exportado a Excel exitosamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)

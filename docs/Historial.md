@@ -1314,3 +1314,26 @@ movimientos; el marcado manual igual las respeta porque mira los pares, pero sig
 en otras conciliaciones hasta que se las marque.
 
 **Revisión de Codex:** pendiente, no se hizo. Sin archivos en `Docs/Revisiones/`.
+
+
+## TAREA 00126 — 23/10/2026 — Hoja «Asiento» en el Excel del consolidado
+
+**Pedido** (el usuario lo escribió sin numerar; se tomó como un solo ítem, confirmado):
+1. Parados en un archivo, generar un resumen tipo asiento: una hoja más en «Exportar consolidado» con los saldos finales de
+   cada `CuentaFinal`; si un concepto final no tiene cuenta, se exporta sin cuenta y con el concepto como descripción.
+
+**Ejecutado.**
+1. `ConsolidadoExporter.CalcularAsiento` arma las líneas sobre los mismos movimientos que el consolidado (sin los pendientes):
+   una por `CuentaFinal` (descripción = nombre de la cuenta) y, aparte, una por concepto final para lo que no tiene cuenta
+   (cuenta vacía, descripción = concepto). Saldo = créditos − |débitos|: positivo al Haber, negativo al Debe, en positivo; saldo cero se omite.
+   El Excel ahora lleva dos hojas, «Consolidado» (igual que antes) y «Asiento» (Cuenta, Descripción, Debe, Haber, más filas Total y
+   Diferencia Haber − Debe). **Sin línea de contrapartida del banco**: el asiento no cierra a cero, la diferencia es el neto del extracto
+   (decisión del usuario para probar así primero). `TablaExcelExporter.AgregarHoja` permite varias hojas sin cambiar el formato de las demás
+   exportaciones. WinForms (`ProcesadorForm`, `ConsolidadoPreviewForm`) y web (`Procesador.razor.cs`) pasan el asiento al exportar; la vista
+   previa en pantalla no cambia. `ExportarAExcel` y `ExportarBytes` cambian de firma (reciben el asiento).
+   Sin diseño previo: una hoja más de un Excel existente, sin pantalla ni flujo nuevo.
+
+Pruebas nuevas en `Tools/AgrupadorWeb.Tests/AsientoTests.cs` (cuentas, sin cuenta, Debe/Haber, neto igual al del consolidado, dos hojas con
+totales, vacío): 42 correctas en total. Release de `ConciliadorContable` y `Conciliador.Web` compilan. No se abrió el Excel a ojo.
+
+**Revisión de Codex:** pendiente, no se hizo. Sin archivos en `Docs/Revisiones/`.

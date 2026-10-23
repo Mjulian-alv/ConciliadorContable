@@ -7,6 +7,7 @@ FormatoImporteTests.Run(Test);
 MenuTests.Run(Test);
 CuentasTests.Run(Test);
 ExcelTests.Run(Test);
+AsientoTests.Run(Test); // Fecha: 23/10/2026 - TAREA: 00126 - Linea: 1 - Hoja Asiento del consolidado
 ImportacionTests.Run(Test);
 ConciliacionInternaTests.Run(Test);
 ConciliacionExternaTests.Run(Test);

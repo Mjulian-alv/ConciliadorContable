@@ -493,11 +493,13 @@ namespace AgrupadorConceptos
             }
 
             var consolidado = ConsolidadoExporter.Calcular(movimientos);
+            // Fecha: 23/10/2026 - TAREA: 00126 - Linea: 1 - El Excel suma la hoja Asiento, calculada sobre los mismos movimientos.
+            var asiento = ConsolidadoExporter.CalcularAsiento(movimientos);
             string titulo = $"Consolidado Bancario - {DateTime.Now:dd/MM/yyyy HH:mm} - {_archivoEnGrilla?.DisplayName}";
 
             // La exportacion a Excel vive en la vista previa: el usuario controla ahi los
             // totales y recien despues decide si guarda.
-            using var frmPreview = new ConsolidadoPreviewForm(consolidado, titulo);
+            using var frmPreview = new ConsolidadoPreviewForm(consolidado, asiento, titulo);
             frmPreview.ShowDialog();
         }
 
