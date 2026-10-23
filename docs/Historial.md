@@ -1337,3 +1337,17 @@ Pruebas nuevas en `Tools/AgrupadorWeb.Tests/AsientoTests.cs` (cuentas, sin cuent
 totales, vacío): 42 correctas en total. Release de `ConciliadorContable` y `Conciliador.Web` compilan. No se abrió el Excel a ojo.
 
 **Revisión de Codex:** pendiente, no se hizo. Sin archivos en `Docs/Revisiones/`.
+
+
+## TAREA 00127 — 23/10/2026 — Orden de la hoja «Asiento»: primero el Debe, después el Haber
+
+**Pedido:**
+1. Ordenar las cuentas del asiento por su columna y luego por su cuenta o descripción: primero las del Debe y después las del Haber.
+
+**Ejecutado.**
+1. `ConsolidadoExporter.CalcularAsiento` parte las líneas en dos grupos, Debe y Haber (orden estable). Dentro de cada grupo se mantiene el
+   orden de la 00126: las que tienen cuenta por cuenta y después las que no la tienen, por descripción (concepto). Se interpretó «cuenta o
+   descripción» como ese orden; si se prefiere mezclar con y sin cuenta en una sola secuencia, es un cambio de una línea.
+   Pruebas de `AsientoTests` ajustadas al nuevo orden. Sin diseño previo: cambia sólo el orden de filas de un Excel.
+
+**Revisión de Codex:** pendiente, no se hizo. Sin archivos en `Docs/Revisiones/`.

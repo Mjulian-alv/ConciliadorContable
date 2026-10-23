@@ -60,7 +60,8 @@ namespace AgrupadorConceptos.Services
         /// Misma base que <see cref="Calcular"/> (sin los pendientes). Con CuentaFinal: una línea por cuenta, con el nombre de
         /// la cuenta como descripción. Sin cuenta: una línea por concepto final, sin cuenta y con el concepto como descripción.
         /// El saldo de la línea es créditos menos débitos (como el consolidado): positivo va al Haber, negativo al Debe, en positivo.
-        /// Las líneas con saldo cero no se informan. Primero van las que tienen cuenta y después las que no.
+        /// Las líneas con saldo cero no se informan. Van primero las del Debe y después las del Haber; en cada grupo, las que tienen cuenta
+        /// (por cuenta) y después las que no (por descripción).
         /// </summary>
         public static List<LineaAsiento> CalcularAsiento(IEnumerable<MovimientoProcesado> movimientos)
         {
@@ -83,7 +84,9 @@ namespace AgrupadorConceptos.Services
                 .GroupBy(m => m.ConceptoFinal)
                 .OrderBy(g => g.Key, StringComparer.Ordinal)
                 .Select(g => Linea("", g.Key, Saldo(g)));
-            return conCuenta.Concat(sinCuenta).Where(l => l.Debe != 0 || l.Haber != 0).ToList();
+            // Fecha: 23/10/2026 - TAREA: 00127 - Linea: 1 - Primero las líneas del Debe y después las del Haber; dentro de cada grupo se conserva el orden
+            // anterior (con cuenta por cuenta, después las sin cuenta por descripción). OrderBy es estable, así que sólo parte la lista en dos.
+            return conCuenta.Concat(sinCuenta).Where(l => l.Debe != 0 || l.Haber != 0).OrderBy(l => l.Debe != 0 ? 0 : 1).ToList();
         }
 
         // Fecha: 23/10/2026 - TAREA: 00126 - Linea: 1 - El libro lleva dos hojas: Consolidado y Asiento.

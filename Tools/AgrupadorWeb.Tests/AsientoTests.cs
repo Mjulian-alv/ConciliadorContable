@@ -23,10 +23,11 @@ static class AsientoTests
         {
             var a = ConsolidadoExporter.CalcularAsiento(Datos());
             Check(a.Count == 4, "Líneas (el pendiente y el saldo cero no entran): " + a.Count);
-            Check(a[0].Cuenta == "410101" && a[0].Descripcion == "Ventas" && a[0].Haber == 930m && a[0].Debe == 0m, "Cuenta con crédito va al Haber");
-            Check(a[1].Cuenta == "520101" && a[1].Descripcion == "Comisiones bancarias" && a[1].Debe == 155.5m && a[1].Haber == 0m, "Cuenta con débitos suma y va al Debe");
-            Check(a[2].Cuenta == "" && a[2].Descripcion == "DEPOSITO EFECTIVO" && a[2].Haber == 400m, "Sin cuenta: concepto como descripción");
-            Check(a[3].Cuenta == "" && a[3].Descripcion == "IVA 21" && a[3].Debe == 32.65m, "Sin cuenta nula: concepto como descripción");
+            // Fecha: 23/10/2026 - TAREA: 00127 - Linea: 1 - Orden: primero el Debe y después el Haber; en cada grupo, con cuenta y luego sin cuenta.
+            Check(a[0].Cuenta == "520101" && a[0].Descripcion == "Comisiones bancarias" && a[0].Debe == 155.5m && a[0].Haber == 0m, "Cuenta con débitos suma y va al Debe");
+            Check(a[1].Cuenta == "" && a[1].Descripcion == "IVA 21" && a[1].Debe == 32.65m, "Sin cuenta nula: concepto como descripción");
+            Check(a[2].Cuenta == "410101" && a[2].Descripcion == "Ventas" && a[2].Haber == 930m && a[2].Debe == 0m, "Cuenta con crédito va al Haber");
+            Check(a[3].Cuenta == "" && a[3].Descripcion == "DEPOSITO EFECTIVO" && a[3].Haber == 400m, "Sin cuenta: concepto como descripción");
         });
         test("Asiento: el neto del asiento coincide con el saldo del consolidado", () =>
         {
@@ -43,7 +44,7 @@ static class AsientoTests
             Check(libro.Worksheets.Count == 2 && libro.Worksheets.Contains("Consolidado") && libro.Worksheets.Contains("Asiento"), "Hojas");
             var h = libro.Worksheet("Asiento");
             Check(h.Cell(2, 1).GetString() == "Cuenta" && h.Cell(2, 4).GetString() == "Haber", "Encabezados");
-            Check(h.Cell(3, 1).GetString() == "410101" && h.Cell(3, 4).DataType == XLDataType.Number && h.Cell(3, 4).GetDouble() == 930, "Primera línea numérica");
+            Check(h.Cell(3, 1).GetString() == "520101" && h.Cell(3, 3).DataType == XLDataType.Number && h.Cell(3, 3).GetDouble() == 155.5, "Primera línea (Debe) numérica");
             Check(h.Cell(7, 2).GetString() == "Total" && h.Cell(7, 3).GetDouble() == 188.15 && h.Cell(7, 4).GetDouble() == 1330, "Totales");
             Check(h.Cell(8, 2).GetString().StartsWith("Diferencia") && h.Cell(8, 4).GetDouble() == 1141.85, "Diferencia");
             Check(libro.Worksheet("Consolidado").Cell(2, 1).GetString() == "Concepto Final", "La hoja Consolidado no cambia");
