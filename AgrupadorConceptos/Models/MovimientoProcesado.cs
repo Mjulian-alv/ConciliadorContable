@@ -1,3 +1,5 @@
+using System;
+
 namespace AgrupadorConceptos.Models
 {
     public class MovimientoProcesado
@@ -17,5 +19,8 @@ namespace AgrupadorConceptos.Models
         public string NombreBanco { get; set; }
         // Fecha: 15/10/2026 - TAREA: 00098 - Linea: 1 - Nombre de la cuenta final (join con CuentasContables), solo lectura
         public string NombreCuenta { get; set; }
+        // Fecha: 23/10/2026 - TAREA: 00125 - Linea: 1 - Mismo nombre que la columna para que "mov.*" lo mapee; la fecha es NULL mientras no esté conciliado
+        public bool Conciliado { get; set; }
+        public DateTime? ConciliadoFecha { get; set; }
     }
 }

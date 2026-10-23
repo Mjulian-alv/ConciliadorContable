@@ -118,13 +118,16 @@ namespace AgrupadorConceptos.Data
                 throw new InvalidOperationException("Los pares cambiaron durante el cierre. Actualizá la pantalla.");
             foreach (var cuenta in cuentas)
             {
-                int a = cn.Execute("UPDATE bancos.MovimientosArchivo SET CuentaFinal = @Cuenta WHERE Id = @Id",
+                // Fecha: 23/10/2026 - TAREA: 00125 - Linea: 1 - El cierre deja el movimiento marcado como conciliado, con su fecha
+                // GETDATE() ya es la fecha del servidor: CAST a date evita reinterpretar un texto con estilo 103.
+                int a = cn.Execute("UPDATE bancos.MovimientosArchivo SET CuentaFinal = @Cuenta, Conciliado = 1, ConciliadoFecha = CAST(GETDATE() AS date) WHERE Id = @Id",
                     new { Cuenta = cuenta.CuentaParaA, Id = cuenta.IdMovimientoA }, tx);
-                int b = cn.Execute("UPDATE bancos.MovimientosArchivo SET CuentaFinal = @Cuenta WHERE Id = @Id",
+                int b = cn.Execute("UPDATE bancos.MovimientosArchivo SET CuentaFinal = @Cuenta, Conciliado = 1, ConciliadoFecha = CAST(GETDATE() AS date) WHERE Id = @Id",
                     new { Cuenta = cuenta.CuentaParaB, Id = cuenta.IdMovimientoB }, tx);
                 if (a != 1 || b != 1) throw new InvalidOperationException("Un movimiento del cierre ya no existe. Actualizá la pantalla.");
             }
-            cn.Execute("UPDATE bancos.ConciliacionInternaSesiones SET Estado = 'Finalizada' WHERE Id = @Id", new { Id = idSesion }, tx);
+            // Fecha: 23/10/2026 - TAREA: 00125 - Linea: 1 - Fecha de finalización de la sesión
+            cn.Execute("UPDATE bancos.ConciliacionInternaSesiones SET Estado = 'Finalizada', FinalizacionFecha = CAST(GETDATE() AS date) WHERE Id = @Id", new { Id = idSesion }, tx);
             tx.Commit();
         }
     }

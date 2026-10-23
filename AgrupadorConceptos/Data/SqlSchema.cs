@@ -96,6 +96,14 @@ CREATE TABLE bancos.MovimientosArchivo (
 IF COL_LENGTH(N'bancos.MovimientosArchivo', N'CuentaFinal') IS NULL
     ALTER TABLE bancos.MovimientosArchivo ADD CuentaFinal NVARCHAR(50) NULL;
 
+-- Fecha: 23/10/2026 - TAREA: 00125 - Linea: 1 - Marca de movimiento conciliado y su fecha
+-- Las escribe el cierre de la conciliación interna y externa, y el marcado manual del procesador.
+-- Antes existían sólo en las bases tocadas a mano: una base creada desde este esquema fallaba al finalizar.
+IF COL_LENGTH(N'bancos.MovimientosArchivo', N'Conciliado') IS NULL
+    ALTER TABLE bancos.MovimientosArchivo ADD Conciliado BIT NOT NULL CONSTRAINT DF_MovimientosArchivo_Conciliado DEFAULT 0;
+IF COL_LENGTH(N'bancos.MovimientosArchivo', N'ConciliadoFecha') IS NULL
+    ALTER TABLE bancos.MovimientosArchivo ADD ConciliadoFecha DATE NULL;
+
 IF OBJECT_ID(N'bancos.ConciliacionSesiones', N'U') IS NULL
 CREATE TABLE bancos.ConciliacionSesiones (
     Id                 INT IDENTITY(1,1) CONSTRAINT PK_ConciliacionSesiones PRIMARY KEY,
@@ -155,6 +163,10 @@ CREATE TABLE bancos.ConciliacionInternaSesiones (
     ConceptosJson NVARCHAR(MAX) NOT NULL CONSTRAINT DF_SesionesInternas_Conceptos DEFAULT N'[]',
     Estado        NVARCHAR(50) NOT NULL CONSTRAINT DF_SesionesInternas_Estado DEFAULT N'EnProceso'
 );
+
+-- Fecha: 23/10/2026 - TAREA: 00125 - Linea: 1 - Fecha en que se finalizó la sesión interna
+IF COL_LENGTH(N'bancos.ConciliacionInternaSesiones', N'FinalizacionFecha') IS NULL
+    ALTER TABLE bancos.ConciliacionInternaSesiones ADD FinalizacionFecha DATE NULL;
 
 IF OBJECT_ID(N'bancos.ConciliacionInternaPares', N'U') IS NULL
 CREATE TABLE bancos.ConciliacionInternaPares (
