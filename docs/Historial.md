@@ -1301,8 +1301,7 @@ Rama `feature/00112-pyr-rango-fechas`, sin mergear.
    rechazan dentro de la transacción.
    Sin diseño previo: pantallas existentes, sin flujo nuevo.
 
-**Verificación:** `AgrupadorConceptos.Core` compila sin errores. **No se pudo compilar el proyecto WinForms**
-(`ProcesadorForm`) ni probar contra una base: sin acceso al paquete de Telerik Net80. No se probó a ojo.
+**Verificación:** el shell `ConciliadorContable` compila en Release sin errores (incluye `ProcesadorForm`). No se probó contra una base ni a ojo en la pantalla.
 **Límite conocido:** las sesiones externas finalizadas antes de esta tarea no dejaron `Conciliado=1` en sus
 movimientos; el marcado manual igual las respeta porque mira los pares, pero siguen apareciendo como candidatos
 en otras conciliaciones hasta que se las marque.
