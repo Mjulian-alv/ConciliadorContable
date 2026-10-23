@@ -73,7 +73,48 @@ namespace AgrupadorConceptos.Data
                 mv.ConceptoOriginal, mv.DescripcionOriginal, mv.Debitos, mv.Creditos, mv.ConceptoEstandar, mv.ConceptoFinal, mv.CuentaFinal, pf.NombreBanco
                FROM bancos.MovimientosArchivo mv
                left join bancos.archivosimportados ai on ai.id = mv.IdArchivo
-               left join bancos.perfilesbanco pf on pf.id = ai.IdPerfilBanco").ToList();
+               left join bancos.perfilesbanco pf on pf.id = ai.IdPerfilBanco
+               -- Fecha: 23/10/2026 - TAREA: 00125 - Linea: 3 - Lo ya conciliado (a mano o por una sesión finalizada) no es candidato de otra conciliación
+               WHERE mv.Conciliado = 0").ToList();
+        }
+
+        // Fecha: 23/10/2026 - TAREA: 00125 - Linea: 3 - Marcado manual de movimientos como conciliados
+        /// <summary>
+        /// Marca como conciliados los movimientos libres. Los que ya figuran en algún par de conciliación
+        /// (interna o externa, en proceso o finalizada) o ya están conciliados no se tocan y vuelven en
+        /// <c>Omitidos</c> con el motivo. Todo bajo el lock de mutaciones y en una sola transacción.
+        /// </summary>
+        public static (int Marcados, List<(int Id, string Motivo)> Omitidos) MarcarConciliados(IReadOnlyCollection<int> ids)
+        {
+            var omitidos = new List<(int Id, string Motivo)>();
+            var pedidos = ids?.Distinct().ToList() ?? new List<int>();
+            if (pedidos.Count == 0) return (0, omitidos);
+
+            using var cn = DatabaseHelper.Open();
+            using var tx = cn.BeginTransaction();
+            ConciliacionMutationStorage.Bloquear(cn, tx);
+
+            var yaConciliados = cn.Query<int>(
+                "SELECT Id FROM bancos.MovimientosArchivo WHERE Id IN @Ids AND Conciliado = 1", new { Ids = pedidos }, tx).ToHashSet();
+            // Los pares protegen aunque la sesión esté finalizada o ya no exista (mismo criterio que la baja de archivos).
+            var enPares = cn.Query<(int Id, string Donde)>(@"
+                SELECT p.IdMovimientoProcesado AS Id, N'conciliación externa' AS Donde FROM bancos.ConciliacionPares p WHERE p.IdMovimientoProcesado IN @Ids
+                UNION ALL SELECT p.IdMovimientoA, N'conciliación interna' FROM bancos.ConciliacionInternaPares p WHERE p.IdMovimientoA IN @Ids
+                UNION ALL SELECT p.IdMovimientoB, N'conciliación interna' FROM bancos.ConciliacionInternaPares p WHERE p.IdMovimientoB IN @Ids",
+                new { Ids = pedidos }, tx).GroupBy(x => x.Id).ToDictionary(g => g.Key, g => g.First().Donde);
+
+            var libres = new List<int>();
+            foreach (int id in pedidos)
+            {
+                if (yaConciliados.Contains(id)) omitidos.Add((id, "ya estaba conciliado"));
+                else if (enPares.TryGetValue(id, out var donde)) omitidos.Add((id, $"está en una {donde}"));
+                else libres.Add(id);
+            }
+            if (libres.Count > 0)
+                cn.Execute(@"UPDATE bancos.MovimientosArchivo SET Conciliado = 1, ConciliadoFecha = CAST(GETDATE() AS date)
+                    WHERE Id IN @Ids AND Conciliado = 0", new { Ids = libres }, tx);
+            tx.Commit();
+            return (libres.Count, omitidos);
         }
 
         /// <summary>Conceptos finales distintos ya homologados, para elegir qué conciliar.</summary>

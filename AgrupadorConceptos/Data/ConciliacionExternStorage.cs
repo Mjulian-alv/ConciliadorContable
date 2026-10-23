@@ -73,9 +73,16 @@ namespace AgrupadorConceptos.Data
             using var cn = DatabaseHelper.Open();
             using var tx = cn.BeginTransaction();
             ConciliacionMutationStorage.Bloquear(cn, tx);
-            int cambios = cn.Execute("UPDATE bancos.ConciliacionSesiones SET Estado = 'Finalizada' WHERE Id = @Id AND Estado = 'EnProceso'",
+            // Fecha: 23/10/2026 - TAREA: 00125 - Linea: 2 - Al finalizar se guarda la fecha de cierre de la sesión
+            int cambios = cn.Execute("UPDATE bancos.ConciliacionSesiones SET Estado = 'Finalizada', FinalizacionFecha = CAST(GETDATE() AS date) WHERE Id = @Id AND Estado = 'EnProceso'",
                 new { Id = idSesion }, tx);
             if (cambios != 1) throw new InvalidOperationException("La sesión ya no está en proceso. Actualizá la pantalla.");
+            // Fecha: 23/10/2026 - TAREA: 00125 - Linea: 2 - Los movimientos con par quedan marcados como conciliados
+            // A diferencia de la interna no se toca CuentaFinal: la externa no asigna cuenta ni la exige. Los movimientos
+            // sin par quedan sin conciliar. El estado EnProceso ya se validó arriba con el mismo lock.
+            cn.Execute(@"UPDATE bancos.MovimientosArchivo SET Conciliado = 1, ConciliadoFecha = CAST(GETDATE() AS date)
+                WHERE Id IN (SELECT IdMovimientoProcesado FROM bancos.ConciliacionPares WHERE IdSesion = @Id)",
+                new { Id = idSesion }, tx);
             tx.Commit();
         }
 
@@ -105,6 +112,9 @@ namespace AgrupadorConceptos.Data
                 "SELECT * FROM bancos.MovimientosArchivo WHERE Id IN @Ids", new { Ids = idsMovimientos }, tx).ToList();
             if (movimientos.Count != idsMovimientos.Count || movimientos.Any(m => !archivos.Contains(m.IdArchivo)))
                 throw new InvalidOperationException("Hay movimientos que ya no pertenecen a los archivos de la sesión.");
+            // Fecha: 23/10/2026 - TAREA: 00125 - Linea: 3 - Un movimiento marcado como conciliado (a mano o por otra sesión finalizada) no se concilia de nuevo
+            if (movimientos.Any(m => m.Conciliado))
+                throw new InvalidOperationException("Hay movimientos que ya figuran como conciliados. Actualizá la pantalla.");
             int ocupados = cn.ExecuteScalar<int>(
                 "SELECT COUNT(*) FROM bancos.ConciliacionPares WHERE IdSesion = @Sesion AND IdMovimientoProcesado IN @Ids",
                 new { Sesion = idSesion, Ids = idsMovimientos }, tx);

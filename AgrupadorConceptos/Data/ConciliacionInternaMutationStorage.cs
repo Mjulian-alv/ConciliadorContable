@@ -67,6 +67,9 @@ namespace AgrupadorConceptos.Data
             int[] ids = { idMovimientoA, idMovimientoB };
             int encontrados = cn.ExecuteScalar<int>("SELECT COUNT(*) FROM bancos.MovimientosArchivo WHERE Id IN @Ids", new { Ids = ids }, tx);
             if (idMovimientoA == idMovimientoB || encontrados != 2) return "Uno de los movimientos ya no existe. Actualizá la pantalla.";
+            // Fecha: 23/10/2026 - TAREA: 00125 - Linea: 3 - Un movimiento ya marcado como conciliado no entra en otro par
+            if (cn.ExecuteScalar<int>("SELECT COUNT(*) FROM bancos.MovimientosArchivo WHERE Id IN @Ids AND Conciliado = 1", new { Ids = ids }, tx) != 0)
+                return "Uno de los movimientos ya figura como conciliado. Actualizá la pantalla.";
             int ocupados = cn.ExecuteScalar<int>(@"SELECT COUNT(*) FROM bancos.ConciliacionInternaPares
                 WHERE IdSesion = @Sesion AND (IdMovimientoA IN @Ids OR IdMovimientoB IN @Ids)",
                 new { Sesion = idSesion, Ids = ids }, tx);

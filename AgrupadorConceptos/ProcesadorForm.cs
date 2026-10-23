@@ -27,9 +27,20 @@ namespace AgrupadorConceptos
             Location = new Point(700, 8), Size = new Size(280, 28), TabIndex = 16
         };
 
+        // Fecha: 23/10/2026 - TAREA: 00125 - Linea: 3 - Marcado manual como conciliado, junto a la baja de movimientos
+        private bool _marcandoConciliados;
+        private readonly Button _btnMarcarConciliados = new()
+        {
+            Name = "btnMarcarConciliados", Text = "Marcar como conciliados",
+            Location = new Point(390, 8), Size = new Size(300, 28), TabIndex = 17
+        };
+
         public ProcesadorForm()
         {
             InitializeComponent();
+            // Fecha: 23/10/2026 - TAREA: 00125 - Linea: 3 - Mismo criterio que el botón de baja: se agrega por código sin tocar el diseñador
+            pnlTop.Controls.Add(_btnMarcarConciliados);
+            _btnMarcarConciliados.Click += btnMarcarConciliados_Click;
             // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 1 - La acción queda junto a las herramientas de la grilla sin alterar el diseñador heredado.
             pnlTop.Controls.Add(_btnEliminarMovimientos);
             _btnEliminarMovimientos.Click += btnEliminarMovimientos_Click;
@@ -302,6 +313,56 @@ namespace AgrupadorConceptos
             }
         }
 
+        // Fecha: 23/10/2026 - TAREA: 00125 - Linea: 3 - Marca como conciliado lo visible: la selección si la hay, o todas las filas que deja pasar el filtro
+        // AplanarFilasDelView recorre sólo las filas del view (ya filtrado y, si se agrupó, bajando a los grupos),
+        // así que nada oculto por el filtro se marca. Lo que está en una conciliación lo rechaza el storage.
+        private void btnMarcarConciliados_Click(object sender, EventArgs e)
+        {
+            if (_archivoEnGrilla == null || pnlProgreso.Visible || _eliminandoMovimientos || _marcandoConciliados) return;
+            var visibles = AplanarFilasDelView(dgvDatos.ChildRows)
+                .Where(f => f.DataBoundItem is MovimientoProcesado).ToList();
+            var seleccionadas = visibles.Where(f => f.IsSelected).ToList();
+            bool haySeleccion = seleccionadas.Count > 0;
+            var ids = (haySeleccion ? seleccionadas : visibles)
+                .Select(f => ((MovimientoProcesado)f.DataBoundItem))
+                .Where(m => !m.Conciliado)
+                .Select(m => m.Id).Distinct().ToList();
+            if (ids.Count == 0)
+            {
+                MessageBox.Show("No hay movimientos visibles sin conciliar para marcar.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            string alcance = haySeleccion ? "seleccionado(s)" : "visible(s) con el filtro actual";
+            if (MessageBox.Show($"¿Marcar como conciliados {ids.Count} movimiento(s) {alcance} de '{_archivoEnGrilla.NombreArchivo}'?\n" +
+                    "Los que ya estén en una conciliación interna o externa no se marcan.",
+                    "Confirmar", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+            _marcandoConciliados = true;
+            _btnMarcarConciliados.Enabled = false;
+            try
+            {
+                var resultado = ConciliacionManualService.MarcarConciliados(ids);
+                RefrescarSesionDesdeBase();
+                string mensaje = $"Se marcaron {resultado.Marcados} movimiento(s) como conciliados.";
+                if (resultado.Omitidos.Count > 0)
+                {
+                    var porMotivo = resultado.Omitidos.GroupBy(o => o.Motivo)
+                        .Select(g => $"  · {g.Count()} {g.Key}");
+                    mensaje += $"\n\nNo se marcaron {resultado.Omitidos.Count}:\n" + string.Join("\n", porMotivo);
+                }
+                MessageBox.Show(mensaje, "Marcado manual", MessageBoxButtons.OK,
+                    resultado.Omitidos.Count > 0 ? MessageBoxIcon.Warning : MessageBoxIcon.Information);
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or Microsoft.Data.SqlClient.SqlException)
+            {
+                MessageBox.Show(ex.Message, "No se puede marcar", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            finally
+            {
+                _marcandoConciliados = false;
+                _btnMarcarConciliados.Enabled = !pnlProgreso.Visible;
+            }
+        }
+
         private void btnGestionarHomologaciones_Click(object sender, EventArgs e)
         {
             // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 4 - Abrir filtrada por el perfil en uso
@@ -372,8 +433,18 @@ namespace AgrupadorConceptos
         // en el plan de conciliacion interna) — mejor avisar antes que dejar editar algo que se va a perder.
         private void DgvDatos_CellBeginEdit(object sender, GridViewCellCancelEventArgs e)
         {
-            if (e.Column.Name != "CuentaFinal") return;
+            if (e.Column.Name != "CuentaFinal" && e.Column.Name != "ConceptoFinal") return;
             if (e.Row.DataBoundItem is not MovimientoProcesado mov) return;
+
+            // Fecha: 23/10/2026 - TAREA: 00125 - Linea: 3 - Un movimiento conciliado no se edita: cambiaría lo que ya se cerró
+            if (mov.Conciliado)
+            {
+                e.Cancel = true;
+                MessageBox.Show("Este movimiento ya está marcado como conciliado y no se puede editar.",
+                    "No se puede editar", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            if (e.Column.Name != "CuentaFinal") return;
 
             string sesion = ConciliacionInternaService.ObtenerSesionEnProcesoDelMovimiento(mov.Id);
             if (sesion == null) return;
@@ -544,6 +615,8 @@ namespace AgrupadorConceptos
             // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 1 - Una importación no puede solaparse con ninguna de las dos bajas.
             btnBorrarSesion.Enabled = !visible && !_eliminandoMovimientos;
             _btnEliminarMovimientos.Enabled = !visible && !_eliminandoMovimientos;
+            // Fecha: 23/10/2026 - TAREA: 00125 - Linea: 3 - El marcado manual tampoco se solapa con una importación
+            _btnMarcarConciliados.Enabled = !visible && !_marcandoConciliados;
             if (visible)
             {
                 // Configurar steps al inicio de cada importación

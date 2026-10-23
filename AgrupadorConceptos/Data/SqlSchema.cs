@@ -116,6 +116,10 @@ CREATE TABLE bancos.ConciliacionSesiones (
     ArchivosJson       NVARCHAR(MAX) NULL
 );
 
+-- Fecha: 23/10/2026 - TAREA: 00125 - Linea: 2 - Fecha en que se finalizó la sesión externa
+IF COL_LENGTH(N'bancos.ConciliacionSesiones', N'FinalizacionFecha') IS NULL
+    ALTER TABLE bancos.ConciliacionSesiones ADD FinalizacionFecha DATE NULL;
+
 IF OBJECT_ID(N'bancos.ConciliacionItemsExternos', N'U') IS NULL
 CREATE TABLE bancos.ConciliacionItemsExternos (
     Id         INT IDENTITY(1,1) CONSTRAINT PK_ConciliacionItemsExternos PRIMARY KEY,

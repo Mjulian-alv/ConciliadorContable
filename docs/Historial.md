@@ -1272,3 +1272,39 @@ rango): 35 correctas. `ArcaCliente` y `Conciliador.Web` compilan. No se probó a
 Rama `feature/00112-pyr-rango-fechas`, sin mergear.
 
 **Revisión de Codex: omitida** por decisión del usuario. Sin archivos en `Docs/Revisiones/`.
+
+
+## TAREA 00125 — 23/10/2026 — Conciliado / FinalizacionFecha y marcado manual de movimientos
+
+**Pedido** (el usuario lo numeró al planificar; los cambios previos se habían hecho a mano, sin tarea):
+1. Identificar y regularizar lo ya hecho a mano: `MovimientosArchivo.Conciliado`, `MovimientosArchivo.ConciliadoFecha`
+   y `ConciliacionInternaSesiones.FinalizacionFecha`, escritos al finalizar la conciliación interna.
+2. Hacer lo mismo con la conciliación con archivo externo (la cuenta no es requisito, como sí lo es en la interna).
+3. Poder marcar movimientos como conciliados a mano en `ProcesadorForm`: toma lo visible si la grilla está filtrada, y
+   no marca ítems que estén en otras conciliaciones (en proceso o finalizadas, internas o externas). Los marcados a
+   mano quedan excluidos de las demás conciliaciones.
+
+**Ejecutado.**
+1. `Data/SqlSchema.cs` crea las tres columnas con el patrón `IF COL_LENGTH ... ALTER` (antes sólo existían en las bases
+   tocadas a mano; una base nueva fallaba al finalizar). `ConciliacionInternaMutationStorage.Finalizar` pasa a
+   `CAST(GETDATE() AS date)` y lleva los comentarios; `MovimientoProcesado` renombra `ConciliadoManual` a `Conciliado`
+   (para que `mov.*` lo mapee) y `ConciliadoFecha` pasa a `DateTime?`. Commit aparte `2157e9d`.
+2. `bancos.ConciliacionSesiones` suma `FinalizacionFecha`. `ConciliacionExternStorage.MarcarFinalizada` guarda la fecha
+   y marca `Conciliado=1` en los movimientos con par de esa sesión, en la misma transacción. No toca `CuentaFinal`;
+   los movimientos sin par quedan sin conciliar.
+3. `MovimientoStorage.MarcarConciliados` (bajo el lock de mutaciones): omite y devuelve con motivo los que ya están
+   conciliados o en cualquier par interno/externo, sin mirar el estado de la sesión; marca el resto.
+   `ConciliacionManualService` lo expone. En `ProcesadorForm` el botón «Marcar como conciliados» actúa sobre la
+   selección si la hay, o sobre todas las filas que deja pasar el filtro; informa cuántas marcó y cuántas omitió y
+   por qué. Un movimiento conciliado no se edita en la grilla. Exclusión: `ObtenerTodos` (candidatos de la interna)
+   filtra `Conciliado=0`, la externa descarta los conciliados al listar y `ConciliarSeleccion`/`ConciliarPar` los
+   rechazan dentro de la transacción.
+   Sin diseño previo: pantallas existentes, sin flujo nuevo.
+
+**Verificación:** `AgrupadorConceptos.Core` compila sin errores. **No se pudo compilar el proyecto WinForms**
+(`ProcesadorForm`) ni probar contra una base: sin acceso al paquete de Telerik Net80. No se probó a ojo.
+**Límite conocido:** las sesiones externas finalizadas antes de esta tarea no dejaron `Conciliado=1` en sus
+movimientos; el marcado manual igual las respeta porque mira los pares, pero siguen apareciendo como candidatos
+en otras conciliaciones hasta que se las marque.
+
+**Revisión de Codex:** pendiente, no se hizo. Sin archivos en `Docs/Revisiones/`.

@@ -107,7 +107,8 @@ namespace AgrupadorConceptos.Services
             }
 
             var sinConciliar = MovimientoStorage.ObtenerPorArchivos(sesion.IdsArchivos)
-                .Where(m => !idsConciliados.Contains(m.Id))
+                // Fecha: 23/10/2026 - TAREA: 00125 - Linea: 3 - Los marcados como conciliados (a mano o por otra sesión finalizada) no son candidatos
+                .Where(m => !idsConciliados.Contains(m.Id) && !m.Conciliado)
                 .ToList();
 
             return (sesion, sinConciliar);
