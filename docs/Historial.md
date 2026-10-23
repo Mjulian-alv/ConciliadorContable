@@ -1283,6 +1283,7 @@ Rama `feature/00112-pyr-rango-fechas`, sin mergear.
 3. Poder marcar movimientos como conciliados a mano en `ProcesadorForm`: toma lo visible si la grilla está filtrada, y
    no marca ítems que estén en otras conciliaciones (en proceso o finalizadas, internas o externas). Los marcados a
    mano quedan excluidos de las demás conciliaciones.
+4. Lo mismo en el Procesador de Conciliador.Web (paridad con WinForms; pedido el 23/10/2026).
 
 **Ejecutado.**
 1. `Data/SqlSchema.cs` crea las tres columnas con el patrón `IF COL_LENGTH ... ALTER` (antes sólo existían en las bases
@@ -1301,7 +1302,13 @@ Rama `feature/00112-pyr-rango-fechas`, sin mergear.
    rechazan dentro de la transacción.
    Sin diseño previo: pantallas existentes, sin flujo nuevo.
 
-**Verificación:** el shell `ConciliadorContable` compila en Release sin errores (incluye `ProcesadorForm`). No se probó contra una base ni a ojo en la pantalla.
+4. `Procesador.razor(.cs)`: botón «Marcar conciliados (n)» que actúa sobre las casillas marcadas visibles o, sin ninguna, sobre
+   todo lo que deja pasar el filtro (`vista`), con confirmación y `ConciliacionManualService.MarcarConciliados` (mismo criterio que
+   WinForms: omite lo que está en cualquier par y lo informa). Columna «Conciliado» con la fecha, y «Concepto final»/«Cuenta final»
+   deshabilitados y con guarda en el handler si el movimiento está conciliado. Los ítems 1-2 y la exclusión ya regían en la web
+   porque comparte `AgrupadorConceptos.Core`. Sin diseño previo: una pantalla existente, sin flujo nuevo.
+
+**Verificación:** el shell `ConciliadorContable` compila en Release sin errores (incluye `ProcesadorForm`); `Conciliador.Web` compila en Release (ítem 4). No se probó contra una base ni a ojo en la pantalla.
 **Límite conocido:** las sesiones externas finalizadas antes de esta tarea no dejaron `Conciliado=1` en sus
 movimientos; el marcado manual igual las respeta porque mira los pares, pero siguen apareciendo como candidatos
 en otras conciliaciones hasta que se las marque.

@@ -10,7 +10,7 @@ using Microsoft.JSInterop;
 namespace Conciliador.Web.Components.Pages.Agrupador;
 public partial class Procesador
 {
-    enum Dialogo { Ninguno, Homologar, ConfirmarRehomologar, Pendientes, PendientesHomologar, Consolidado, BorrarArchivo, EliminarSeleccion, Bloqueo }
+    enum Dialogo { Ninguno, Homologar, ConfirmarRehomologar, Pendientes, PendientesHomologar, Consolidado, BorrarArchivo, EliminarSeleccion, Bloqueo, MarcarConciliados }
     static readonly System.Globalization.CultureInfo ar = new("es-AR");
     [Inject] AccessGuard Access { get; set; } = default!;
     [Inject] IJSRuntime JS { get; set; } = default!;
@@ -154,16 +154,25 @@ public partial class Procesador
     // Sólo cuenta lo que se está viendo: como en el escritorio, la baja es sobre lo seleccionado y visible.
     List<int> SeleccionVisible() => vista.Where(m => seleccion.Contains(m.Id)).Select(m => m.Id).ToList();
 
+    // Fecha: 23/10/2026 - TAREA: 00125 - Linea: 4 - Qué se marca: la selección visible si la hay; si no, todo lo que deja pasar el filtro. Lo ya conciliado no cuenta.
+    bool HaySeleccionVisible() => vista.Any(m => seleccion.Contains(m.Id));
+    List<int> IdsParaConciliar() => (HaySeleccionVisible() ? vista.Where(m => seleccion.Contains(m.Id)) : vista)
+        .Where(m => !m.Conciliado).Select(m => m.Id).ToList();
+
     // ---- edición en el lugar ----
     async Task CambioConceptoFinal(MovimientoProcesado m, ChangeEventArgs e)
     {
         string anterior = m.ConceptoFinal; string nuevo = e.Value?.ToString() ?? "";
+        // Fecha: 23/10/2026 - TAREA: 00125 - Linea: 4 - Un movimiento conciliado no se edita (como en el escritorio).
+        if (m.Conciliado) { error = "Este movimiento ya está marcado como conciliado y no se puede editar."; StateHasChanged(); return; }
         try { await Access.Require("AgrProcesador"); m.ConceptoFinal = nuevo; await Task.Run(() => MovimientoStorage.ActualizarConceptoFinal(m.Id, nuevo)); }
         catch (Exception ex) { m.ConceptoFinal = anterior; error = ex is UnauthorizedAccessException ? ex.Message : "No se pudo guardar el concepto final: " + ex.Message; }
     }
     async Task CambioCuentaFinal(MovimientoProcesado m, ChangeEventArgs e)
     {
         string anterior = m.CuentaFinal; string nuevo = e.Value?.ToString() ?? "";
+        // Fecha: 23/10/2026 - TAREA: 00125 - Linea: 4 - Un movimiento conciliado no se edita (como en el escritorio).
+        if (m.Conciliado) { error = "Este movimiento ya está marcado como conciliado y no se puede editar."; StateHasChanged(); return; }
         try
         {
             await Access.Require("AgrProcesador");
@@ -312,6 +321,29 @@ public partial class Procesador
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { mensajeBloqueo = ex.Message; dialogo = Dialogo.Bloqueo; }
         catch (UnauthorizedAccessException ex) { error = ex.Message; dialogo = Dialogo.Ninguno; }
         catch (Exception ex) { error = "No se pudo eliminar: " + ex.Message; dialogo = Dialogo.Ninguno; }
+        finally { ocupado = false; }
+    }
+
+    // Fecha: 23/10/2026 - TAREA: 00125 - Linea: 4 - Marcado manual: el storage omite lo que está en cualquier par de conciliación y devuelve el motivo.
+    void PedirMarcarConciliados() { aviso = error = null; if (IdsParaConciliar().Count > 0) dialogo = Dialogo.MarcarConciliados; }
+    async Task TrasMarcarConciliados(bool confirma)
+    {
+        if (!confirma || archivoSeleccionado == null) { dialogo = Dialogo.Ninguno; return; }
+        var ids = IdsParaConciliar(); int idArchivo = Work.ArchivoId; ocupado = true;
+        try
+        {
+            await Access.Require("AgrProcesador");
+            var r = await Task.Run(() => ConciliacionManualService.MarcarConciliados(ids));
+            Work.Movimientos = await Task.Run(() => MovimientoStorage.ObtenerPorArchivo(idArchivo));
+            seleccion.Clear(); actual = null; Recalcular();
+            aviso = $"Se marcaron {r.Marcados.ToString("N0", ar)} movimiento(s) como conciliados.";
+            if (r.Omitidos.Count > 0)
+                aviso += $" No se marcaron {r.Omitidos.Count.ToString("N0", ar)}: " + string.Join("; ", r.Omitidos.GroupBy(o => o.Motivo).Select(g => $"{g.Count()} {g.Key}")) + ".";
+            dialogo = Dialogo.Ninguno;
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { mensajeBloqueo = ex.Message; dialogo = Dialogo.Bloqueo; }
+        catch (UnauthorizedAccessException ex) { error = ex.Message; dialogo = Dialogo.Ninguno; }
+        catch (Exception ex) { error = "No se pudo marcar como conciliados: " + ex.Message; dialogo = Dialogo.Ninguno; }
         finally { ocupado = false; }
     }
 }

@@ -49,6 +49,8 @@ else
             <button @onclick="AbrirConsolidado" disabled="@ocupado">Exportar consolidado…</button><button @onclick="ExportarDetalle" disabled="@(ocupado||vista.Count==0)">Exportar detalle…</button>
             <span class="grow"></span><input class="search" placeholder="Filtrar movimientos…" aria-label="Filtrar movimientos" @bind="filtro" @bind:event="oninput" @bind:after="Recalcular" />
             <label class="check"><input type="checkbox" @bind="soloPendientes" @bind:after="Recalcular" /> Sólo pendientes</label>
+            @* Fecha: 23/10/2026 - TAREA: 00125 - Linea: 4 - Marcar como conciliados lo seleccionado o, sin selección, todo lo visible (equivale a ProcesadorForm). *@
+            <button @onclick="PedirMarcarConciliados" disabled="@(ocupado||IdsParaConciliar().Count==0)">Marcar conciliados (@IdsParaConciliar().Count)</button>
             <button @onclick="PedirEliminarSeleccion" disabled="@(ocupado||SeleccionVisible().Count==0)">Eliminar seleccionados (@SeleccionVisible().Count)</button></div>
         @if(vista.Count==0){<div class="empty"><p class="muted">Ningún movimiento coincide con el filtro.</p></div>}
         else
@@ -58,18 +60,19 @@ else
                     <th><button class="th-sort" @onclick='()=>Ordenar("fecha")'>Fecha@(Flecha("fecha"))</button></th><th><button class="th-sort" @onclick='()=>Ordenar("concepto")'>Concepto original@(Flecha("concepto"))</button></th>
                     <th><button class="th-sort" @onclick='()=>Ordenar("descripcion")'>Descripción@(Flecha("descripcion"))</button></th><th><button class="th-sort" @onclick='()=>Ordenar("estandar")'>Concepto estándar@(Flecha("estandar"))</button></th>
                     <th class="numeric"><button class="th-sort" @onclick='()=>Ordenar("debitos")'>Débitos@(Flecha("debitos"))</button></th><th class="numeric"><button class="th-sort" @onclick='()=>Ordenar("creditos")'>Créditos@(Flecha("creditos"))</button></th>
-                    <th>Concepto final</th><th>Cuenta final</th></tr></thead>
+                    <th>Concepto final</th><th>Cuenta final</th><th>Conciliado</th></tr></thead>
                 <tbody><Virtualize Items="vista" Context="m" ItemSize="48">
                     <tr class="@ClaseFila(m)" @onclick="()=>actual=m" @ondblclick="AbrirHomologar">
                         <td><input type="checkbox" aria-label="Marcar movimiento" checked="@seleccion.Contains(m.Id)" @onchange="e=>Marcar(m.Id,(bool)e.Value!)" @onclick:stopPropagation="true" /></td>
                         <td>@m.Fecha.ToString("dd/MM/yyyy")</td><td>@m.ConceptoOriginal</td><td>@m.DescripcionOriginal</td>
                         <td>@if(EsPendiente(m)){<span class="badge warn">Pendiente de homologar</span>}else{@m.ConceptoEstandar}</td>
                         <td class="numeric @(FormatoImporte.EsCero(m.Debitos)?"cero":"")">@FormatoImporte.Absoluto(m.Debitos)</td><td class="numeric @(FormatoImporte.EsCero(m.Creditos)?"cero":"")">@FormatoImporte.Absoluto(m.Creditos)</td>
-                        <td><input class="celda" aria-label="Concepto final" value="@m.ConceptoFinal" @onchange="e=>CambioConceptoFinal(m,e)" @onclick:stopPropagation="true" @ondblclick:stopPropagation="true" /></td>
-                        <td><input class="celda corta" aria-label="Cuenta final" value="@m.CuentaFinal" @onchange="e=>CambioCuentaFinal(m,e)" @onclick:stopPropagation="true" @ondblclick:stopPropagation="true" /></td></tr>
+                        <td><input class="celda" aria-label="Concepto final" value="@m.ConceptoFinal" disabled="@m.Conciliado" @onchange="e=>CambioConceptoFinal(m,e)" @onclick:stopPropagation="true" @ondblclick:stopPropagation="true" /></td>
+                        <td><input class="celda corta" aria-label="Cuenta final" value="@m.CuentaFinal" disabled="@m.Conciliado" @onchange="e=>CambioCuentaFinal(m,e)" @onclick:stopPropagation="true" @ondblclick:stopPropagation="true" /></td>
+                        <td>@if(m.Conciliado){<span class="badge ok">Conciliado@(m.ConciliadoFecha.HasValue?" "+m.ConciliadoFecha.Value.ToString("dd/MM/yyyy"):"")</span>}</td></tr>
                 </Virtualize></tbody>
             </table></div>
-            <p class="note">@vista.Count.ToString("N0",ar) de @Movs.Count.ToString("N0",ar) filas. «Concepto final» y «Cuenta final» se editan en el lugar y se guardan al salir de la celda. Doble clic en una fila para homologarla.</p>
+            <p class="note">@vista.Count.ToString("N0",ar) de @Movs.Count.ToString("N0",ar) filas. «Concepto final» y «Cuenta final» se editan en el lugar y se guardan al salir de la celda. Doble clic en una fila para homologarla. Un movimiento conciliado no se edita.</p>
         }
     </section>
 }
@@ -80,4 +83,6 @@ else
 @if(dialogo==Dialogo.Consolidado){<ConsolidadoDialog Lineas="lineasConsolidado" Titulo="@tituloConsolidado" Pendientes="pendientesConsolidado" OnExportar="ExportarConsolidado" OnCerrar="()=>dialogo=Dialogo.Ninguno" />}
 @if(dialogo==Dialogo.BorrarArchivo&&archivoSeleccionado!=null){<AvisoDialog Titulo="Borrar archivo" Subtitulo="@archivoSeleccionado.NombreArchivo" Mensaje="@($"¿Borrar el archivo «{archivoSeleccionado.NombreArchivo}» y todos sus movimientos?")" Nota="No se puede deshacer. Si algún movimiento está tomado por una conciliación, no se borra nada y se informa el motivo." Confirmar="Borrar archivo" Ocupado="ocupado" OnCerrar="TrasBorrarArchivo" />}
 @if(dialogo==Dialogo.EliminarSeleccion){<AvisoDialog Titulo="Eliminar movimientos" Mensaje="@($"¿Eliminar definitivamente {SeleccionVisible().Count.ToString("N0",ar)} movimiento(s) de «{archivoSeleccionado?.NombreArchivo}»?")" Nota="No se puede deshacer. Si alguno está tomado por una conciliación, no se elimina ninguno y se informa el motivo." Confirmar="Eliminar" Ocupado="ocupado" OnCerrar="TrasEliminarSeleccion" />}
+@* Fecha: 23/10/2026 - TAREA: 00125 - Linea: 4 *@
+@if(dialogo==Dialogo.MarcarConciliados){<AvisoDialog Titulo="Marcar como conciliados" Mensaje="@($"¿Marcar como conciliados {IdsParaConciliar().Count.ToString("N0",ar)} movimiento(s) {(HaySeleccionVisible()?"seleccionado(s)":"visible(s) con el filtro actual")} de «{archivoSeleccionado?.NombreArchivo}»?")" Nota="Los que ya están en una conciliación interna o externa (en proceso o finalizada) no se marcan. Los marcados dejan de ser candidatos de otras conciliaciones." Confirmar="Marcar" Ocupado="ocupado" OnCerrar="TrasMarcarConciliados" />}
 @if(dialogo==Dialogo.Bloqueo){<AvisoDialog Titulo="No se puede borrar" Subtitulo="@archivoSeleccionado?.NombreArchivo" Mensaje="@mensajeBloqueo" Error="true" Nota="Los motivos posibles: movimientos tomados por pares de conciliación, o una sesión externa o interna en proceso o finalizada que alcanza el archivo. Un error de base de datos se informa aparte, con su mensaje." OnCerrar="()=>dialogo=Dialogo.Ninguno" />}
