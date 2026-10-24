@@ -2,4 +2,6 @@
 @model Conciliador.Web.Pages.Account.LogoutModel
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @* Fecha: 05/10/2026 - TAREA: 00064 - Linea: 3 - Cierre por POST protegido. *@
-<!DOCTYPE html><html lang="es"><head><link rel="stylesheet" href="/app.css"><title>Cerrar sesión</title></head><body class="login-body"><main class="login-card"><h1>Cerrar sesión</h1><form method="post"><button class="primary">Cerrar sesión</button></form><a href="/">Volver a conciliación</a></main></body></html>
+@* Fecha: 24/10/2026 - TAREA: 00125 - Linea: 4 - La hoja de estilos se resuelve con PathBase (~/) para servir la app bajo una subruta del Concentrador. *@
+@* Fecha: 24/10/2026 - TAREA: 00125 - Linea: 4 - Enlace a la raíz de la app con ~/ para que lleve el PathBase del Concentrador. *@
+<!DOCTYPE html><html lang="es"><head><link rel="stylesheet" href="~/app.css"><title>Cerrar sesión</title></head><body class="login-body"><main class="login-card"><h1>Cerrar sesión</h1><form method="post"><button class="primary">Cerrar sesión</button></form><a href="~/">Volver a conciliación</a></main></body></html>

@@ -9,7 +9,8 @@
 @* Fecha: 06/10/2026 - TAREA: 00072 - Linea: 3,4 - El alcance se deriva de los mayores cargados como en TAREA 00041. *@
 <PageTitle>Percepciones y retenciones · Conciliador</PageTitle>
 <NavigationLock OnBeforeInternalNavigation="BeforeNavigate" ConfirmExternalNavigation="@directivesDirty" />
-<div class="page-heading"><div><p class="eyebrow">CONCILIACIÓN FISCAL</p><h1>Percepciones y retenciones</h1><p>ARCA contra los mayores de las cuentas seleccionadas.</p></div><a class="button" href="/pyr/perfiles">Administrar perfiles PyR</a></div>
+@* Fecha: 24/10/2026 - TAREA: 00125 - Linea: 4 - Enlace relativo al <base href> para que la app funcione bajo una subruta (PathBase) detrás del Concentrador. *@
+<div class="page-heading"><div><p class="eyebrow">CONCILIACIÓN FISCAL</p><h1>Percepciones y retenciones</h1><p>ARCA contra los mayores de las cuentas seleccionadas.</p></div><a class="button" href="pyr/perfiles">Administrar perfiles PyR</a></div>
 @if(error!=null){<div class="notice error" role="alert">@error</div>}
 @if(busy){<p class="save-state" role="status">Procesando…</p>}
 <fieldset disabled="@busy">

@@ -13,7 +13,8 @@
 <section class="panel">
     <div class="actions"><button class="primary" @onclick="Nueva" disabled="@(idPerfil==0||ocupado)" title="@(idPerfil==0?"Elegí un perfil para dar de alta una homologación":"")">Nueva</button>
         <button @onclick="Editar" disabled="@(seleccionada==null||ocupado)">Editar</button><button @onclick="Eliminar" disabled="@(seleccionada==null||ocupado)">Eliminar</button>
-        <a class="button" href="/agrupador/conceptos">Conceptos estándar…</a><a class="button" href="/agrupador/consulta">Consultar movimientos…</a></div>
+        @* Fecha: 24/10/2026 - TAREA: 00125 - Linea: 4 - Enlace relativo al <base href> para que la app funcione bajo una subruta (PathBase) detrás del Concentrador. *@
+        <a class="button" href="agrupador/conceptos">Conceptos estándar…</a><a class="button" href="agrupador/consulta">Consultar movimientos…</a></div>
     @if(filas==null){<p class="muted">Cargando…</p>}
     else if(filas.Count==0)
     {

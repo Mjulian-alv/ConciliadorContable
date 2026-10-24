@@ -25,7 +25,8 @@
 @for(int index=0;index<editing.Profile.DirectivasConciliacion.Count;index++){var i=index;var d=editing.Profile.DirectivasConciliacion[i];<div class="directive"><div class="toolbar"><strong>@(i+1). @(i==0?"Directiva principal":d.Descripcion)</strong>@if(i>0){<div><button disabled="@(i==1)" @onclick="()=>Move(i,-1)">↑</button><button disabled="@(i==editing.Profile.DirectivasConciliacion.Count-1)" @onclick="()=>Move(i,1)">↓</button><button @onclick="()=>Remove(i)">Quitar</button></div>}</div>
 @if(i==0){<p>CUIT + Tipo de comprobante + Punto de venta + Número</p>}else{<label>Descripción<input @bind="d.Descripcion" @bind:after="Changed" /></label><div class="field-options">@foreach(var field in Enum.GetValues<CampoConciliacion>()){var f=field;<label class="check"><input type="checkbox" checked="@d.Campos.Contains(f)" @onchange="e=>FieldChanged(d,f,(bool)e.Value!)" /> @FieldName(f)</label>}</div>}</div>}
 @* Fecha: 06/10/2026 - TAREA: 00069 - Linea: 1 - Entrega el perfil editado para evitar otra selección al salir de configuración. *@
-<button @onclick="AddDirective">+ Agregar directiva</button><div class="form-footer"><a class="button primary" href="@($"/?perfil={editing.Profile.Id:D}")">Continuar con este perfil →</a></div></section>}
+@* Fecha: 24/10/2026 - TAREA: 00125 - Linea: 4 - Enlace relativo al <base href> para que la app funcione bajo una subruta (PathBase) detrás del Concentrador. "./" es la raíz de la app (el <base>); "?perfil=" solo se quedaría en la página actual. *@
+<button @onclick="AddDirective">+ Agregar directiva</button><div class="form-footer"><a class="button primary" href="@($"./?perfil={editing.Profile.Id:D}")">Continuar con este perfil →</a></div></section>}
 </div></fieldset>
 @code{
     List<WebProfile> profiles=new();WebProfile? editing;List<string>? candidate;bool busy,saved;string? error;

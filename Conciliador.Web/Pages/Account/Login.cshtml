@@ -2,7 +2,8 @@
 @model Conciliador.Web.Pages.Account.LoginModel
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @* Fecha: 05/10/2026 - TAREA: 00064 - Linea: 3 - Cookie emitida desde una solicitud con antiforgery. *@
-<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ingresar · Conciliador</title><link rel="stylesheet" href="/app.css"></head>
+@* Fecha: 24/10/2026 - TAREA: 00125 - Linea: 4 - La hoja de estilos se resuelve con PathBase (~/) para servir la app bajo una subruta del Concentrador. *@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ingresar · Conciliador</title><link rel="stylesheet" href="~/app.css"></head>
 @* Fecha: 06/10/2026 - TAREA: 00072 - Linea: 1 - Informa los dos circuitos disponibles en el mismo acceso. *@
 <body class="login-body"><main class="login-card"><div class="brand-mark">C</div><p class="eyebrow">CONCILIADOR CONTABLE</p><h1>Bienvenido</h1><p>Conciliación de comprobantes, percepciones y retenciones.</p>
 @if(Model.Error!=null){<div class="notice error" role="alert">@Model.Error</div>}

@@ -39,6 +39,9 @@ builder.Services.AddRazorComponents().AddInteractiveServerComponents(o=>{o.Disco
 builder.Services.AddRazorPages();
 builder.Services.AddRateLimiter(o=>{o.RejectionStatusCode=429;o.AddPolicy("login",context=>RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString()??"unknown",_=>new FixedWindowRateLimiterOptions{PermitLimit=10,Window=TimeSpan.FromMinutes(1),QueueLimit=0}));});
 var app=builder.Build();
+// Fecha: 24/10/2026 - TAREA: 00125 - Linea: 4 - PathBase opcional para servir la app bajo una subruta (/conciliador) detrás del Concentrador; vacío = raíz como hasta ahora.
+// UseRouting va explícito después de UsePathBase: con WebApplication el implícito iría antes y emparejaría la ruta con el prefijo todavía puesto.
+var pathBase=builder.Configuration["PathBase"]?.Trim('/');if(!string.IsNullOrEmpty(pathBase)){app.UsePathBase("/"+pathBase);app.UseRouting();}
 if(!demo){app.UseExceptionHandler("/Error");app.UseHsts();app.UseHttpsRedirection();await ((SqlConfigurationStorage)app.Services.GetRequiredService<IWebConfigurationStore>()).Initialize();await ((SqlPyRProfileStorage)app.Services.GetRequiredService<IPyRProfileStore>()).Initialize();
     // Fecha: 14/10/2026 - TAREA: 00097 - Linea: 1 - Si la base no está migrada a fechas tipadas, el arranque se detiene con el mensaje que pide migrar.
     AgrupadorConceptos.Data.DatabaseHelper.InitializeDatabase();}
