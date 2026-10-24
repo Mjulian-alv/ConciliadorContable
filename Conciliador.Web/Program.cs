@@ -26,7 +26,8 @@ else {
     builder.Services.AddSingleton<IPyRProfileStore>(new SqlPyRProfileStorage(connection));
 }
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie(o=>{
-    o.LoginPath="/account/login";o.AccessDeniedPath="/account/login";o.Cookie.Name="Conciliador.Web.Auth";o.Cookie.HttpOnly=true;o.Cookie.SameSite=SameSiteMode.Strict;o.Cookie.SecurePolicy=demo?CookieSecurePolicy.SameAsRequest:CookieSecurePolicy.Always;o.ExpireTimeSpan=TimeSpan.FromHours(8);o.SlidingExpiration=false;
+// Fecha: 24/10/2026 - TAREA: 00125 - Linea: 11 - Web:CookieSegura=false permite probar por http (con https la cookie sigue siendo «Secure»); por defecto queda true.
+    o.LoginPath="/account/login";o.AccessDeniedPath="/account/login";o.Cookie.Name="Conciliador.Web.Auth";o.Cookie.HttpOnly=true;o.Cookie.SameSite=SameSiteMode.Strict;o.Cookie.SecurePolicy=demo||!builder.Configuration.GetValue("Web:CookieSegura",true)?CookieSecurePolicy.SameAsRequest:CookieSecurePolicy.Always;o.ExpireTimeSpan=TimeSpan.FromHours(8);o.SlidingExpiration=false;
     o.Events.OnValidatePrincipal=async context=>{if(!context.HttpContext.RequestServices.GetRequiredService<SessionRegistry>().IsActive(context.Principal!) || !demo && await context.HttpContext.RequestServices.GetRequiredService<UserStorage>().Find(context.Principal?.Identity?.Name??"")==null)context.RejectPrincipal();};
 });
 // Fecha: 14/10/2026 - TAREA: 00097 - Linea: 1 - Las políticas de ARCA y del Agrupador salen de un único catálogo de permisos.
@@ -42,7 +43,8 @@ var app=builder.Build();
 // Fecha: 24/10/2026 - TAREA: 00125 - Linea: 4 - PathBase opcional para servir la app bajo una subruta (/conciliador) detrás del Concentrador; vacío = raíz como hasta ahora.
 // UseRouting va explícito después de UsePathBase: con WebApplication el implícito iría antes y emparejaría la ruta con el prefijo todavía puesto.
 var pathBase=builder.Configuration["PathBase"]?.Trim('/');if(!string.IsNullOrEmpty(pathBase)){app.UsePathBase("/"+pathBase);app.UseRouting();}
-if(!demo){app.UseExceptionHandler("/Error");app.UseHsts();app.UseHttpsRedirection();await ((SqlConfigurationStorage)app.Services.GetRequiredService<IWebConfigurationStore>()).Initialize();await ((SqlPyRProfileStorage)app.Services.GetRequiredService<IPyRProfileStore>()).Initialize();
+// Fecha: 24/10/2026 - TAREA: 00125 - Linea: 11 - Web:ForzarHttps=false apaga HSTS y la redirección a https: detrás de AppHub la app recibe http por localhost y, sin esto, redirigiría en bucle. Por defecto queda true.
+if(!demo){app.UseExceptionHandler("/Error");if(builder.Configuration.GetValue("Web:ForzarHttps",true)){app.UseHsts();app.UseHttpsRedirection();}await ((SqlConfigurationStorage)app.Services.GetRequiredService<IWebConfigurationStore>()).Initialize();await ((SqlPyRProfileStorage)app.Services.GetRequiredService<IPyRProfileStore>()).Initialize();
     // Fecha: 14/10/2026 - TAREA: 00097 - Linea: 1 - Si la base no está migrada a fechas tipadas, el arranque se detiene con el mensaje que pide migrar.
     AgrupadorConceptos.Data.DatabaseHelper.InitializeDatabase();}
 if(demo)app.Use(async(ctx,next)=>{if(ctx.Connection.RemoteIpAddress==null||!System.Net.IPAddress.IsLoopback(ctx.Connection.RemoteIpAddress)){ctx.Response.StatusCode=403;return;}await next();});
