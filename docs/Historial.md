@@ -1428,4 +1428,6 @@ tarea de las columnas Conciliado; el correlativo global está en 00133 y esas l�
 
 **Revisión de Codex:** ronda 1 en `docs/Revisiones/00135-review-1.md` (4 hallazgos, corregidos). No hubo ronda 2.
 
+**Ajuste posterior (a pedido):** la clave maestra se define y cambia desde el ABM de usuarios del escritorio (botón «Clave maestra del blindaje», permiso `AgrClaveMaestra`) y no desde el procesador de archivos; la web y el procesador sólo blindan y desblindan.
+
 **Anotación:** el cambio suelto del Core y de `NuGet.Config` que había en el árbol de trabajo se registró aparte como TAREA 00134.

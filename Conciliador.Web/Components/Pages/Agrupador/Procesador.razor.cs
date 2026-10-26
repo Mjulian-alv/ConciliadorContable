@@ -10,7 +10,7 @@ using Microsoft.JSInterop;
 namespace Conciliador.Web.Components.Pages.Agrupador;
 public partial class Procesador
 {
-    enum Dialogo { Ninguno, Homologar, ConfirmarRehomologar, Pendientes, PendientesHomologar, Consolidado, BorrarArchivo, EliminarSeleccion, Bloqueo, MarcarConciliados, Desblindar, ClaveMaestra, Historial } // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 2, 3 - Diálogos de blindaje, clave maestra e historial
+    enum Dialogo { Ninguno, Homologar, ConfirmarRehomologar, Pendientes, PendientesHomologar, Consolidado, BorrarArchivo, EliminarSeleccion, Bloqueo, MarcarConciliados, Desblindar, Historial } // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 2, 3 - Diálogos de blindaje, clave maestra e historial
     static readonly System.Globalization.CultureInfo ar = new("es-AR");
     [Inject] AccessGuard Access { get; set; } = default!;
     [Inject] IJSRuntime JS { get; set; } = default!;
@@ -43,7 +43,6 @@ public partial class Procesador
     // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - El blindaje se mira sobre el archivo cuyos movimientos están en la grilla, no sobre el elegido en la lista
     ArchivoImportado? ArchivoEnTrabajo => Work.ArchivoId == 0 ? null : archivos.Find(a => a.Id == Work.ArchivoId);
     bool Blindado => ArchivoEnTrabajo?.Blindado == true;
-    bool claveExiste;
     ModificacionesArchivo modBaja = new();
     string tituloBloqueo = "No se puede borrar"; string? notaBloqueo;
     const string NotaBaja = "Los motivos posibles: movimientos tomados por pares de conciliación, o una sesión externa o interna en proceso o finalizada que alcanza el archivo. Un error de base de datos se informa aparte, con su mensaje.";
@@ -378,8 +377,7 @@ public partial class Procesador
         try
         {
             string usuario = await Access.RequireUser("AgrProcesador");
-            // Sin clave maestra nadie podría desblindar después: primero se define.
-            if (!await Task.Run(() => BlindajeService.HayClaveMaestra())) { claveExiste = false; dialogo = Dialogo.ClaveMaestra; return; }
+            // Sin clave maestra nadie podría desblindar después. Se define en Administración de usuarios (escritorio): el servicio lo avisa.
             bool cambio = await Task.Run(() => BlindajeService.Blindar(archivo.Id, usuario));
             await CargarArchivos(archivo.Id);
             aviso = cambio ? $"Archivo blindado: «{archivo.NombreArchivo}». Ya se puede conciliar; la homologación quedó cerrada." : "El archivo ya estaba blindado.";
@@ -395,15 +393,5 @@ public partial class Procesador
         await CargarArchivos(Work.ArchivoId);
         aviso = "Archivo desblindado. Ya se puede homologar y editar; para conciliar hay que blindarlo de nuevo.";
     }
-    async Task AbrirClaveMaestra()
-    {
-        aviso = error = null;
-        try { claveExiste = await Task.Run(() => BlindajeService.HayClaveMaestra()); dialogo = Dialogo.ClaveMaestra; }
-        catch (Exception ex) { error = "No se pudo leer la clave maestra: " + ex.Message; }
-    }
-    void TrasClaveMaestra(bool guardada)
-    {
-        dialogo = Dialogo.Ninguno;
-        if (guardada) aviso = claveExiste ? "Clave maestra cambiada." : "Clave maestra definida. Ya se pueden blindar archivos.";
-    }
+
 }

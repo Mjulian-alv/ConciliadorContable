@@ -49,20 +49,15 @@ namespace AgrupadorConceptos
         {
             Name = "btnHistorial", Text = "Historial del movimiento", Location = new Point(716, 162), Size = new Size(170, 28), TabIndex = 19
         };
-        private readonly Button _btnClaveMaestra = new()
-        {
-            Name = "btnClaveMaestra", Text = "Clave maestra…", Location = new Point(892, 162), Size = new Size(120, 28), TabIndex = 20
-        };
         private bool Blindado => _archivoEnGrilla?.Blindado == true;
 
         public ProcesadorForm()
         {
             InitializeComponent();
             pnlTop.Height += 40;
-            pnlTop.Controls.AddRange(new Control[] { _lblBlindaje, _btnBlindar, _btnHistorial, _btnClaveMaestra });
+            pnlTop.Controls.AddRange(new Control[] { _lblBlindaje, _btnBlindar, _btnHistorial });
             _btnBlindar.Click += btnBlindar_Click;
             _btnHistorial.Click += btnHistorial_Click;
-            _btnClaveMaestra.Click += btnClaveMaestra_Click;
             ActualizarBlindaje();
             // Fecha: 23/10/2026 - TAREA: 00125 - Linea: 3 - Mismo criterio que el botón de baja: se agrega por código sin tocar el diseñador
             pnlTop.Controls.Add(_btnMarcarConciliados);
@@ -439,14 +434,7 @@ namespace AgrupadorConceptos
                     }
                     return;
                 }
-                // Sin clave maestra nadie podría desblindar después: primero se define.
-                if (!BlindajeService.HayClaveMaestra())
-                {
-                    if (MessageBox.Show("Todavía no hay clave maestra. Sin ella nadie podría desblindar el archivo. ¿Definirla ahora?",
-                            "Clave maestra", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
-                    if (!PuedeAdministrarClave()) { MessageBox.Show("Tu usuario no tiene permiso para definir la clave maestra.", "Clave maestra", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
-                    if (!BlindajeDialogos.ClaveMaestra(this, false)) return;
-                }
+                // Sin clave maestra nadie podría desblindar después. Se define en Administración de usuarios, no acá: el servicio lo avisa.
                 BlindajeService.Blindar(_archivoEnGrilla.Id, BlindajeDialogos.UsuarioActual);
                 ActualizarBlindaje();
                 MessageBox.Show("Archivo blindado. Ya se puede conciliar; la homologación quedó cerrada.", "Blindado", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -455,24 +443,6 @@ namespace AgrupadorConceptos
             {
                 MessageBox.Show(ex.Message, "No se pudo cambiar el blindaje", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 ActualizarBlindaje();
-            }
-        }
-
-        // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Revisión 1, hallazgo 2: sin permiso fijado por el anfitrión no se administra la clave
-        private static bool PuedeAdministrarClave() => BlindajeService.PuedeAdministrar;
-
-        private void btnClaveMaestra_Click(object sender, EventArgs e)
-        {
-            if (!PuedeAdministrarClave()) { MessageBox.Show("Tu usuario no tiene permiso para administrar la clave maestra.", "Clave maestra", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
-            try
-            {
-                bool existe = BlindajeService.HayClaveMaestra();
-                if (BlindajeDialogos.ClaveMaestra(this, existe))
-                    MessageBox.Show(existe ? "Clave maestra cambiada." : "Clave maestra definida. Ya se pueden blindar archivos.", "Clave maestra", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-            catch (Microsoft.Data.SqlClient.SqlException ex)
-            {
-                MessageBox.Show("No se pudo leer la clave maestra: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 

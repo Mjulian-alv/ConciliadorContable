@@ -75,7 +75,8 @@ namespace AgrupadorConceptos.Services
         public static bool Blindar(int idArchivo, string usuario)
         {
             if (!HayClaveMaestra())
-                throw new InvalidOperationException("Todavía no hay clave maestra. Definila antes de blindar: sin ella nadie podría desblindar el archivo.");
+                // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - La clave maestra se define en el ABM de usuarios del escritorio, no en el procesador
+                throw new InvalidOperationException("Todavía no hay clave maestra: sin ella nadie podría desblindar el archivo. Definila en Administración de usuarios (escritorio) → «Clave maestra del blindaje»; hace falta el permiso AgrClaveMaestra.");
             return BlindajeStorage.Blindar(idArchivo, usuario);
         }
 

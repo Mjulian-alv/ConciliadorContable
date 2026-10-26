@@ -42,7 +42,7 @@
         <div class="actions">@if(Blindado){<span class="badge ok">Archivo blindado@(ArchivoEnTrabajo.BlindadoFecha.HasValue?" · "+ArchivoEnTrabajo.BlindadoFecha.Value.ToString("dd/MM/yyyy"):"")@(string.IsNullOrEmpty(ArchivoEnTrabajo.BlindadoPor)?"":" · "+ArchivoEnTrabajo.BlindadoPor)</span>
                 <button @onclick="()=>dialogo=Dialogo.Desblindar" disabled="@(importando||ocupado)">Desblindar…</button>}
             else{<span class="badge warn">Archivo sin blindar</span><button class="primary" @onclick="Blindar" disabled="@(importando||ocupado)">Blindar archivo</button>}
-            <span class="grow"></span><button @onclick="AbrirClaveMaestra" disabled="@(importando||ocupado)">Clave maestra…</button></div>
+            </div>
     }
 </section>
 @if(Movs==null)
@@ -98,7 +98,6 @@ else
 @* Fecha: 26/10/2026 - TAREA: 00135 - Linea: 1 - La baja avisa lo modificado y deja el archivo inactivo, con sus movimientos archivados. *@
 @if(dialogo==Dialogo.BorrarArchivo&&archivoSeleccionado!=null){<BajaArchivoDialog Archivo="@archivoSeleccionado.NombreArchivo" Mod="modBaja" Ocupado="ocupado" OnCerrar="TrasBorrarArchivo" />}
 @if(dialogo==Dialogo.Desblindar&&ArchivoEnTrabajo!=null){<DesblindarDialog IdArchivo="ArchivoEnTrabajo.Id" Archivo="@ArchivoEnTrabajo.NombreArchivo" OnCerrar="TrasDesblindar" />}
-@if(dialogo==Dialogo.ClaveMaestra){<ClaveMaestraDialog Existe="claveExiste" OnCerrar="TrasClaveMaestra" />}
 @if(dialogo==Dialogo.Historial&&actual!=null){<HistorialMovimientoDialog IdMovimiento="actual.Id" Descripcion="@($"{actual.Fecha:dd/MM/yyyy} · {actual.ConceptoOriginal} · movimiento {actual.Id}")" OnCerrar="()=>{dialogo=Dialogo.Ninguno;return Task.CompletedTask;}" />}
 @if(dialogo==Dialogo.EliminarSeleccion){<AvisoDialog Titulo="Eliminar movimientos" Mensaje="@($"¿Eliminar definitivamente {SeleccionVisible().Count.ToString("N0",ar)} movimiento(s) de «{archivoSeleccionado?.NombreArchivo}»?")" Nota="No se puede deshacer. Si alguno está tomado por una conciliación, no se elimina ninguno y se informa el motivo." Confirmar="Eliminar" Ocupado="ocupado" OnCerrar="TrasEliminarSeleccion" />}
 @* Fecha: 23/10/2026 - TAREA: 00125 - Linea: 4 *@
