@@ -1,0 +1,33 @@
+flowchart TB
+  S([Solicitar baja de archivo]) --> A{Archivo activo?}
+  A -->|No| X[Rechazar: ya está inactivo]
+  A -->|Sí| B{Archivo blindado?}
+  B -->|Sí| Y[Rechazar: desblindar primero]
+  B -->|No| C[ValidarLibres: revisar pares y sesiones]
+  C --> D{¿Hay pares o sesiones vinculadas?}
+  D -->|Sí| E[Rechazar baja; liberar vínculos y reintentar]
+  D -->|No| F[Contar modificaciones]
+  F --> F1[Final distinto del estándar y no pendiente]
+  F1 --> F2[Cuenta editada, Conciliado = 1 o historial de origen Manual]
+  F2 --> G{¿Hay modificaciones?}
+  G -->|Sí| H[Avisar total y desglose; pedir confirmación explícita]
+  G -->|No| I[Confirmación habitual]
+  H --> J{¿Confirma?}
+  I --> J
+  J -->|No| Z([Cancelar; todo sigue activo])
+  J -->|Sí| T[Iniciar transacción]
+  T --> T1[Serializar todas las columnas y los Id originales a JSON]
+  T1 --> T2[Comprimir JSON con gzip]
+  T2 --> T3[Guardar CantMovimientos y MovimientosJson en la fila del archivo]
+  T3 --> E1{¿Archivado correctamente?}
+  E1 -->|No| RB[Rollback: no borrar movimientos ni desactivar]
+  E1 -->|Sí| DEL[Borrar explícitamente movimientos vivos]
+  DEL --> OFF[Activo = 0; guardar InactivoFecha e InactivoPor]
+  OFF --> COM[Commit]
+  COM --> HIST[Conservar historial sin FK; Id original está en JSON]
+  HIST --> LIST[Excluir de selección, apertura, conciliación y blindaje]
+  LIST --> OK([Baja completada])
+  X --> Z
+  Y --> Z
+  E --> Z
+  RB --> Z

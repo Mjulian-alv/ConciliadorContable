@@ -1,0 +1,26 @@
+flowchart TB
+  A([Disparador: operación sobre movimiento o archivo]) --> B{Tipo de operación}
+  B -->|Edición manual ConceptoFinal| MB{Archivo blindado?}
+  MB -->|Sí| X
+  MB -->|No| M1[SESSION_CONTEXT informa usuario + Origen Manual] --> M2[UPDATE manual del valor solicitado] --> H[Trigger AFTER UPDATE compara inserted y deleted]
+  H --> H1[Una fila por campo cambiado: ConceptoEstandar, ConceptoFinal, Conciliado, ConciliadoFecha] --> H2[Guarda IdMovimiento, IdArchivo, valores anterior/nuevo, Origen, Usuario y Fecha]
+  B -->|Homologación automática| AU[Exigir archivo no blindado en la transacción] --> U[UPDATE atómico: ConceptoEstandar = nuevo estándar]
+  U --> C{En la base, al ejecutar el UPDATE: final vacío, pendiente o igual al estándar vigente?}
+  C -->|Sí| U1[ConceptoFinal = nuevo estándar] --> H
+  C -->|No: edición manual distinta| U2[Conservar ConceptoFinal actual] --> H
+  U --> U3[No usar ConceptoFinal de la copia en memoria]
+  B -->|Rehomologar / aplicar reglas| P[Operación de reglas del perfil] --> P1{Archivo blindado?}
+  P1 -->|Sí| P2[Saltear archivo; no cambiar movimientos] --> P3[Contar salteados e informarlo en el aviso]
+  P1 -->|No| AU
+  B -->|Conciliación manual, interna o externa| R{Todos los archivos que intervienen están blindados?}
+  R -->|No| R0[Rechazar: Para conciliar, blindá primero el archivo] --> X
+  R -->|Sí| R1[Permitir conciliación] --> R2[Interna escribe CuentaFinal y Conciliado; historial registra campos auditados] --> H
+  B -->|Lectura o exportación| L[Permitir; sin mutación]
+  B -->|Editar ConceptoFinal/CuentaFinal, homologar archivo, eliminar movimientos| X[Rechazar si blindado]
+  B -->|Blindar / desblindar| BL[Ir al circuito de blindaje]
+  B -->|Baja de archivo| D[Ir al circuito de baja]
+  H2 --> Z([Fin])
+  L --> Z
+  P3 --> Z
+  X --> Z
+  D --> Z
