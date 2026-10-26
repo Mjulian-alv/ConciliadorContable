@@ -12,12 +12,14 @@
     <Compile Include="../AgrupadorConceptos/Services/**/*.cs" Exclude="../AgrupadorConceptos/Services/FechasPresentacion.cs" Link="Services/%(RecursiveDir)%(Filename)%(Extension)" />
     <Compile Include="../AgrupadorConceptos/ModuleInit.cs" Link="ModuleInit.cs" />
   </ItemGroup>
+  <!-- Fecha: 26/10/2026 - TAREA: 00134 - Linea: 1 - Paquetes del Core a Dapper 2.1.89, ExcelDataReader 3.9.0, ClosedXML 0.105.1, CodePages 10.0.14 y Pkcs 10.0.14 (el AgrupadorConceptos.csproj ya los usa desde la 00133) -->
   <ItemGroup>
-    <PackageReference Include="Dapper" Version="2.1.35" />
-    <PackageReference Include="ExcelDataReader" Version="3.6.0" />
-    <PackageReference Include="ExcelDataReader.DataSet" Version="3.6.0" />
-    <PackageReference Include="System.Text.Encoding.CodePages" Version="8.0.0" />
-    <PackageReference Include="ClosedXML" Version="0.105.0" />
+    <PackageReference Include="Dapper" Version="2.1.89" />
+    <PackageReference Include="ExcelDataReader" Version="3.9.0" />
+    <PackageReference Include="ExcelDataReader.DataSet" Version="3.9.0" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="10.0.14" />
+    <PackageReference Include="ClosedXML" Version="0.105.1" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../Conciliador.Comun/Conciliador.Comun.csproj" />
