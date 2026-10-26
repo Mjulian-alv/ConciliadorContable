@@ -1397,3 +1397,16 @@ en localhost hay que resolver cómo conservar el esquema (`X-Forwarded-Proto`) o
 tarea de las columnas Conciliado; el correlativo global está en 00133 y esas líneas tendrían que renumerarse.
 
 **Revisión de Codex:** no se hizo (corrección de dependencias).
+
+## TAREA 00134 — 26/10/2026 — Paquetes del Core y mapeo de NuGet
+
+**Pedido:**
+1. «Hacé commit y merge de esa rama»: el cambio sin commitear de `AgrupadorConceptos.Core.csproj` y `NuGet.Config` que la 00133 había dejado afuera.
+
+**Ejecutado.**
+1. Se commitea el cambio: el Core sube Dapper a 2.1.89, ExcelDataReader y .DataSet a 3.9.0, ClosedXML a 0.105.1 y CodePages a 10.0.14, y suma
+   `System.Security.Cryptography.Pkcs` 10.0.14; `NuGet.Config` mapea esos paquetes (más `System.Formats.Asn1`) a nuget.org. Con la 00133 las
+   versiones de `AgrupadorConceptos` y del Core quedan iguales. La rama `feature/00125-pathbase` ya estaba mergeada a `main`; este commit se mergea con `--no-ff`.
+   Build del Core sin errores. Sin diseño previo: dependencias.
+
+**Revisión de Codex:** no se hizo (cambio de dependencias).
