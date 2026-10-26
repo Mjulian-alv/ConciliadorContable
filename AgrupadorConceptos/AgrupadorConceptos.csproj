@@ -5,11 +5,12 @@
     <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Dapper" Version="2.1.35" />
-    <PackageReference Include="ExcelDataReader" Version="3.6.0" />
-    <PackageReference Include="ExcelDataReader.DataSet" Version="3.6.0" />
-    <PackageReference Include="System.Text.Encoding.CodePages" Version="8.0.0" />
-    <PackageReference Include="ClosedXML" Version="0.105.0" />
+    <!-- Fecha: 26/10/2026 - TAREA: 00133 - Linea: 1 - Versiones iguales a las de AgrupadorConceptos.Core: con una menor NuGet falla con NU1605 (degradación de paquete). -->
+    <PackageReference Include="Dapper" Version="2.1.89" />
+    <PackageReference Include="ExcelDataReader" Version="3.9.0" />
+    <PackageReference Include="ExcelDataReader.DataSet" Version="3.9.0" />
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="10.0.14" />
+    <PackageReference Include="ClosedXML" Version="0.105.1" />
     <PackageReference Include="UI.for.WinForms.AllControls.Net80">
       <Version>2024.4.1113</Version>
     </PackageReference>

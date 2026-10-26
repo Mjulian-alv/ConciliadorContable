@@ -1378,3 +1378,22 @@ con el IIS de producción ni con el Agrupador (requiere la base configurada).
 en localhost hay que resolver cómo conservar el esquema (`X-Forwarded-Proto`) o apagar esa redirección. No se tocó en esta tarea.
 
 **Revisión de Codex:** pendiente, no se hizo (la cuenta de Codex no admite el modelo configurado). Sin archivos en `Docs/Revisiones/`.
+
+
+## TAREA 00133 — 26/10/2026 — Versiones de paquetes de AgrupadorConceptos alineadas con el Core
+
+**Pedido:**
+1. «No puedo compilar el proyecto»: Visual Studio informaba NU1605 (degradación de paquete) en `AgrupadorConceptos` y `ConciliadorContable`.
+
+**Ejecutado.**
+1. La causa: `AgrupadorConceptos.Core.csproj` (cambio sin commitear de otra línea de trabajo, junto con `NuGet.Config`) subió Dapper a 2.1.89,
+   ExcelDataReader y ExcelDataReader.DataSet a 3.9.0, ClosedXML a 0.105.1 y `System.Text.Encoding.CodePages` a 10.0.14, mientras
+   `AgrupadorConceptos.csproj` seguía pidiendo las versiones anteriores; NuGet trata esa degradación como error. Se subieron en
+   `AgrupadorConceptos.csproj` a las mismas versiones. Sólo se commitea ese archivo: el Core y `NuGet.Config` no son de esta tarea.
+   Restore con el `NuGet.Config` del repo sin errores y Release de `ConciliadorContable` compila (0 errores).
+   Sin diseño previo: corrección de bug.
+
+**Anotación:** las ramas con commits «TAREA 00125 – Línea 4/11» (PathBase de Conciliador.Web) reutilizan el número 00125, que ya era la
+tarea de las columnas Conciliado; el correlativo global está en 00133 y esas líneas tendrían que renumerarse.
+
+**Revisión de Codex:** no se hizo (corrección de dependencias).
