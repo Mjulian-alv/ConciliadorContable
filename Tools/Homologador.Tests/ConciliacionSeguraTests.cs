@@ -169,6 +169,14 @@ internal static class ConciliacionSeguraTests
     // Fecha: 09/10/2026 - TAREA: 00084 - Linea: 1 - El Designer conserva el nombre del campo con prefijo; el smoke debe buscar esos nombres actuales.
     public static void ConstructorSelector()
     {
+        // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - El selector sólo ofrece extractos blindados: se blindan los de la semilla y se restauran al terminar
+        using (var cn = SqlDb.GetConnection()) { cn.Open(); cn.Execute("UPDATE bancos.ArchivosImportados SET Blindado = 1"); }
+        try { ConstructorSelectorBlindado(); }
+        finally { using var cn = SqlDb.GetConnection(); cn.Open(); cn.Execute("UPDATE bancos.ArchivosImportados SET Blindado = 0"); }
+    }
+
+    private static void ConstructorSelectorBlindado()
+    {
         using var form = new AgrupadorConceptos.ConciliacionExternForm();
         if (form.Controls.Find("_grillaArchivos", true).Length != 1 ||
             form.Controls.Find("_desdeArchivos", true).Length != 1 ||

@@ -26,6 +26,8 @@
         try
         {
             string usuario = await Access.RequireUser("AgrClaveMaestra");
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Revisión 1, hallazgo 2: el permiso ya se comprobó; se lo informa al servicio para esta operación
+            using var autorizada = BlindajeService.AutorizarAdministracionClave();
             string a = actual, n = nueva; bool existe = Existe;
             await Task.Run(() => { if(existe) BlindajeService.CambiarClaveMaestra(a, n, usuario); else BlindajeService.DefinirClaveMaestra(n, usuario); });
             actual = nueva = repetida = "";

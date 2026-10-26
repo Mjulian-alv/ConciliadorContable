@@ -458,7 +458,8 @@ namespace AgrupadorConceptos
             }
         }
 
-        private static bool PuedeAdministrarClave() => BlindajeService.PuedeAdministrarClave?.Invoke() ?? true;
+        // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Revisión 1, hallazgo 2: sin permiso fijado por el anfitrión no se administra la clave
+        private static bool PuedeAdministrarClave() => BlindajeService.PuedeAdministrar;
 
         private void btnClaveMaestra_Click(object sender, EventArgs e)
         {

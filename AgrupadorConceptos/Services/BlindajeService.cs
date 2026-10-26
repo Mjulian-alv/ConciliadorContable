@@ -18,11 +18,38 @@ namespace AgrupadorConceptos.Services
         public const int MinutosBloqueo = 5;
         public const int LargoMinimoClave = 8;
 
+        // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Revisión 1, hallazgo 2: definir o cambiar la clave falla cerrado
+        // Antes, un anfitrión que no configuraba nada podía administrar la clave, y el servicio ni consultaba el permiso.
         /// <summary>
-        /// Quién puede definir o cambiar la clave maestra. La capa de datos no conoce a los usuarios: el anfitrión
-        /// (escritorio) lo fija al ingresar. Sin fijar, no se restringe (la web ya lo controla con su política).
+        /// Quién puede definir o cambiar la clave maestra. La capa de datos no conoce a los usuarios: un anfitrión de un solo
+        /// usuario (escritorio) lo fija al ingresar; un anfitrión de varios (web) autoriza cada operación con
+        /// <see cref="AutorizarAdministracionClave"/> después de comprobar el permiso. Sin ninguna de las dos, se rechaza.
         /// </summary>
         public static Func<bool> PuedeAdministrarClave { get; set; }
+
+        private static readonly System.Threading.AsyncLocal<bool> _autorizado = new();
+
+        /// <summary>Marca la operación en curso como autorizada a administrar la clave (el anfitrión ya comprobó el permiso).</summary>
+        public static IDisposable AutorizarAdministracionClave()
+        {
+            bool anterior = _autorizado.Value;
+            _autorizado.Value = true;
+            return new Autorizacion(anterior);
+        }
+
+        private sealed class Autorizacion : IDisposable
+        {
+            private readonly bool _anterior; private bool _liberada;
+            public Autorizacion(bool anterior) => _anterior = anterior;
+            public void Dispose() { if (_liberada) return; _liberada = true; _autorizado.Value = _anterior; }
+        }
+
+        public static bool PuedeAdministrar => _autorizado.Value || (PuedeAdministrarClave?.Invoke() ?? false);
+
+        private static void ExigirPermisoClave()
+        {
+            if (!PuedeAdministrar) throw new UnauthorizedAccessException("Tu usuario no tiene permiso para administrar la clave maestra.");
+        }
 
         public static bool HayClaveMaestra() => ClaveMaestraStorage.Obtener() != null;
 
@@ -31,6 +58,7 @@ namespace AgrupadorConceptos.Services
         /// <summary>Define la clave por primera vez. Si ya existe hay que usar <see cref="CambiarClaveMaestra"/>.</summary>
         public static void DefinirClaveMaestra(string clave, string usuario)
         {
+            ExigirPermisoClave();
             if (HayClaveMaestra()) throw new InvalidOperationException("Ya hay una clave maestra. Para cambiarla hace falta la clave actual.");
             Guardar(clave, usuario);
         }
@@ -38,6 +66,7 @@ namespace AgrupadorConceptos.Services
         /// <summary>Cambia la clave. Pide la actual y cuenta los intentos fallidos igual que al desblindar.</summary>
         public static void CambiarClaveMaestra(string claveActual, string claveNueva, string usuario)
         {
+            ExigirPermisoClave();
             Validar(claveActual);
             Guardar(claveNueva, usuario);
         }
@@ -62,6 +91,8 @@ namespace AgrupadorConceptos.Services
 
         private static void Validar(string clave)
         {
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Revisión 1, hallazgo 1: un intento a la vez en toda la base
+            using var turno = ClaveMaestraStorage.BloquearVerificacion();
             var reg = ClaveMaestraStorage.Obtener() ?? throw new InvalidOperationException("Todavía no hay clave maestra definida.");
             if (reg.SegundosBloqueo > 0)
                 throw new ClaveMaestraBloqueadaException(reg.SegundosBloqueo);

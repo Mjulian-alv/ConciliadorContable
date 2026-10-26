@@ -1,6 +1,7 @@
 // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Clave maestra del blindaje: sólo el hash, la sal y el control de intentos
 using System;
 using Dapper;
+using Microsoft.Data.SqlClient;
 
 namespace AgrupadorConceptos.Data
 {
@@ -18,6 +19,36 @@ namespace AgrupadorConceptos.Data
 
     internal static class ClaveMaestraStorage
     {
+        // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Revisión 1, hallazgo 1: la verificación y el conteo de intentos se serializan entre todos los procesos
+        // Sin esto, varias solicitudes en paralelo leían «sin bloqueo» antes de que alguna registrara el quinto fallo y todas llegaban a comparar su clave:
+        // se podían probar más de cinco claves a la vez. El bloqueo de aplicación es de la base, así que vale entre varios servidores y escritorios.
+        /// <summary>Toma el bloqueo exclusivo de la verificación de clave; liberarlo con Dispose.</summary>
+        public static IDisposable BloquearVerificacion()
+        {
+            var cn = DatabaseHelper.Open();
+            try
+            {
+                int r = cn.ExecuteScalar<int>(@"DECLARE @r int; EXEC @r = sp_getapplock @Resource = N'bancos.ClaveMaestra', @LockMode = N'Exclusive',
+                    @LockOwner = N'Session', @LockTimeout = 15000; SELECT @r");
+                if (r < 0) throw new InvalidOperationException("La clave maestra está siendo verificada por otra operación. Probá de nuevo en unos segundos.");
+            }
+            catch { cn.Dispose(); throw; }
+            return new Verificacion(cn);
+        }
+
+        private sealed class Verificacion : IDisposable
+        {
+            private SqlConnection _cn;
+            public Verificacion(SqlConnection cn) => _cn = cn;
+            public void Dispose()
+            {
+                var cn = _cn; _cn = null;
+                if (cn == null) return;
+                try { cn.Execute("EXEC sp_releaseapplock @Resource = N'bancos.ClaveMaestra', @LockOwner = N'Session'"); } catch { }
+                cn.Dispose(); // cerrar la conexión también libera un bloqueo de sesión
+            }
+        }
+
         public static ClaveMaestraRegistro Obtener()
         {
             using var cn = DatabaseHelper.Open();

@@ -19,6 +19,7 @@ namespace AgrupadorConceptos
         private ConciliacionSesion _sesionActiva;
         // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 4 - La selección persiste aunque el rango oculte un archivo.
         private readonly HashSet<int> _idsArchivosSeleccionados = new();
+        private int _sinBlindarOcultos; // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Extractos del rango que no se ofrecen por no estar blindados
         private List<ConciliacionItemExterno> _itemsExternosLeidos;
         private List<ExtractoCandidato> _candidatosVisibles = new();
 
@@ -149,7 +150,10 @@ namespace AgrupadorConceptos
                 _estadoArchivos.Text = "Rango inválido: Desde es posterior a Hasta.";
                 return;
             }
-            _candidatosVisibles = SelectorExtractosService.Obtener(_desdeArchivos.Value, _hastaArchivos.Value, _mostrarTodos.Checked);
+            var todosLosCandidatos = SelectorExtractosService.Obtener(_desdeArchivos.Value, _hastaArchivos.Value, _mostrarTodos.Checked);
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Revisión 1, hallazgo 4: sólo se ofrecen extractos blindados (conciliar lo exige); el servidor igual lo vuelve a comprobar
+            _candidatosVisibles = todosLosCandidatos.Where(c => _archivosDisponibles.Any(a => a.Id == c.IdArchivo && a.Blindado)).ToList();
+            _sinBlindarOcultos = todosLosCandidatos.Count - _candidatosVisibles.Count;
             foreach (var candidato in _candidatosVisibles)
                 candidato.Seleccionado = _idsArchivosSeleccionados.Contains(candidato.IdArchivo);
             _grillaArchivos.DataSource = _candidatosVisibles;
@@ -160,7 +164,8 @@ namespace AgrupadorConceptos
         private void ActualizarEstadoArchivos()
         {
             int ocultos = _idsArchivosSeleccionados.Count(id => _candidatosVisibles.All(c => c.IdArchivo != id));
-            _estadoArchivos.Text = $"{_idsArchivosSeleccionados.Count} seleccionados, {ocultos} fuera del rango";
+            _estadoArchivos.Text = $"{_idsArchivosSeleccionados.Count} seleccionados, {ocultos} fuera del rango"
+                + (_sinBlindarOcultos > 0 ? $" · {_sinBlindarOcultos} sin blindar no se ofrecen (blindalos en el Procesador)" : "");
         }
 
         private void CargarConceptosPorArchivos()

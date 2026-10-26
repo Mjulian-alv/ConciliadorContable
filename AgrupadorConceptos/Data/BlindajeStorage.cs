@@ -136,11 +136,17 @@ namespace AgrupadorConceptos.Data
                 }
                 if (archivos.Contains(idArchivo)) return s.Nombre;
             }
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Revisión 1, hallazgo 3: la sesión interna no elige archivos, trabaja sobre todos los movimientos de su rango y conceptos
+            // Mirar sólo los pares dejaba desblindar un archivo con movimientos todavía sin par dentro del alcance de una sesión en proceso, y después esa sesión ya no podía conciliarlos.
             return cn.QueryFirstOrDefault<string>(@"SELECT TOP 1 s.Nombre
-                FROM bancos.ConciliacionInternaPares p
-                JOIN bancos.ConciliacionInternaSesiones s ON s.Id = p.IdSesion
-                JOIN bancos.MovimientosArchivo m ON m.Id IN (p.IdMovimientoA, p.IdMovimientoB)
-                WHERE s.Estado = N'EnProceso' AND m.IdArchivo = @Id", new { Id = idArchivo }, tx);
+                FROM bancos.ConciliacionInternaSesiones s
+                WHERE s.Estado = N'EnProceso'
+                  AND (EXISTS (SELECT 1 FROM bancos.MovimientosArchivo m
+                               WHERE m.IdArchivo = @Id AND m.Fecha >= s.FechaDesde AND m.Fecha <= s.FechaHasta
+                                 AND m.ConceptoFinal IN (SELECT [value] FROM OPENJSON(s.ConceptosJson)))
+                       OR EXISTS (SELECT 1 FROM bancos.ConciliacionInternaPares p
+                                  JOIN bancos.MovimientosArchivo m ON m.Id IN (p.IdMovimientoA, p.IdMovimientoB)
+                                  WHERE p.IdSesion = s.Id AND m.IdArchivo = @Id))", new { Id = idArchivo }, tx);
         }
 
         public static void Registrar(IDbConnection cn, IDbTransaction tx, int idArchivo, string accion, string usuario, string motivo) =>

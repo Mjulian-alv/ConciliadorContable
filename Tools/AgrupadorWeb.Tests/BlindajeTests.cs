@@ -25,7 +25,8 @@ static class BlindajeTests
     /// <summary>Define la clave maestra si falta y blinda los archivos: lo que hacen las pruebas de conciliación antes de conciliar.</summary>
     public static void Blindar(params int[] idsArchivo)
     {
-        if (!BlindajeService.HayClaveMaestra()) BlindajeService.DefinirClaveMaestra(Clave, "prueba");
+        using (BlindajeService.AutorizarAdministracionClave())
+            if (!BlindajeService.HayClaveMaestra()) BlindajeService.DefinirClaveMaestra(Clave, "prueba");
         foreach (int id in idsArchivo) BlindajeService.Blindar(id, "prueba");
     }
 
@@ -47,6 +48,7 @@ static class BlindajeTests
         try
         {
             SqlDb.ConnectionString = new SqlConnectionStringBuilder(maestra) { InitialCatalog = nombre }.ConnectionString;
+            using var autorizada = BlindajeService.AutorizarAdministracionClave(); // las pruebas actúan como quien administra la clave; la prueba de permisos la quita a propósito
             typeof(DatabaseHelper).GetField("_inicializada", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!.SetValue(null, false);
             DatabaseHelper.InitializeDatabase();
             using var cn = SqlDb.GetConnection(); cn.Open();
@@ -126,6 +128,16 @@ static class BlindajeTests
                 Check(ex.Message.Contains("clave maestra"), ex.Message);
                 Check(!BlindajeService.HayClaveMaestra() && !BlindajeService.EstaBlindado(idArchivo), "Nada cambió");
             });
+            test("Clave maestra: sin permiso para administrarla no se define ni se cambia (falla cerrado)", () =>
+            {
+                // El hilo se lanza con el flujo de contexto suprimido: no hereda la autorización de la prueba.
+                Exception? error = null;
+                var hilo = new Thread(() => { try { BlindajeService.DefinirClaveMaestra("otra-clave-larga", "intruso"); } catch (Exception ex) { error = ex; } });
+                using (System.Threading.ExecutionContext.SuppressFlow()) hilo.Start();
+                hilo.Join();
+                Check(error is UnauthorizedAccessException, "Sin permiso: " + (error?.GetType().Name ?? "no falló"));
+                Check(!BlindajeService.HayClaveMaestra(), "No quedó ninguna clave");
+            });
             test("Clave maestra: se guarda sólo el hash, con largo mínimo, y no se puede definir dos veces", () =>
             {
                 Rechaza<ArgumentException>(() => BlindajeService.DefinirClaveMaestra("corta", "u"), "clave corta");
@@ -194,6 +206,9 @@ static class BlindajeTests
                 Blindar(idArchivoB);
                 var movsC = Importar("c.xlsx"); // sin blindar
                 var sesion = ConciliacionInternaService.CrearSesion("I", d1, new DateTime(2026, 10, 31), new[] { "COBROS NUEVOS", "COBRANZAS" });
+                // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Revisión 1, hallazgo 3: aun sin pares, la sesión en proceso alcanza los movimientos de su rango y conceptos
+                Rechaza<InvalidOperationException>(() => BlindajeService.Desblindar(idArchivoB, Clave, "sin pares todavía", "u"), "desblindar con una sesión interna que alcanza el archivo");
+                Check(BlindajeService.EstaBlindado(idArchivoB), "Sigue blindado");
                 string? msg = ConciliacionInternaMutationStorage.ConciliarPar(sesion.Id, movsB[0].Id, movsC[0].Id, TipoMatch.Manual);
                 Check(msg != null && msg.StartsWith("Para conciliar, blindá primero el archivo:") && msg.Contains("c.xlsx"), "Mensaje: " + msg);
                 Check(ConciliacionInternaMutationStorage.ObtenerPares(sesion.Id).Count == 0, "No hay par");
