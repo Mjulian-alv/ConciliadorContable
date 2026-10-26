@@ -25,7 +25,8 @@
             @foreach(var f in vista){<tr>@foreach(var v in f){<td>@v</td>}</tr>}</tbody></table></div>
     </section>
 }
-<div class="actions"><button class="primary" @onclick="Confirmar" disabled="@(archivo==null||ocupado)">Confirmar importación</button><a class="button" href="/agrupador/cuentas">Cancelar</a></div>
+@* Fecha: 24/10/2026 - TAREA: 00125 - Linea: 4 - Enlace relativo al <base href> para que la app funcione bajo una subruta (PathBase) detrás del Concentrador. *@
+<div class="actions"><button class="primary" @onclick="Confirmar" disabled="@(archivo==null||ocupado)">Confirmar importación</button><a class="button" href="agrupador/cuentas">Cancelar</a></div>
 @code {
     ArchivoSubido? archivo;
     List<string> encabezados=new();
@@ -62,7 +63,8 @@
             var lista=await Task.Run(()=>ImportacionCuentasContablesService.Leer(archivo.Abrir(),archivo.Extension,colCuenta,colDescripcion,string.IsNullOrEmpty(colCentro)?null:colCentro));
             if(lista.Count==0){error="El archivo no tiene filas para importar.";return;}
             int n=await Task.Run(()=>CuentaContableStorage.UpsertLote(lista));
-            Nav.NavigateTo($"/agrupador/cuentas?importadas={n}");
+            @* Fecha: 24/10/2026 - TAREA: 00125 - Linea: 4 - Navegación relativa al <base href> (antes absoluta, escapaba de la subruta del Concentrador). *@
+            Nav.NavigateTo($"agrupador/cuentas?importadas={n}");
         }
         catch(UnauthorizedAccessException ex){error=ex.Message;}
         catch(Exception ex){error="No se importó nada: "+ex.Message;}

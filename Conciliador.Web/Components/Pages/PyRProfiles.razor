@@ -36,7 +36,8 @@
 <div class="form-footer pyr-profile-actions"><span role="status">@(dirty?"Hay cambios sin guardar":"")</span>
 @if(editing.Version!=""){<button @onclick="()=>Act(Delete)">Eliminar perfil</button>}
 <button class="primary" @onclick="()=>Act(Save)">Guardar perfil</button>
-@if(!dirty && editing.Version!=""){<a class="button" href="@($"/pyr?perfil={p.Id:D}")">Continuar a PyR →</a>}
+@* Fecha: 24/10/2026 - TAREA: 00125 - Linea: 4 - Enlace relativo al <base href> para que la app funcione bajo una subruta (PathBase) detrás del Concentrador. *@
+@if(!dirty && editing.Version!=""){<a class="button" href="@($"pyr?perfil={p.Id:D}")">Continuar a PyR →</a>}
 </div></section>}
 </div></fieldset>
 @code{

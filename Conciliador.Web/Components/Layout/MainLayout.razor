@@ -5,21 +5,23 @@
 @using Conciliador.Web.Services
 @* Fecha: 14/10/2026 - TAREA: 00097 - Linea: 1 - Menú lateral por módulos, generado desde el catálogo de accesos y los permisos del usuario. *@
 <div class="app-shell"><aside class="sidebar">
-<a href="/" class="brand"><span class="brand-mark">C</span><span>Conciliador<small>CONTABLE</small></span></a>
-<div class="nav-caption">INICIO</div><nav><NavLink href="/" Match="NavLinkMatch.All"><span>⌂</span> Inicio</NavLink></nav>
+@* Fecha: 24/10/2026 - TAREA: 00125 - Linea: 4 - Enlace relativo al <base href> para que la app funcione bajo una subruta (PathBase) detrás del Concentrador. La ruta del catálogo (MenuPrincipal) sigue siendo absoluta: es la identidad de la sección. *@
+<a href="./" class="brand"><span class="brand-mark">C</span><span>Conciliador<small>CONTABLE</small></span></a>
+<div class="nav-caption">INICIO</div><nav><NavLink href="" Match="NavLinkMatch.All"><span>⌂</span> Inicio</NavLink></nav>
 @foreach(var modulo in new[]{MenuPrincipal.ModArca,MenuPrincipal.ModAgrupador})
 {
     var accesos=lateral.Where(a=>a.Modulo==modulo).ToList();
     if(accesos.Count==0)continue;
     <div class="nav-caption">@modulo</div><nav>
-    @foreach(var a in accesos){<NavLink href="@a.Ruta" Match="NavLinkMatch.All"><span>@a.Glifo</span> @a.Titulo</NavLink>}
+    @foreach(var a in accesos){<NavLink href="@a.Ruta.TrimStart('/')" Match="NavLinkMatch.All"><span>@a.Glifo</span> @a.Titulo</NavLink>}
     </nav>
 }
-<div class="sidebar-foot"><span class="status-dot"></span> @nombre<small>Alvear Supermercados</small><a href="/account/logout" data-enhance-nav="false">Cerrar sesión ↗</a></div></aside>
+<div class="sidebar-foot"><span class="status-dot"></span> @nombre<small>Alvear Supermercados</small><a href="account/logout" data-enhance-nav="false">Cerrar sesión ↗</a></div></aside>
 <div class="main-shell"><header class="topbar"><span>Conciliador Contable @if(seccion!=null){<span class="muted"> / @seccion</span>}</span><span class="pill">@(Mode.Demo?"DEMOSTRACIÓN LOCAL":"ENTORNO CONFIGURADO")</span></header>
 @if(Mode.Demo){<div class="demo-bar">Datos de ejemplo · La configuración de demostración se conserva hasta reiniciar la aplicación.</div>}
 <main class="content">@Body</main><footer>Conciliador Contable · ARCA Cliente · Agrupador de Conceptos</footer></div></div>
-<div id="blazor-error-ui" role="alert">Se interrumpió la sesión. <a href="/account/login">Volver a ingresar</a></div>
+@* Fecha: 24/10/2026 - TAREA: 00125 - Linea: 4 - Enlace relativo al <base href> para que la app funcione bajo una subruta (PathBase) detrás del Concentrador. *@
+<div id="blazor-error-ui" role="alert">Se interrumpió la sesión. <a href="account/login">Volver a ingresar</a></div>
 @code {
     List<Acceso> lateral=new();
     string nombre="";

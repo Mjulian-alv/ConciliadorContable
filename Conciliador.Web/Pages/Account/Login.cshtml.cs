@@ -17,6 +17,7 @@ public sealed class LoginModel(UserStorage users,WebMode mode,SessionRegistry se
         // Fecha: 06/10/2026 - TAREA: 00072 - Linea: 1 - Un usuario exclusivo de PyR debe poder ingresar sin permiso de comprobantes.
         // Fecha: 14/10/2026 - TAREA: 00097 - Linea: 1 - Ingresa cualquier usuario válido: el menú muestra lo que sus permisos habilitan (también un usuario sólo del Agrupador).
         if(user==null){Error="No se pudo ingresar. Revisá tus credenciales.";return Page();}
-        var principal=user.Principal(Demo);sessions.Register(principal);await HttpContext.SignInAsync("Cookies",principal);return LocalRedirect("/");
+        // Fecha: 24/10/2026 - TAREA: 00125 - Linea: 4 - LocalRedirect con ~/ para que el destino lleve el PathBase del Concentrador.
+        var principal=user.Principal(Demo);sessions.Register(principal);await HttpContext.SignInAsync("Cookies",principal);return LocalRedirect("~/");
     }
 }

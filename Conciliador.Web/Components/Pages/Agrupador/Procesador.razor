@@ -7,8 +7,10 @@
 @if(error!=null){<div class="notice error" role="alert">@error</div>}
 <div class="context-strip"><div><span class="eyebrow">PERFIL DE BANCO</span>
     <select style="width:260px" aria-label="Perfil de banco" @bind="perfilId" @bind:after="CambioPerfil" disabled="@importando"><option value="0">Elegí un perfil…</option>@foreach(var p in perfiles){<option value="@p.Id">@p.NombreBanco</option>}</select>
-    <a class="button" href="/agrupador/perfiles">+ Nuevo perfil</a>
-    @if(Perfil!=null){<a class="button" href="@($"/agrupador/perfiles/{Perfil.Id}")">Editar perfil</a>}else{<button disabled>Editar perfil</button>}
+    @* Fecha: 24/10/2026 - TAREA: 00125 - Linea: 4 - Enlace relativo al <base href> para que la app funcione bajo una subruta (PathBase) detrás del Concentrador. *@
+    <a class="button" href="agrupador/perfiles">+ Nuevo perfil</a>
+    @* Fecha: 24/10/2026 - TAREA: 00125 - Linea: 4 - Enlace relativo al <base href> para que la app funcione bajo una subruta (PathBase) detrás del Concentrador. *@
+    @if(Perfil!=null){<a class="button" href="@($"agrupador/perfiles/{Perfil.Id}")">Editar perfil</a>}else{<button disabled>Editar perfil</button>}
     @if(Perfil!=null){<span>Perfil @Perfil.Id · @(Perfil.TipoImporte==1?$"importe único en «{Perfil.ColumnaImporteUnico}»":$"Debe «{Perfil.ColumnaDebe}» / Haber «{Perfil.ColumnaHaber}»") · encabezado en la fila @Perfil.FilaEncabezado</span>}</div></div>
 <div style="height:16px"></div>
 <section class="panel">

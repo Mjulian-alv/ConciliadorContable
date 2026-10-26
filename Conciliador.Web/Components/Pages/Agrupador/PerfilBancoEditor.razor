@@ -30,7 +30,8 @@ else
             @if(tipoImporte==1){@Combo("Columna importe",colImporte,v=>colImporte=v,errImporte)}
             else{@Combo("Columna debe",colDebe,v=>colDebe=v,errImporte)@Combo("Columna haber",colHaber,v=>colHaber=v,errImporte)}
         </div></section>
-    <div class="actions"><button class="primary" @onclick="Guardar" disabled="@ocupado">Guardar perfil</button><a class="button" href="/agrupador/procesador">Cancelar</a></div>
+    @* Fecha: 24/10/2026 - TAREA: 00125 - Linea: 4 - Enlace relativo al <base href> para que la app funcione bajo una subruta (PathBase) detrás del Concentrador. *@
+    <div class="actions"><button class="primary" @onclick="Guardar" disabled="@ocupado">Guardar perfil</button><a class="button" href="agrupador/procesador">Cancelar</a></div>
 }
 @code {
     [Parameter] public int? Id{get;set;}
@@ -110,7 +111,8 @@ else
                 await Task.Run(()=>PerfilBancoStorage.Insertar(perfil));
                 idGuardado=(await Task.Run(()=>PerfilBancoStorage.ObtenerTodos())).Where(p=>p.NombreBanco==perfil.NombreBanco).Select(p=>p.Id).DefaultIfEmpty(0).Max();
             }
-            Nav.NavigateTo(idGuardado>0?$"/agrupador/procesador?perfil={idGuardado}":"/agrupador/procesador");
+            @* Fecha: 24/10/2026 - TAREA: 00125 - Linea: 4 - Navegación relativa al <base href> (antes absoluta, escapaba de la subruta del Concentrador). *@
+            Nav.NavigateTo(idGuardado>0?$"agrupador/procesador?perfil={idGuardado}":"agrupador/procesador");
         }
         catch(UnauthorizedAccessException ex){error=ex.Message;}
         catch(Exception ex){error="Error al guardar en la base de datos: "+ex.Message;}

@@ -1351,3 +1351,30 @@ totales, vacío): 42 correctas en total. Release de `ConciliadorContable` y `Con
    Pruebas de `AsientoTests` ajustadas al nuevo orden. Sin diseño previo: cambia sólo el orden de filas de un Excel.
 
 **Revisión de Codex:** pendiente, no se hizo. Sin archivos en `Docs/Revisiones/`.
+
+## TAREA 00125 — 24/10/2026 — Conciliador web bajo una subruta del Concentrador (Línea 4)
+
+**Pedido (ítem 4 del pedido «Concentrador», repo `D:\Sistemas\Concentrador`):**
+4. Adaptar cada app para funcionar bajo subruta y aceptar la sesión del gateway. En este repo se hace sólo la parte de **subruta**, y sólo en
+   `Conciliador.Web`; aceptar la sesión del gateway es Fase 2.
+
+**Ejecutado.**
+1. `PathBase` opcional en `appsettings` (vacío por defecto: la app anda igual que antes). Con valor, `Program.cs` aplica `UsePathBase` y
+   pone `UseRouting` explícito a continuación (con `WebApplication` el implícito iría antes y emparejaría la ruta con el prefijo puesto).
+   `App.razor` toma el `<base href>` de esa misma clave.
+2. Rutas absolutas pasadas a relativas al `<base>`: menú lateral y tarjetas de Inicio (la ruta del catálogo `MenuPrincipal` sigue siendo
+   absoluta porque es la identidad de la sección; se usa `TrimStart('/')` al armar el enlace), enlaces de `Cuentas`, `Homologaciones`,
+   `ImportarCuentas`, `PerfilBancoEditor`, `Procesador`, `Profiles`, `PyRProfiles`, `PyRReconcile`, `Reconcile`, `Error`, `NotFound`,
+   `Routes`, `MainLayout` y las dos `NavigateTo`. `Profiles` usa `./?perfil=` porque `?perfil=` solo se quedaría en la página actual.
+3. Razor Pages de ingreso y salida: `~/app.css` y `LocalRedirect("~/...")`, que sí llevan el PathBase.
+   Los `@page` no se tocan: el router los resuelve contra el `<base>`.
+
+**Verificado** a mano, en modo demostración y detrás del gateway de prueba (`/conciliador`): login, Inicio, menú lateral, «Percepciones y
+retenciones» y sus perfiles, circuito de Blazor por WebSocket y «Cerrar sesión» sin salir del prefijo; ningún enlace apunta fuera de
+`/conciliador`. Sin `PathBase`, los 12 enlaces de Inicio resuelven a las mismas rutas de siempre. **No se probó** con la base de datos real,
+con el IIS de producción ni con el Agrupador (requiere la base configurada).
+
+**Pendiente para desplegar detrás del Concentrador:** la app corre hoy con `UseHttpsRedirection` y `UseHsts`; detrás del gateway por `http`
+en localhost hay que resolver cómo conservar el esquema (`X-Forwarded-Proto`) o apagar esa redirección. No se tocó en esta tarea.
+
+**Revisión de Codex:** pendiente, no se hizo (la cuenta de Codex no admite el modelo configurado). Sin archivos en `Docs/Revisiones/`.
