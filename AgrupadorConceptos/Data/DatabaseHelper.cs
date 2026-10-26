@@ -30,7 +30,18 @@ namespace AgrupadorConceptos.Data
         {
             var cn = GetConnection();
             cn.Open();
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 2 - El historial de MovimientosArchivo lee de SESSION_CONTEXT quién y qué proceso escribe
+            // Se informa en cada apertura porque el pool de conexiones limpia el contexto al reutilizarla.
+            AplicarAuditoria(cn);
             return cn;
+        }
+
+        // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 2 - Sin origen ni usuario no se hace el viaje: el trigger asume 'Desconocido' y el login de SQL.
+        private static void AplicarAuditoria(SqlConnection cn)
+        {
+            string origen = AuditoriaContexto.Origen, usuario = AuditoriaContexto.Usuario;
+            if (origen != null) cn.Execute("EXEC sp_set_session_context @k, @v", new { k = "origen", v = origen });
+            if (usuario != null) cn.Execute("EXEC sp_set_session_context @k, @v", new { k = "usuario", v = usuario });
         }
 
         /// <summary>
@@ -51,6 +62,9 @@ namespace AgrupadorConceptos.Data
             try
             {
                 cn.Execute(SqlSchema.Ddl);
+                // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 2 - CREATE TRIGGER no puede ir dentro del lote del esquema
+                if (cn.ExecuteScalar<int>("SELECT COUNT(*) FROM sys.triggers WHERE name = N'TR_MovimientosArchivo_Historial'") == 0)
+                    cn.Execute(SqlSchema.TriggerHistorial);
             }
             catch (SqlException ex) when (ex.Number == 2714)
             {

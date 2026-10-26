@@ -131,6 +131,8 @@ namespace AgrupadorConceptos.Services
         /// ejecuta sea exactamente lo que él aceptó.</param>
         public static void AplicarBaja(HomologacionListado regla, ImpactoHomologacion impacto, string conceptoDestino)
         {
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 2 - El historial registra que el cambio vino de la baja de una regla
+            using var origen = AuditoriaContexto.Usar(AuditoriaContexto.BajaDeRegla);
             var cambiados = new List<MovimientoProcesado>();
             // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Completar CuentaFinal al propagar la baja
             var cuentasPorConcepto = HomologacionStorage.ObtenerCuentasPorConcepto();
@@ -155,6 +157,8 @@ namespace AgrupadorConceptos.Services
         /// <returns>Id del concepto estándar al que quedó apuntando.</returns>
         public static int Reapuntar(HomologacionListado regla, PerfilBanco perfil, string nombreConcepto)
         {
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 2 - El historial registra que el cambio vino de reapuntar una regla
+            using var origen = AuditoriaContexto.Usar(AuditoriaContexto.ReapuntarRegla);
             var dic = HomologacionStorage.ObtenerDiccionario(perfil.Id);
             // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Completar CuentaFinal al reapuntar
             var cuentasPorConcepto = HomologacionStorage.ObtenerCuentasPorConcepto();

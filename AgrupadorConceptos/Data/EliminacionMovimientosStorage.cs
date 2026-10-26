@@ -2,6 +2,8 @@
 // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 1 - Una baja sólo se confirma si todos los movimientos siguen libres bajo el bloqueo compartido.
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Text.Json;
 using AgrupadorConceptos.Models;
@@ -24,6 +26,8 @@ namespace AgrupadorConceptos.Data
             using var cn = DatabaseHelper.Open();
             using var tx = cn.BeginTransaction();
             ConciliacionMutationStorage.Bloquear(cn, tx);
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Un archivo blindado no pierde movimientos hasta que se lo desblinde
+            BlindajeStorage.ExigirNoBlindado(cn, tx, idArchivo);
             // Fecha: 13/10/2026 - TAREA: 00096 - Linea: 3 - Se cuentan en el servidor, en vez de traer las filas completas sólo para contarlas.
             var cuentas = cn.QuerySingle<(int Existentes, int EnElArchivo)>(@"
                 SELECT COUNT(*) AS Existentes, ISNULL(SUM(CASE WHEN IdArchivo = @Archivo THEN 1 ELSE 0 END), 0) AS EnElArchivo
@@ -44,14 +48,68 @@ namespace AgrupadorConceptos.Data
             using var cn = DatabaseHelper.Open();
             using var tx = cn.BeginTransaction();
             ConciliacionMutationStorage.Bloquear(cn, tx);
-            var archivo = cn.QuerySingleOrDefault<ArchivoImportado>(
-                "SELECT * FROM bancos.ArchivosImportados WHERE Id = @Id", new { Id = idArchivo }, tx);
-            if (archivo == null) throw new InvalidOperationException("El archivo ya no existe. Actualizá la lista.");
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 1 - No se trae la fila entera: MovimientosJson puede pesar megas y acá sólo hace falta saber si existe y está activo
+            var archivo = cn.QuerySingleOrDefault<(int Id, bool Blindado, bool Activo)>(
+                "SELECT Id, Blindado, Activo FROM bancos.ArchivosImportados WHERE Id = @Id", new { Id = idArchivo }, tx);
+            if (archivo.Id == 0 || !archivo.Activo) throw new InvalidOperationException("El archivo ya no existe. Actualizá la lista.");
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Un archivo blindado no se da de baja hasta desblindarlo
+            if (archivo.Blindado) throw new ArchivoBlindadoException();
             // Fecha: 13/10/2026 - TAREA: 00096 - Linea: 1 - Los movimientos del archivo ya no se cargan en memoria: la validación pregunta a la base.
             ValidarLibres(cn, tx, idArchivo, FiltroArchivo, new { Archivo = idArchivo });
-            int borrados = cn.Execute("DELETE FROM bancos.ArchivosImportados WHERE Id = @Id", new { Id = idArchivo }, tx);
-            if (borrados != 1) throw new InvalidOperationException("El archivo cambió. Actualizá la lista.");
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 1 - La baja deja el archivo inactivo y archiva sus movimientos
+            // Los movimientos se guardan como JSON comprimido en la fila del archivo y recién después se borran de la tabla viva,
+            // en la misma transacción: si el archivado falla no se pierde nada. Se serializan todas las columnas tal como vienen de
+            // la base (con su Id), así una restauración futura reinserta exactamente lo que había y el historial sigue apuntando a esos Id.
+            // La tabla de movimientos queda limpia y ninguna consulta tiene que filtrar por archivo inactivo.
+            var filas = cn.Query("SELECT * FROM bancos.MovimientosArchivo WHERE IdArchivo = @Id ORDER BY Id", new { Id = idArchivo }, tx)
+                .Cast<IDictionary<string, object>>().ToList();
+            byte[] comprimido = Comprimir(JsonSerializer.SerializeToUtf8Bytes(filas));
+            int cambiados = cn.Execute(@"UPDATE bancos.ArchivosImportados
+                SET Activo = 0, InactivoFecha = SYSDATETIME(), InactivoPor = @Usuario, CantMovimientos = @Cant, MovimientosJson = @Json
+                WHERE Id = @Id AND Activo = 1",
+                new { Id = idArchivo, Usuario = AuditoriaContexto.Usuario ?? Environment.UserName, Cant = filas.Count, Json = comprimido }, tx);
+            if (cambiados != 1) throw new InvalidOperationException("El archivo cambió. Actualizá la lista.");
+            cn.Execute("DELETE FROM bancos.MovimientosArchivo WHERE IdArchivo = @Id", new { Id = idArchivo }, tx);
             tx.Commit();
+        }
+
+        // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 1 - Aviso previo a la baja: cuánto de lo hecho en el archivo se archivaría
+        /// <summary>
+        /// Cuenta lo que se modificó a mano o se cerró en el archivo, para avisar antes de darlo de baja. Los criterios son los de la guía:
+        /// concepto final distinto del estándar (y no pendiente), cuenta final distinta de la que le corresponde al concepto, movimientos
+        /// conciliados y movimientos con alguna edición manual registrada en el historial.
+        /// </summary>
+        public static ModificacionesArchivo ContarModificaciones(int idArchivo)
+        {
+            using var cn = DatabaseHelper.Open();
+            return cn.QuerySingle<ModificacionesArchivo>(@"
+                SELECT COUNT(*) AS Total,
+                       ISNULL(SUM(CASE WHEN x.FinalEditado = 1 THEN 1 ELSE 0 END), 0) AS ConceptosFinalesEditados,
+                       ISNULL(SUM(CASE WHEN x.CuentaEditada = 1 THEN 1 ELSE 0 END), 0) AS CuentasEditadas,
+                       ISNULL(SUM(CASE WHEN x.Conciliado = 1 THEN 1 ELSE 0 END), 0) AS Conciliados
+                FROM (
+                    SELECT m.Conciliado,
+                           CASE WHEN LTRIM(RTRIM(ISNULL(m.ConceptoFinal, N''))) <> N'' AND m.ConceptoFinal <> @Pendiente
+                                     AND ISNULL(m.ConceptoFinal, N'') <> ISNULL(m.ConceptoEstandar, N'') THEN 1 ELSE 0 END AS FinalEditado,
+                           CASE WHEN LTRIM(RTRIM(ISNULL(m.CuentaFinal, N''))) <> N''
+                                     AND ISNULL(cc.Cuenta, N'') <> m.CuentaFinal THEN 1 ELSE 0 END AS CuentaEditada,
+                           CASE WHEN EXISTS (SELECT 1 FROM bancos.MovimientosArchivoHistorial h
+                                             WHERE h.IdMovimiento = m.Id AND h.Origen = N'Manual') THEN 1 ELSE 0 END AS EdicionManual
+                    FROM bancos.MovimientosArchivo m
+                    LEFT JOIN bancos.ConceptosEstandar ce ON ce.Nombre = m.ConceptoEstandar
+                    LEFT JOIN bancos.CuentasContables cc ON cc.Id = ce.IdCuentaContable
+                    WHERE m.IdArchivo = @Id
+                ) x
+                WHERE x.FinalEditado = 1 OR x.CuentaEditada = 1 OR x.Conciliado = 1 OR x.EdicionManual = 1",
+                new { Id = idArchivo, Pendiente = ConceptosBancarios.PendienteHomologar });
+        }
+
+        private static byte[] Comprimir(byte[] datos)
+        {
+            using var salida = new MemoryStream();
+            using (var gzip = new GZipStream(salida, CompressionLevel.Optimal, leaveOpen: true))
+                gzip.Write(datos, 0, datos.Length);
+            return salida.ToArray();
         }
 
         // Fecha: 13/10/2026 - TAREA: 00096 - Linea: 1, 3 - Los movimientos a dar de baja se describen con un filtro SQL (todo el archivo, o una selección dentro de él).

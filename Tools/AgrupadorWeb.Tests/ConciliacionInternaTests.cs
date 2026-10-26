@@ -45,6 +45,8 @@ static class ConciliacionInternaTests
             var d1 = new DateTime(2026, 9, 1); var d2 = new DateTime(2026, 9, 2); var d3 = new DateTime(2026, 9, 3); var d5 = new DateTime(2026, 9, 5);
             var movA = ImportacionService.ImportarArchivo(Extracto((d1, "TRANSF 1", -1000m), (d2, "TRANSF 2", -2000m), (d3, "TRANSF 3", -500m), (d1, "TRANSF 4", -300m), (d1, "TRANSF 5", 300m)), "a.xlsx", Leer(perfilA));
             var movB = ImportacionService.ImportarArchivo(Extracto((d1, "TRANSF 1", 1000m), (d5, "TRANSF 2", 2000m), (d3, "TRANSF 3", 500m), (d3, "TRANSF 4", 500m)), "b.xlsx", Leer(perfilB));
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Conciliar exige los archivos blindados
+            BlindajeTests.Blindar(movA[0].IdArchivo, movB[0].IdArchivo);
             var sesion = ConciliacionInternaService.CrearSesion("Prueba", d1, new DateTime(2026, 9, 30), new[] { "TRANSFERENCIAS" });
 
             test("Conceptos disponibles del rango y pendientes de cada lado, sin importar el extracto", () =>

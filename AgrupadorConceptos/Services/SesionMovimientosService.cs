@@ -18,6 +18,8 @@ namespace AgrupadorConceptos.Services
         /// <returns>Todos los movimientos del archivo, con los pendientes ya resueltos.</returns>
         public static List<MovimientoProcesado> RehomologarPendientes(int idArchivo, PerfilBanco perfil)
         {
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 2 - El historial registra qué proceso cambió el concepto
+            using var origen = AuditoriaContexto.Usar(AuditoriaContexto.Homologacion);
             var movs = MovimientoStorage.ObtenerPorArchivo(idArchivo);
             var dicHomologacion = HomologacionStorage.ObtenerDiccionario(perfil.Id);
             // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Completar CuentaFinal al rehomologar
@@ -28,8 +30,9 @@ namespace AgrupadorConceptos.Services
             {
                 if (mov.ConceptoEstandar != ConceptosBancarios.PendienteHomologar) continue;
 
-                HomologacionMatcher.AplicarA(mov, perfil.EsCodigo, dicHomologacion, cuentasPorConcepto);
-                rehomologados.Add(mov);
+                // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 1 - Sólo se persiste lo que cambió: los pendientes sin regla no se reescriben
+                if (HomologacionMatcher.AplicarA(mov, perfil.EsCodigo, dicHomologacion, cuentasPorConcepto))
+                    rehomologados.Add(mov);
             }
 
             MovimientoStorage.ActualizarConceptos(rehomologados);
@@ -52,6 +55,8 @@ namespace AgrupadorConceptos.Services
             var cambiados = new HashSet<MovimientoProcesado>();
             if (movs == null || movs.Count == 0) return cambiados;
 
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 2 - El historial registra qué proceso cambió el concepto
+            using var origen = AuditoriaContexto.Usar(AuditoriaContexto.Homologacion);
             var dicHomologacion = HomologacionStorage.ObtenerDiccionario(perfil.Id);
             // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Completar CuentaFinal al rehomologar
             var cuentasPorConcepto = HomologacionStorage.ObtenerCuentasPorConcepto();
@@ -59,8 +64,9 @@ namespace AgrupadorConceptos.Services
             {
                 if (mov.ConceptoEstandar != ConceptosBancarios.PendienteHomologar) continue;
 
-                HomologacionMatcher.AplicarA(mov, perfil.EsCodigo, dicHomologacion, cuentasPorConcepto);
-                cambiados.Add(mov);
+                // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 1 - Sólo se persiste lo que cambió
+                if (HomologacionMatcher.AplicarA(mov, perfil.EsCodigo, dicHomologacion, cuentasPorConcepto))
+                    cambiados.Add(mov);
             }
 
             MovimientoStorage.ActualizarConceptos(cambiados);
@@ -117,6 +123,8 @@ namespace AgrupadorConceptos.Services
             var cambiados = new HashSet<MovimientoProcesado>();
             if (movs == null) return cambiados;
 
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 2 - El historial registra qué proceso cambió el concepto
+            using var origen = AuditoriaContexto.Usar(AuditoriaContexto.Rehomologacion);
             var dic = HomologacionStorage.ObtenerDiccionario(perfil.Id);
             // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Completar CuentaFinal al reaplicar
             var cuentasPorConcepto = HomologacionStorage.ObtenerCuentasPorConcepto();

@@ -217,6 +217,94 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_ConciliacionInternaPa
     CREATE UNIQUE INDEX UX_ConciliacionInternaPares_MovimientoA ON bancos.ConciliacionInternaPares(IdSesion, IdMovimientoA);
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_ConciliacionInternaPares_MovimientoB')
     CREATE UNIQUE INDEX UX_ConciliacionInternaPares_MovimientoB ON bancos.ConciliacionInternaPares(IdSesion, IdMovimientoB);
+
+-- Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Blindaje del archivo (cierre de homologación) y baja como archivo inactivo
+-- Blindado: con el archivo blindado sólo se puede conciliar; el resto exige desblindar con la clave maestra.
+-- Activo = 0 es la baja: la fila del archivo queda y sus movimientos se archivan comprimidos en MovimientosJson.
+IF COL_LENGTH(N'bancos.ArchivosImportados', N'Blindado') IS NULL
+    ALTER TABLE bancos.ArchivosImportados ADD Blindado BIT NOT NULL CONSTRAINT DF_ArchivosImportados_Blindado DEFAULT 0;
+IF COL_LENGTH(N'bancos.ArchivosImportados', N'BlindadoFecha') IS NULL
+    ALTER TABLE bancos.ArchivosImportados ADD BlindadoFecha DATETIME2(0) NULL;
+IF COL_LENGTH(N'bancos.ArchivosImportados', N'BlindadoPor') IS NULL
+    ALTER TABLE bancos.ArchivosImportados ADD BlindadoPor NVARCHAR(100) NULL;
+IF COL_LENGTH(N'bancos.ArchivosImportados', N'Activo') IS NULL
+    ALTER TABLE bancos.ArchivosImportados ADD Activo BIT NOT NULL CONSTRAINT DF_ArchivosImportados_Activo DEFAULT 1;
+IF COL_LENGTH(N'bancos.ArchivosImportados', N'InactivoFecha') IS NULL
+    ALTER TABLE bancos.ArchivosImportados ADD InactivoFecha DATETIME2(0) NULL;
+IF COL_LENGTH(N'bancos.ArchivosImportados', N'InactivoPor') IS NULL
+    ALTER TABLE bancos.ArchivosImportados ADD InactivoPor NVARCHAR(100) NULL;
+IF COL_LENGTH(N'bancos.ArchivosImportados', N'CantMovimientos') IS NULL
+    ALTER TABLE bancos.ArchivosImportados ADD CantMovimientos INT NULL;
+IF COL_LENGTH(N'bancos.ArchivosImportados', N'MovimientosJson') IS NULL
+    ALTER TABLE bancos.ArchivosImportados ADD MovimientosJson VARBINARY(MAX) NULL;
+
+-- Fecha: 26/10/2026 - TAREA: 00135 - Linea: 2 - Historial de cambios de MovimientosArchivo
+-- Sin FK a propósito: el historial sobrevive a la baja del movimiento y del archivo.
+IF OBJECT_ID(N'bancos.MovimientosArchivoHistorial', N'U') IS NULL
+CREATE TABLE bancos.MovimientosArchivoHistorial (
+    Id            BIGINT IDENTITY(1,1) CONSTRAINT PK_MovimientosArchivoHistorial PRIMARY KEY,
+    IdMovimiento  INT NOT NULL,
+    IdArchivo     INT NOT NULL,
+    Campo         NVARCHAR(30) NOT NULL,
+    ValorAnterior NVARCHAR(400) NULL,
+    ValorNuevo    NVARCHAR(400) NULL,
+    Origen        NVARCHAR(40) NOT NULL,
+    Usuario       NVARCHAR(100) NOT NULL,
+    Fecha         DATETIME2(0) NOT NULL
+);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_MovimientosArchivoHistorial_Movimiento')
+    CREATE INDEX IX_MovimientosArchivoHistorial_Movimiento ON bancos.MovimientosArchivoHistorial(IdMovimiento, Fecha);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_MovimientosArchivoHistorial_Archivo')
+    CREATE INDEX IX_MovimientosArchivoHistorial_Archivo ON bancos.MovimientosArchivoHistorial(IdArchivo, Origen);
+
+-- Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Registro de blindar / desblindar, incluidos los intentos fallidos
+IF OBJECT_ID(N'bancos.BlindajeLog', N'U') IS NULL
+CREATE TABLE bancos.BlindajeLog (
+    Id        INT IDENTITY(1,1) CONSTRAINT PK_BlindajeLog PRIMARY KEY,
+    IdArchivo INT NOT NULL,
+    Accion    NVARCHAR(30) NOT NULL,
+    Usuario   NVARCHAR(100) NOT NULL,
+    Fecha     DATETIME2(0) NOT NULL,
+    Motivo    NVARCHAR(500) NULL
+);
+
+-- Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Clave maestra única del sistema (hash PBKDF2, nunca la clave) y control de intentos
+IF OBJECT_ID(N'bancos.ClaveMaestra', N'U') IS NULL
+CREATE TABLE bancos.ClaveMaestra (
+    Id               INT NOT NULL CONSTRAINT PK_ClaveMaestra PRIMARY KEY CONSTRAINT CK_ClaveMaestra_Unica CHECK (Id = 1),
+    Hash             VARBINARY(64) NOT NULL,
+    Sal              VARBINARY(32) NOT NULL,
+    Iteraciones      INT NOT NULL,
+    FechaCambio      DATETIME2(0) NOT NULL,
+    CambiadoPor      NVARCHAR(100) NOT NULL,
+    IntentosFallidos INT NOT NULL CONSTRAINT DF_ClaveMaestra_Intentos DEFAULT 0,
+    BloqueadoHasta   DATETIME2(0) NULL
+);
 ";
+
+        // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 2 - Trigger del historial: una fila por campo auditado que cambió
+        // Vive en una constante aparte porque CREATE TRIGGER tiene que ser la primera sentencia de su lote. Cubre toda vía de
+        // escritura, incluidas las que se agreguen después. Origen y usuario los informa DatabaseHelper.Open con SESSION_CONTEXT;
+        // sin ellos queda 'Desconocido' y el login de SQL. EXCEPT compara con NULL como valor (NULL = NULL).
+        public const string TriggerHistorial = @"
+CREATE TRIGGER bancos.TR_MovimientosArchivo_Historial ON bancos.MovimientosArchivo AFTER UPDATE AS
+BEGIN
+    SET NOCOUNT ON;
+    IF NOT (UPDATE(ConceptoEstandar) OR UPDATE(ConceptoFinal) OR UPDATE(Conciliado) OR UPDATE(ConciliadoFecha)) RETURN;
+    DECLARE @Origen  NVARCHAR(40)  = ISNULL(CONVERT(NVARCHAR(40),  SESSION_CONTEXT(N'origen')),  N'Desconocido');
+    DECLARE @Usuario NVARCHAR(100) = ISNULL(CONVERT(NVARCHAR(100), SESSION_CONTEXT(N'usuario')), SUSER_SNAME());
+    DECLARE @Ahora   DATETIME2(0)  = SYSDATETIME();
+    INSERT INTO bancos.MovimientosArchivoHistorial (IdMovimiento, IdArchivo, Campo, ValorAnterior, ValorNuevo, Origen, Usuario, Fecha)
+    SELECT i.Id, i.IdArchivo, c.Campo, c.Anterior, c.Nuevo, @Origen, @Usuario, @Ahora
+    FROM inserted i
+    JOIN deleted d ON d.Id = i.Id
+    CROSS APPLY (VALUES
+        (N'ConceptoEstandar', CONVERT(NVARCHAR(400), d.ConceptoEstandar), CONVERT(NVARCHAR(400), i.ConceptoEstandar)),
+        (N'ConceptoFinal',    CONVERT(NVARCHAR(400), d.ConceptoFinal),    CONVERT(NVARCHAR(400), i.ConceptoFinal)),
+        (N'Conciliado',       CONVERT(NVARCHAR(400), d.Conciliado),       CONVERT(NVARCHAR(400), i.Conciliado)),
+        (N'ConciliadoFecha',  CONVERT(NVARCHAR(400), d.ConciliadoFecha, 23), CONVERT(NVARCHAR(400), i.ConciliadoFecha, 23))
+    ) c (Campo, Anterior, Nuevo)
+    WHERE EXISTS (SELECT c.Anterior EXCEPT SELECT c.Nuevo);
+END";
     }
 }

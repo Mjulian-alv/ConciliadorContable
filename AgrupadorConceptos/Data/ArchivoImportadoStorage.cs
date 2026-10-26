@@ -12,11 +12,15 @@ namespace AgrupadorConceptos.Data
     /// </summary>
     internal static class ArchivoImportadoStorage
     {
+        // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 1 - Columnas explícitas y sólo archivos activos
+        // SELECT * traería MovimientosJson (megas) en cada listado, y un archivo dado de baja no se ofrece en ninguna pantalla.
+        private const string Columnas = "Id, IdPerfilBanco, NombreArchivo, Fecha, Blindado, BlindadoFecha, BlindadoPor, Activo";
+
         public static List<ArchivoImportado> ObtenerPorPerfil(int idPerfilBanco)
         {
             using var cn = DatabaseHelper.Open();
             return cn.Query<ArchivoImportado>(
-                "SELECT * FROM bancos.ArchivosImportados WHERE IdPerfilBanco = @IdPerfilBanco ORDER BY Fecha DESC",
+                $"SELECT {Columnas} FROM bancos.ArchivosImportados WHERE IdPerfilBanco = @IdPerfilBanco AND Activo = 1 ORDER BY Fecha DESC",
                 new { IdPerfilBanco = idPerfilBanco }).ToList();
         }
 
@@ -24,7 +28,7 @@ namespace AgrupadorConceptos.Data
         {
             using var cn = DatabaseHelper.Open();
             return cn.Query<ArchivoImportado>(
-                "SELECT * FROM bancos.ArchivosImportados ORDER BY Fecha DESC").ToList();
+                $"SELECT {Columnas} FROM bancos.ArchivosImportados WHERE Activo = 1 ORDER BY Fecha DESC").ToList();
         }
 
         /// <summary>Inserta la cabecera del archivo y devuelve su Id.</summary>

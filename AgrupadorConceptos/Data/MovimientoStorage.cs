@@ -21,8 +21,20 @@ namespace AgrupadorConceptos.Data
             WHERE mov.IdArchivo = @IdArchivo";
 
         // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Persistir tambien CuentaFinal
-        private const string UpdateConceptos =
-            "UPDATE bancos.MovimientosArchivo SET ConceptoEstandar = @ConceptoEstandar, ConceptoFinal = @ConceptoFinal, CuentaFinal = @CuentaFinal WHERE Id = @Id";
+        // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 1 - Los procesos automáticos ya no escriben ConceptoFinal desde la copia en memoria
+        // Una copia desactualizada (otra sesión, un diálogo de baja calculado antes de la edición) pisaba lo que el usuario había
+        // editado y lo dejaba igual al estándar. Ahora la condición se evalúa en el UPDATE, contra lo que hay en la base en ese
+        // instante: el final sólo sigue al estándar si está vacío, pendiente o es igual al estándar vigente. Con CuentaFinal
+        // pasa lo mismo: sólo se completa si está vacía. Un archivo blindado no se toca (la homologación está cerrada).
+        // Los SET de un UPDATE leen los valores previos, así que ConceptoEstandar se cambia en la misma sentencia sin perder la comparación.
+        private const string UpdateConceptos = @"UPDATE m SET
+                ConceptoFinal    = CASE WHEN LTRIM(RTRIM(ISNULL(m.ConceptoFinal, N''))) = N'' OR m.ConceptoFinal = @Pendiente
+                                             OR m.ConceptoFinal = m.ConceptoEstandar THEN @ConceptoEstandar ELSE m.ConceptoFinal END,
+                CuentaFinal      = CASE WHEN LTRIM(RTRIM(ISNULL(m.CuentaFinal, N''))) = N'' THEN @CuentaFinal ELSE m.CuentaFinal END,
+                ConceptoEstandar = @ConceptoEstandar
+            FROM bancos.MovimientosArchivo m
+            WHERE m.Id = @Id
+              AND NOT EXISTS (SELECT 1 FROM bancos.ArchivosImportados a WHERE a.Id = m.IdArchivo AND a.Blindado = 1)";
 
         public static List<MovimientoProcesado> ObtenerPorArchivo(int idArchivo)
         {
@@ -90,6 +102,8 @@ namespace AgrupadorConceptos.Data
             var pedidos = ids?.Distinct().ToList() ?? new List<int>();
             if (pedidos.Count == 0) return (0, omitidos);
 
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 2 - El historial distingue el marcado manual de las conciliaciones de sesión
+            using var origen = AuditoriaContexto.Usar(AuditoriaContexto.ConciliacionManual);
             using var cn = DatabaseHelper.Open();
             using var tx = cn.BeginTransaction();
             ConciliacionMutationStorage.Bloquear(cn, tx);
@@ -110,6 +124,8 @@ namespace AgrupadorConceptos.Data
                 else if (enPares.TryGetValue(id, out var donde)) omitidos.Add((id, $"está en una {donde}"));
                 else libres.Add(id);
             }
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Conciliar exige que los archivos de los movimientos estén blindados; si alguno no lo está se rechaza todo
+            BlindajeStorage.ExigirBlindadosPorMovimientos(cn, tx, libres);
             if (libres.Count > 0)
                 cn.Execute(@"UPDATE bancos.MovimientosArchivo SET Conciliado = 1, ConciliadoFecha = CAST(GETDATE() AS date)
                     WHERE Id IN @Ids AND Conciliado = 0", new { Ids = libres }, tx);
@@ -148,6 +164,9 @@ namespace AgrupadorConceptos.Data
             // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 1 - Insertar movimientos espera la decisión de baja de archivo.
             ConciliacionMutationStorage.Bloquear(cn, tx);
 
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - No se agregan movimientos a un archivo blindado
+            foreach (int idArchivo in movimientos.Select(m => m.IdArchivo).Distinct())
+                BlindajeStorage.ExigirNoBlindado(cn, tx, idArchivo);
             var ids = InsertarLote(movimientos, cn, tx, null, progreso);
             tx.Commit();
             for (int i=0;i<movimientos.Count;i++) movimientos[i].Id=ids[i];
@@ -174,19 +193,20 @@ namespace AgrupadorConceptos.Data
         /// Persiste ConceptoEstandar/ConceptoFinal de varios movimientos en una sola
         /// transacción, por el mismo motivo que InsertarLote.
         /// </summary>
-        public static void ActualizarConceptos(IEnumerable<MovimientoProcesado> movimientos)
+        public static int ActualizarConceptos(IEnumerable<MovimientoProcesado> movimientos)
         {
             var lista = movimientos?.ToList() ?? new List<MovimientoProcesado>();
-            if (lista.Count == 0) return;
+            if (lista.Count == 0) return 0;
 
             using var cn = DatabaseHelper.Open();
             using var tx = cn.BeginTransaction();
             // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 1 - Cambiar conceptos puede alterar el alcance interno de una sesión.
             ConciliacionMutationStorage.Bloquear(cn, tx);
 
-            ActualizarConceptos(lista, cn, tx);
+            int actualizados = ActualizarConceptos(lista, cn, tx);
 
             tx.Commit();
+            return actualizados;
         }
 
         // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 1 - Escribir dentro de una transaccion ajena
@@ -197,24 +217,53 @@ namespace AgrupadorConceptos.Data
         /// Igual que <see cref="ActualizarConceptos(IEnumerable{MovimientoProcesado})"/> pero
         /// dentro de la conexión y transacción que abrió el llamador. No commitea.
         /// </summary>
-        public static void ActualizarConceptos(
+        /// <returns>Cuántos movimientos se escribieron: los de un archivo blindado se saltean y no cuentan.</returns>
+        public static int ActualizarConceptos(
             IEnumerable<MovimientoProcesado> movimientos, IDbConnection cn, IDbTransaction tx)
         {
             var lista = movimientos?.ToList() ?? new List<MovimientoProcesado>();
-            if (lista.Count == 0) return;
+            if (lista.Count == 0) return 0;
             // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 1 - También los llamadores con transacción ajena respetan la decisión de baja.
             ConciliacionMutationStorage.Bloquear(cn, tx);
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 1 - Se pasa sólo lo que el UPDATE usa: el ConceptoFinal en memoria ya no se escribe
+            int actualizados = 0;
             foreach (var mov in lista)
-                cn.Execute(UpdateConceptos, mov, tx);
+                actualizados += cn.Execute(UpdateConceptos,
+                    new { mov.Id, mov.ConceptoEstandar, mov.CuentaFinal, Pendiente = ConceptosBancarios.PendienteHomologar }, tx);
+            SincronizarDesdeBase(lista, cn, tx);
+            return actualizados;
+        }
+
+        // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 1 - La copia en memoria queda igual a lo que decidió la base
+        // Si el final estaba editado, el objeto del llamador conservaba su valor viejo o el que la lógica en memoria suponía;
+        // releerlo evita que la grilla muestre algo distinto de lo guardado (y que un guardado posterior lo "corrija" mal).
+        private static void SincronizarDesdeBase(List<MovimientoProcesado> lista, IDbConnection cn, IDbTransaction tx)
+        {
+            var enBase = cn.Query<(int Id, string ConceptoEstandar, string ConceptoFinal, string CuentaFinal)>(
+                @"SELECT Id, ConceptoEstandar, ConceptoFinal, CuentaFinal FROM bancos.MovimientosArchivo
+                  WHERE Id IN (SELECT CAST([value] AS int) FROM OPENJSON(@Ids))",
+                new { Ids = System.Text.Json.JsonSerializer.Serialize(lista.Select(m => m.Id).Distinct().ToList()) }, tx)
+                .ToDictionary(x => x.Id);
+            foreach (var mov in lista)
+            {
+                if (!enBase.TryGetValue(mov.Id, out var b)) continue;
+                mov.ConceptoEstandar = b.ConceptoEstandar;
+                mov.ConceptoFinal = b.ConceptoFinal;
+                mov.CuentaFinal = b.CuentaFinal;
+            }
         }
 
         /// <summary>Edición puntual del ConceptoFinal desde la grilla.</summary>
         public static void ActualizarConceptoFinal(int id, string conceptoFinal)
         {
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 1 - Es la única vía que escribe ConceptoFinal sin condición, por eso queda como edición manual en el historial
+            using var origen = AuditoriaContexto.Usar(AuditoriaContexto.Manual);
             using var cn = DatabaseHelper.Open();
             // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 1 - La edición puntual también modifica el alcance interno.
             using var tx = cn.BeginTransaction();
             ConciliacionMutationStorage.Bloquear(cn, tx);
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Con el archivo blindado la homologación está cerrada
+            BlindajeStorage.ExigirNoBlindadoPorMovimientos(cn, tx, new[] { id });
             cn.Execute("UPDATE bancos.MovimientosArchivo SET ConceptoFinal = @ConceptoFinal WHERE Id = @Id",
                 new { ConceptoFinal = conceptoFinal, Id = id }, tx);
             tx.Commit();
@@ -225,8 +274,13 @@ namespace AgrupadorConceptos.Data
         public static void ActualizarCuentaFinal(int id, string cuentaFinal)
         {
             using var cn = DatabaseHelper.Open();
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Con el archivo blindado la cuenta sólo cambia al conciliar internamente
+            using var tx = cn.BeginTransaction();
+            ConciliacionMutationStorage.Bloquear(cn, tx);
+            BlindajeStorage.ExigirNoBlindadoPorMovimientos(cn, tx, new[] { id });
             cn.Execute("UPDATE bancos.MovimientosArchivo SET CuentaFinal = @CuentaFinal WHERE Id = @Id",
-                new { CuentaFinal = cuentaFinal, Id = id });
+                new { CuentaFinal = cuentaFinal, Id = id }, tx);
+            tx.Commit();
         }
     }
 }
