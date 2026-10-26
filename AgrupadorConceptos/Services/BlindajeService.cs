@@ -18,6 +18,12 @@ namespace AgrupadorConceptos.Services
         public const int MinutosBloqueo = 5;
         public const int LargoMinimoClave = 8;
 
+        /// <summary>
+        /// Quién puede definir o cambiar la clave maestra. La capa de datos no conoce a los usuarios: el anfitrión
+        /// (escritorio) lo fija al ingresar. Sin fijar, no se restringe (la web ya lo controla con su política).
+        /// </summary>
+        public static Func<bool> PuedeAdministrarClave { get; set; }
+
         public static bool HayClaveMaestra() => ClaveMaestraStorage.Obtener() != null;
 
         public static bool EstaBlindado(int idArchivo) => BlindajeStorage.EstaBlindado(idArchivo);

@@ -1,0 +1,38 @@
+@* Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Definir o cambiar la clave maestra del blindaje (maqueta 04-clave-maestra). *@
+@using AgrupadorConceptos.Services
+@using Conciliador.Web.Security
+@inject AccessGuard Access
+<div class="backdrop"><div class="modal" style="max-width:520px" role="dialog" aria-modal="true" aria-labelledby="titulo-clave">
+    <h2 id="titulo-clave">@(Existe?"Cambiar la clave maestra":"Definir la clave maestra")</h2>
+    <div class="sub">Es la que se pide para desblindar un archivo. No es la clave de ningún usuario.</div>
+    @if(error!=null){<div class="notice error" role="alert">@error</div>}
+    @if(Existe){<div class="form-row"><label>Clave actual<input type="password" autocomplete="off" @bind="actual" @bind:event="oninput" disabled="@ocupado" /></label></div>}
+    <div class="form-row"><label>@(Existe?"Clave nueva":"Clave")<input type="password" autocomplete="new-password" @bind="nueva" @bind:event="oninput" disabled="@ocupado" /><small>Al menos @BlindajeService.LargoMinimoClave caracteres.</small></label></div>
+    <div class="form-row"><label>Repetí la clave<input type="password" autocomplete="new-password" @bind="repetida" @bind:event="oninput" disabled="@ocupado" /></label></div>
+    <p class="note">La clave no se guarda: sólo queda su huella. Si se pierde no se puede recuperar; hace falta la actual para cambiarla.</p>
+    <div class="foot"><button @onclick="()=>OnCerrar.InvokeAsync(false)" disabled="@ocupado">Cancelar</button><button class="primary" @onclick="Guardar" disabled="@(ocupado||string.IsNullOrEmpty(nueva)||(Existe&&string.IsNullOrEmpty(actual)))">Guardar clave</button></div>
+</div></div>
+@code {
+    /// <summary>True si ya hay una clave maestra (se cambia) y false si es la primera vez.</summary>
+    [Parameter,EditorRequired] public bool Existe{get;set;}
+    /// <summary>True si la clave se guardó.</summary>
+    [Parameter] public EventCallback<bool> OnCerrar{get;set;}
+    string actual="", nueva="", repetida=""; string? error; bool ocupado;
+    async Task Guardar()
+    {
+        error=null;
+        if(nueva!=repetida){ error="Las dos claves nuevas no coinciden."; return; }
+        ocupado=true;
+        try
+        {
+            string usuario = await Access.RequireUser("AgrClaveMaestra");
+            string a = actual, n = nueva; bool existe = Existe;
+            await Task.Run(() => { if(existe) BlindajeService.CambiarClaveMaestra(a, n, usuario); else BlindajeService.DefinirClaveMaestra(n, usuario); });
+            actual = nueva = repetida = "";
+            await OnCerrar.InvokeAsync(true);
+        }
+        catch(Exception ex) when (ex is InvalidOperationException or ArgumentException or UnauthorizedAccessException){ error=ex.Message; actual=""; }
+        catch(Exception ex){ error="No se pudo guardar la clave: "+ex.Message; actual=""; }
+        finally{ ocupado=false; }
+    }
+}

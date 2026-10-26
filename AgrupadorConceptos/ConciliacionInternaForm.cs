@@ -290,7 +290,14 @@ namespace AgrupadorConceptos
                     "Confirmar", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
 
             // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Cierre pisa CuentaFinal con la del perfil opuesto, resuelta por par
-            var resultado = ConciliacionInternaService.Finalizar(_sesionActiva.Id);
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Los archivos de los pares tienen que seguir blindados al cerrar
+            ResultadoFinalizacionInterna resultado;
+            try { resultado = ConciliacionInternaService.Finalizar(_sesionActiva.Id); }
+            catch (InvalidOperationException ex)
+            {
+                MessageBox.Show(ex.Message, "No se puede finalizar", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
             if (!resultado.Exito)
             {
                 MessageBox.Show(

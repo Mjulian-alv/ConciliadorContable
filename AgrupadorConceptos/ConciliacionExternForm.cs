@@ -221,9 +221,18 @@ namespace AgrupadorConceptos
             using var dlgNombre = new NombreSesionDialog(nombre);
             if (dlgNombre.ShowDialog(this) != DialogResult.OK) return;
 
-            _sesionActiva = ConciliacionExternService.CrearSesion(
-                dlgNombre.NombreSesion, archivosSeleccionados.Select(a => a.Id).ToList(),
-                conceptosSeleccionados, items);
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Conciliar exige los archivos blindados: se muestra qué archivo falta blindar
+            try
+            {
+                _sesionActiva = ConciliacionExternService.CrearSesion(
+                    dlgNombre.NombreSesion, archivosSeleccionados.Select(a => a.Id).ToList(),
+                    conceptosSeleccionados, items);
+            }
+            catch (InvalidOperationException ex)
+            {
+                MessageBox.Show(ex.Message, "No se puede conciliar", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
 
             pnlConfigNueva.Visible = false;
             btnNuevaSesion.Enabled = true;
@@ -397,7 +406,13 @@ namespace AgrupadorConceptos
                 MessageBox.Show($"Aún quedan {pendExt.Count} ítems externos sin conciliar. ¿Finalizar igual?",
                     "Confirmar", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
 
-            ConciliacionExternService.MarcarFinalizada(_sesionActiva.Id);
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Los archivos tienen que seguir blindados al cerrar la sesión
+            try { ConciliacionExternService.MarcarFinalizada(_sesionActiva.Id); }
+            catch (InvalidOperationException ex)
+            {
+                MessageBox.Show(ex.Message, "No se puede finalizar", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
             _sesionActiva.Estado = "Finalizada";
             ActualizarEstadoSesion();
             CargarSesiones();

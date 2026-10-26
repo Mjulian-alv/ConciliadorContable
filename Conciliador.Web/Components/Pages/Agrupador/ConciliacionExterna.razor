@@ -19,9 +19,9 @@ else if(modo==Modo.Nueva)
         @if(errRango!=null){<div class="ferr">@errRango</div>}
         @if(cargandoCandidatos){<p class="muted">Buscando extractos…</p>}
         else if(candidatos.Count==0){<p class="muted">No hay extractos en ese rango. Probá con «Mostrar todos».</p>}
-        else{<div class="table-wrap" style="margin-top:12px"><table><thead><tr><th style="width:60px">Elegir</th><th>Perfil</th><th>Archivo</th><th>Desde</th><th>Hasta</th><th class="numeric">Cantidad</th></tr></thead>
+        else{<div class="table-wrap" style="margin-top:12px"><table><thead><tr><th style="width:60px">Elegir</th><th>Perfil</th><th>Archivo</th><th>Desde</th><th>Hasta</th><th class="numeric">Cantidad</th><th>Blindaje</th></tr></thead>
             <tbody>@foreach(var c in candidatos){<tr class="@(archivosElegidos.Contains(c.IdArchivo)?"sel":"")"><td><input type="checkbox" aria-label="Elegir @c.Archivo" checked="@archivosElegidos.Contains(c.IdArchivo)" @onchange="e=>ElegirArchivo(c.IdArchivo,(bool)e.Value!)" /></td><td>@c.Perfil</td><td>@c.Archivo</td>
-                <td>@c.Desde?.ToString("dd/MM/yyyy")</td><td>@c.Hasta?.ToString("dd/MM/yyyy")</td><td class="numeric">@c.Cantidad.ToString("N0",ar)</td></tr>}</tbody></table></div>}
+                <td>@c.Desde?.ToString("dd/MM/yyyy")</td><td>@c.Hasta?.ToString("dd/MM/yyyy")</td><td class="numeric">@c.Cantidad.ToString("N0",ar)</td><td>@if(EstaBlindado(c.IdArchivo)){<span class="badge ok">Blindado</span>}else{<span class="badge warn">Sin blindar</span>}</td></tr>}</tbody></table></div>}
         <small>@archivosElegidos.Count seleccionados, @fueraDeRango fuera del rango</small>
         @if(errArchivos!=null){<div class="ferr">@errArchivos</div>}</section>
     <section class="panel"><div class="section-heading"><span class="step-number">3</span><div><h2>Conceptos a conciliar</h2></div></div>
@@ -108,6 +108,9 @@ else
     bool ocupado,cargandoCandidatos;
     // alta
     string nombre="",sugerido=""; DateTime desde=DateTime.Today.AddMonths(-1),hasta=DateTime.Today; bool mostrarTodos;
+    // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - El blindaje de cada extracto se muestra al elegirlo
+    bool EstaBlindado(int id)=>todosArchivos.Find(a=>a.Id==id)?.Blindado==true;
+    string NombreArchivo(int id)=>todosArchivos.Find(a=>a.Id==id)?.NombreArchivo??$"archivo {id}";
     List<ExtractoCandidato> candidatos=new(); HashSet<int> archivosElegidos=new(); List<ArchivoImportado> todosArchivos=new();
     List<string> conceptos=new(); HashSet<string> marcados=new(StringComparer.OrdinalIgnoreCase);
     ArchivoSubido? externo; List<ConciliacionItemExterno> items=new(); IReadOnlyList<IncidenciaFechaImportacion>? incidencias;
@@ -188,6 +191,9 @@ else
     {
         error=errNombre=errArchivos=errConceptos=errExterno=null;
         if(archivosElegidos.Count==0)errArchivos="Seleccioná al menos un extracto para crear la sesión.";
+        // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Conciliar exige que todos los extractos estén blindados; el servidor lo vuelve a comprobar
+        else{var sinBlindar=archivosElegidos.Where(i=>!EstaBlindado(i)).Select(NombreArchivo).ToList();
+            if(sinBlindar.Count>0)errArchivos=$"Para conciliar, blindá primero {(sinBlindar.Count==1?"el archivo":"los archivos")}: {string.Join(", ",sinBlindar)}.";}
         if(marcados.Count==0)errConceptos="Seleccioná al menos un concepto.";
         if(externo==null||incidencias!=null)errExterno="Cargá el archivo externo.";
         else if(items.Count==0)errExterno="No se encontraron registros en el archivo externo.";
@@ -305,7 +311,8 @@ else
         ocupado=true;
         try
         {
-            await Access.Require("AgrConciliacion");
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 2 - El historial guarda quién finalizó la conciliación
+            string usuario=await Access.RequireUser("AgrConciliacion");using var aud=AuditoriaContexto.Usar(usuario:usuario);
             int id=sesion.Id;await Task.Run(()=>ConciliacionExternService.MarcarFinalizada(id));
             sesion.Estado="Finalizada";aviso="Sesión finalizada.";await CargarSesiones();idSeleccion=sesion.Id;await Refrescar();
         }

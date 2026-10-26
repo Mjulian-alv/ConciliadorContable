@@ -237,10 +237,11 @@ namespace AgrupadorConceptos
             bool conceptoCambio = !string.Equals(frm.sConcepto, fila.ConceptoEstandar, StringComparison.OrdinalIgnoreCase);
 
             Cursor = Cursors.WaitCursor;
+            int saltadosPorBlindaje = 0; // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Movimientos de archivos blindados que no se arrastran
             try
             {
                 int idConcepto = conceptoCambio
-                    ? HomologacionAdminService.Reapuntar(fila, perfil, frm.sConcepto)
+                    ? HomologacionAdminService.Reapuntar(fila, perfil, frm.sConcepto, out saltadosPorBlindaje)
                     : fila.IdConceptoEstandar;
 
                 HomologacionStorage.ActualizarCuentaConcepto(idConcepto, frm.sIdCuentaContable);
@@ -258,6 +259,9 @@ namespace AgrupadorConceptos
 
             HuboCambios = true;
             CargarDatos();
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Los archivos blindados tienen la homologación cerrada: se avisa cuántos movimientos no se arrastraron
+            if (saltadosPorBlindaje > 0)
+                MessageBox.Show($"{saltadosPorBlindaje} movimiento(s) de archivos blindados no se modificaron.", "Archivos blindados", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 1 - Baja preguntando por los ya homologados
@@ -320,6 +324,9 @@ namespace AgrupadorConceptos
 
             HuboCambios = true;
             CargarDatos();
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Movimientos de archivos blindados que la regla alcanzaba y no se tocaron
+            if (impacto.EnArchivosBlindados > 0)
+                MessageBox.Show($"{impacto.EnArchivosBlindados} movimiento(s) de archivos blindados no se modificaron.", "Archivos blindados", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         // Fecha: 07/10/2026 - TAREA: 00073 - Linea: 1 - El quinto botón reutiliza la ventana iniciada por el usuario para consultar todos los perfiles.

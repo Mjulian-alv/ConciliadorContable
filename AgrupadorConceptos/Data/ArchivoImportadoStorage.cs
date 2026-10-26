@@ -31,6 +31,13 @@ namespace AgrupadorConceptos.Data
                 $"SELECT {Columnas} FROM bancos.ArchivosImportados WHERE Activo = 1 ORDER BY Fecha DESC").ToList();
         }
 
+        // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Las reglas son del perfil: al cambiarlas hay que saber qué archivos están blindados para no tocarlos
+        public static HashSet<int> ObtenerIdsBlindados()
+        {
+            using var cn = DatabaseHelper.Open();
+            return cn.Query<int>("SELECT Id FROM bancos.ArchivosImportados WHERE Blindado = 1 AND Activo = 1").ToHashSet();
+        }
+
         /// <summary>Inserta la cabecera del archivo y devuelve su Id.</summary>
         public static int Insertar(int idPerfilBanco, string nombreArchivo, DateTime fecha)
         {

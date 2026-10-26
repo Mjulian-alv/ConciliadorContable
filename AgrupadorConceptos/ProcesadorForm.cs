@@ -35,9 +35,35 @@ namespace AgrupadorConceptos
             Location = new Point(390, 8), Size = new Size(300, 28), TabIndex = 17
         };
 
+        // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 2, 3 - Blindaje del archivo en la grilla: estado, blindar/desblindar, historial del movimiento y clave maestra
+        // Se agregan por código, como los botones anteriores, para no tocar el diseñador heredado.
+        private readonly Label _lblBlindaje = new()
+        {
+            Name = "lblBlindaje", AutoSize = false, Location = new Point(14, 166), Size = new Size(560, 22), TextAlign = ContentAlignment.MiddleLeft
+        };
+        private readonly Button _btnBlindar = new()
+        {
+            Name = "btnBlindar", Text = "Blindar archivo", Location = new Point(580, 162), Size = new Size(130, 28), TabIndex = 18
+        };
+        private readonly Button _btnHistorial = new()
+        {
+            Name = "btnHistorial", Text = "Historial del movimiento", Location = new Point(716, 162), Size = new Size(170, 28), TabIndex = 19
+        };
+        private readonly Button _btnClaveMaestra = new()
+        {
+            Name = "btnClaveMaestra", Text = "Clave maestra…", Location = new Point(892, 162), Size = new Size(120, 28), TabIndex = 20
+        };
+        private bool Blindado => _archivoEnGrilla?.Blindado == true;
+
         public ProcesadorForm()
         {
             InitializeComponent();
+            pnlTop.Height += 40;
+            pnlTop.Controls.AddRange(new Control[] { _lblBlindaje, _btnBlindar, _btnHistorial, _btnClaveMaestra });
+            _btnBlindar.Click += btnBlindar_Click;
+            _btnHistorial.Click += btnHistorial_Click;
+            _btnClaveMaestra.Click += btnClaveMaestra_Click;
+            ActualizarBlindaje();
             // Fecha: 23/10/2026 - TAREA: 00125 - Linea: 3 - Mismo criterio que el botón de baja: se agrega por código sin tocar el diseñador
             pnlTop.Controls.Add(_btnMarcarConciliados);
             _btnMarcarConciliados.Click += btnMarcarConciliados_Click;
@@ -199,6 +225,7 @@ namespace AgrupadorConceptos
             ConfigurarGrilla();
 
             ActualizarResumen(movs);
+            ActualizarBlindaje();
         }
 
         private void LimpiarSesion()
@@ -207,6 +234,7 @@ namespace AgrupadorConceptos
             _perfilEnGrilla = null;
             dgvDatos.DataSource = null;
             lblTotalRegistros.Text = "Registros leídos: 0";
+            ActualizarBlindaje();
         }
 
         /// <summary>
@@ -253,7 +281,8 @@ namespace AgrupadorConceptos
             if (pnlProgreso.Visible || _eliminandoMovimientos) return;
             if (cmbArchivos.SelectedItem is ArchivoImportado archivo)
             {
-                if (MessageBox.Show($"¿Desea borrar el archivo {archivo.NombreArchivo} y todos sus movimientos?", "Confirmar", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 1 - La baja avisa cuánto se modificó y deja el archivo inactivo, con sus movimientos archivados
+                if (BlindajeDialogos.ConfirmarBaja(this, archivo))
                 {
                     try
                     {
@@ -267,7 +296,7 @@ namespace AgrupadorConceptos
                     }
                     catch (InvalidOperationException ex)
                     {
-                        MessageBox.Show(ex.Message, "No se puede borrar", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show(ex.Message, "No se puede dar de baja", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
                     }
                     CargarArchivosDelPerfil();
@@ -308,7 +337,7 @@ namespace AgrupadorConceptos
             finally
             {
                 _eliminandoMovimientos = false;
-                _btnEliminarMovimientos.Enabled = !pnlProgreso.Visible;
+                _btnEliminarMovimientos.Enabled = !pnlProgreso.Visible && !Blindado; // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Con el archivo blindado no se eliminan movimientos
                 btnBorrarSesion.Enabled = !pnlProgreso.Visible;
             }
         }
@@ -359,8 +388,101 @@ namespace AgrupadorConceptos
             finally
             {
                 _marcandoConciliados = false;
-                _btnMarcarConciliados.Enabled = !pnlProgreso.Visible;
+                _btnMarcarConciliados.Enabled = !pnlProgreso.Visible && Blindado; // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Conciliar exige el archivo blindado
             }
+        }
+
+        // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Estado y acciones del blindaje del archivo en la grilla
+        private void AvisarBlindado() =>
+            MessageBox.Show("El archivo está blindado (cierre de homologación). Para modificarlo hay que desblindarlo con la clave maestra.",
+                "Archivo blindado", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+
+        private void ActualizarBlindaje()
+        {
+            if (_archivoEnGrilla != null)
+            {
+                try { _archivoEnGrilla.Blindado = BlindajeStorage.EstaBlindado(_archivoEnGrilla.Id); }
+                catch (Exception) { /* sin base no se puede confirmar: se deja el último estado conocido */ }
+            }
+            bool hay = _archivoEnGrilla != null, b = Blindado, libre = !pnlProgreso.Visible;
+            _lblBlindaje.Text = !hay ? "Sin archivo en trabajo."
+                : b ? "ARCHIVO BLINDADO · se permite conciliar; la homologación y la edición están bloqueadas."
+                    : "Archivo sin blindar · para conciliar, blindalo primero.";
+            _lblBlindaje.ForeColor = !hay ? SystemColors.GrayText : b ? Color.DarkGreen : Color.DarkGoldenrod;
+            _btnBlindar.Text = b ? "Desblindar…" : "Blindar archivo";
+            _btnBlindar.Enabled = hay && libre;
+            _btnHistorial.Enabled = hay;
+            btnHomologar.Enabled = libre && !b;
+            btnHomologacionMasiva.Enabled = libre && !b;
+            _btnEliminarMovimientos.Enabled = libre && !b && !_eliminandoMovimientos;
+            _btnMarcarConciliados.Enabled = libre && b && !_marcandoConciliados;
+            if (dgvDatos.Columns.Count > 0)
+            {
+                // El estado de lectura de la grilla acompaña al blindaje: ConfigurarGrilla ya deja editables sólo las dos columnas finales.
+                foreach (var col in dgvDatos.Columns)
+                    col.ReadOnly = b || (col.Name != "ConceptoFinal" && col.Name != "CuentaFinal");
+            }
+        }
+
+        private void btnBlindar_Click(object sender, EventArgs e)
+        {
+            if (_archivoEnGrilla == null || pnlProgreso.Visible) return;
+            try
+            {
+                if (Blindado)
+                {
+                    if (BlindajeDialogos.Desblindar(this, _archivoEnGrilla))
+                    {
+                        ActualizarBlindaje();
+                        MessageBox.Show("Archivo desblindado. Ya se puede homologar y editar; para conciliar hay que blindarlo de nuevo.",
+                            "Desblindado", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    return;
+                }
+                // Sin clave maestra nadie podría desblindar después: primero se define.
+                if (!BlindajeService.HayClaveMaestra())
+                {
+                    if (MessageBox.Show("Todavía no hay clave maestra. Sin ella nadie podría desblindar el archivo. ¿Definirla ahora?",
+                            "Clave maestra", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+                    if (!PuedeAdministrarClave()) { MessageBox.Show("Tu usuario no tiene permiso para definir la clave maestra.", "Clave maestra", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+                    if (!BlindajeDialogos.ClaveMaestra(this, false)) return;
+                }
+                BlindajeService.Blindar(_archivoEnGrilla.Id, BlindajeDialogos.UsuarioActual);
+                ActualizarBlindaje();
+                MessageBox.Show("Archivo blindado. Ya se puede conciliar; la homologación quedó cerrada.", "Blindado", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or Microsoft.Data.SqlClient.SqlException)
+            {
+                MessageBox.Show(ex.Message, "No se pudo cambiar el blindaje", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                ActualizarBlindaje();
+            }
+        }
+
+        private static bool PuedeAdministrarClave() => BlindajeService.PuedeAdministrarClave?.Invoke() ?? true;
+
+        private void btnClaveMaestra_Click(object sender, EventArgs e)
+        {
+            if (!PuedeAdministrarClave()) { MessageBox.Show("Tu usuario no tiene permiso para administrar la clave maestra.", "Clave maestra", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+            try
+            {
+                bool existe = BlindajeService.HayClaveMaestra();
+                if (BlindajeDialogos.ClaveMaestra(this, existe))
+                    MessageBox.Show(existe ? "Clave maestra cambiada." : "Clave maestra definida. Ya se pueden blindar archivos.", "Clave maestra", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Microsoft.Data.SqlClient.SqlException ex)
+            {
+                MessageBox.Show("No se pudo leer la clave maestra: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void btnHistorial_Click(object sender, EventArgs e)
+        {
+            if (dgvDatos.CurrentRow?.DataBoundItem is not MovimientoProcesado mov)
+            {
+                MessageBox.Show("Seleccioná un movimiento de la grilla.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            BlindajeDialogos.Historial(this, mov);
         }
 
         private void btnGestionarHomologaciones_Click(object sender, EventArgs e)
@@ -401,6 +523,7 @@ namespace AgrupadorConceptos
                 return;
             }
 
+            if (Blindado) { AvisarBlindado(); return; } // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3
             var frm = new HomologacionMasivaForm(movimientos, _perfilEnGrilla);
             frm.ShowDialog();
 
@@ -436,6 +559,8 @@ namespace AgrupadorConceptos
             if (e.Column.Name != "CuentaFinal" && e.Column.Name != "ConceptoFinal") return;
             if (e.Row.DataBoundItem is not MovimientoProcesado mov) return;
 
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Con el archivo blindado la homologación está cerrada
+            if (Blindado) { e.Cancel = true; AvisarBlindado(); return; }
             // Fecha: 23/10/2026 - TAREA: 00125 - Linea: 3 - Un movimiento conciliado no se edita: cambiaría lo que ya se cerró
             if (mov.Conciliado)
             {
@@ -616,9 +741,11 @@ namespace AgrupadorConceptos
             btnCargarArchivo.Enabled = !visible;
             // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 1 - Una importación no puede solaparse con ninguna de las dos bajas.
             btnBorrarSesion.Enabled = !visible && !_eliminandoMovimientos;
-            _btnEliminarMovimientos.Enabled = !visible && !_eliminandoMovimientos;
+            _btnEliminarMovimientos.Enabled = !visible && !_eliminandoMovimientos && !Blindado;
             // Fecha: 23/10/2026 - TAREA: 00125 - Linea: 3 - El marcado manual tampoco se solapa con una importación
-            _btnMarcarConciliados.Enabled = !visible && !_marcandoConciliados;
+            _btnMarcarConciliados.Enabled = !visible && !_marcandoConciliados && Blindado;
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - El blindaje no se cambia durante una importación
+            ActualizarBlindaje();
             if (visible)
             {
                 // Configurar steps al inicio de cada importación
@@ -637,6 +764,8 @@ namespace AgrupadorConceptos
                 MessageBox.Show("Primero cargue la sesión de un archivo.", "Atención", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Un doble clic en la fila también llega acá
+            if (Blindado) { AvisarBlindado(); return; }
 
             if (dgvDatos.CurrentRow?.DataBoundItem is not MovimientoProcesado movInfo)
             {

@@ -39,13 +39,22 @@ namespace ConciliadorContable.Auth
                     Rol          = reader.IsDBNull(5) ? "Usuario" : reader.GetString(5),
                     PermisosJson = reader.IsDBNull(6) ? "[]"      : reader.GetString(6),
                 };
+                // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 2, 3 - El historial de movimientos y el registro del blindaje guardan quién operó; la clave maestra la administra quien tenga el permiso
+                AgrupadorConceptos.Data.AuditoriaContexto.UsuarioPredeterminado = UsuarioActual.Username;
+                AgrupadorConceptos.Services.BlindajeService.PuedeAdministrarClave = () => UsuarioActual?.TienePermiso("AgrClaveMaestra") == true;
                 return true;
             }
 
             return false;
         }
 
-        public static void Logout() => UsuarioActual = null;
+        public static void Logout()
+        {
+            UsuarioActual = null;
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 2, 3 - Sin sesión no queda usuario de auditoría ni permiso sobre la clave maestra
+            AgrupadorConceptos.Data.AuditoriaContexto.UsuarioPredeterminado = null;
+            AgrupadorConceptos.Services.BlindajeService.PuedeAdministrarClave = () => false;
+        }
 
         public static string HashPassword(string password)
         {

@@ -1,0 +1,36 @@
+@* Fecha: 26/10/2026 - TAREA: 00135 - Linea: 2 - Historial de cambios de un movimiento: fecha, campo, valor anterior y nuevo, origen y usuario (maqueta 03-historial-movimiento). *@
+@using AgrupadorConceptos.Data
+@using AgrupadorConceptos.Models
+<div class="backdrop"><div class="modal" style="max-width:880px" role="dialog" aria-modal="true" aria-labelledby="titulo-historial">
+    <h2 id="titulo-historial">Historial del movimiento</h2>
+    <div class="sub">@Descripcion</div>
+    @if(error!=null){<div class="notice error" role="alert">@error</div>}
+    else if(cambios==null){<p class="muted">Cargando…</p>}
+    else if(cambios.Count==0){<div class="empty"><p class="muted">Este movimiento no tiene cambios registrados.</p></div>}
+    else
+    {
+        <div class="table-wrap" style="max-height:420px"><table><thead><tr><th>Fecha</th><th>Campo</th><th>Valor anterior</th><th>Valor nuevo</th><th>Origen</th><th>Usuario</th></tr></thead>
+            <tbody>@foreach(var c in cambios){<tr><td>@c.Fecha.ToString("dd/MM/yyyy HH:mm")</td><td>@Campo(c.Campo)</td><td>@Valor(c.Campo,c.ValorAnterior)</td><td>@Valor(c.Campo,c.ValorNuevo)</td><td>@c.Origen</td><td>@c.Usuario</td></tr>}</tbody></table></div>
+    }
+    <div class="foot"><button class="primary" @onclick="()=>OnCerrar.InvokeAsync()">Cerrar</button></div>
+</div></div>
+@code {
+    [Parameter,EditorRequired] public int IdMovimiento{get;set;}
+    [Parameter] public string Descripcion{get;set;}="";
+    [Parameter] public EventCallback OnCerrar{get;set;}
+    List<CambioMovimiento>? cambios; string? error;
+    protected override async Task OnInitializedAsync()
+    {
+        try{ int id=IdMovimiento; cambios=await Task.Run(()=>MovimientoHistorialStorage.ObtenerPorMovimiento(id)); }
+        catch(Exception ex){ error="No se pudo leer el historial: "+ex.Message; }
+    }
+    static string Campo(string c)=>c switch{"ConceptoEstandar"=>"Concepto estándar","ConceptoFinal"=>"Concepto final","Conciliado"=>"Conciliado","ConciliadoFecha"=>"Fecha de conciliado",_=>c};
+    // El trigger guarda todo como texto: el bit llega como 0/1 y la fecha como yyyy-MM-dd.
+    static string Valor(string campo,string? v)
+    {
+        if(string.IsNullOrEmpty(v)) return "—";
+        if(campo=="Conciliado") return v=="1"?"Sí":"No";
+        if(campo=="ConciliadoFecha"&&DateTime.TryParseExact(v,"yyyy-MM-dd",null,System.Globalization.DateTimeStyles.None,out var f)) return f.ToString("dd/MM/yyyy");
+        return v;
+    }
+}

@@ -1,0 +1,24 @@
+@* Fecha: 26/10/2026 - TAREA: 00135 - Linea: 1 - Confirmación de baja de un archivo: avisa cuánto de lo hecho en él se archivaría (maqueta 05-baja-archivo-aviso). *@
+<div class="backdrop"><div class="modal" style="max-width:600px" role="dialog" aria-modal="true" aria-labelledby="titulo-baja">
+    <h2 id="titulo-baja">Confirmar baja del archivo</h2>
+    <div class="sub">@Archivo</div>
+    @if(Mod.HayModificaciones)
+    {
+        <div class="notice" role="status">Este archivo tiene <strong>@Mod.Total.ToString("N0",ar) movimientos con modificaciones.</strong> ¿Dar de baja igual?</div>
+        <div class="stats"><div>Movimientos modificados<strong>@Mod.Total.ToString("N0",ar)</strong></div><div>Conceptos finales editados<strong>@Mod.ConceptosFinalesEditados.ToString("N0",ar)</strong></div>
+            <div>Cuentas editadas<strong>@Mod.CuentasEditadas.ToString("N0",ar)</strong></div><div>Movimientos conciliados<strong>@Mod.Conciliados.ToString("N0",ar)</strong></div></div>
+    }
+    else
+    {
+        <div class="notice" role="status">¿Dar de baja el archivo «@Archivo»? No tiene modificaciones registradas.</div>
+    }
+    <p class="note"><strong>Al confirmar:</strong> los movimientos se archivan dentro del archivo, que queda inactivo, y el historial de movimientos se conserva. Si algún movimiento está tomado por una conciliación, no se da de baja nada y se informa el motivo.</p>
+    <div class="foot"><button @onclick="()=>OnCerrar.InvokeAsync(false)">Cancelar</button><button class="primary" @onclick="()=>OnCerrar.InvokeAsync(true)" disabled="@Ocupado">Confirmar baja</button></div>
+</div></div>
+@code {
+    static readonly System.Globalization.CultureInfo ar = new("es-AR");
+    [Parameter,EditorRequired] public string Archivo{get;set;}="";
+    [Parameter,EditorRequired] public AgrupadorConceptos.Models.ModificacionesArchivo Mod{get;set;}=new();
+    [Parameter] public bool Ocupado{get;set;}
+    [Parameter] public EventCallback<bool> OnCerrar{get;set;}
+}

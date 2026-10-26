@@ -240,6 +240,25 @@ static class BlindajeTests
                 Check(!BlindajeService.EstaBlindado(idArchivo), "Con la nueva sí");
             });
 
+            // ---------- Reglas del perfil: los archivos blindados no se tocan ----------
+            test("Reglas del perfil: reapuntar y dar de baja una regla saltean los archivos blindados y lo informan", () =>
+            {
+                var movsE = Importar("e.xlsx"); var movsF = Importar("f.xlsx");
+                int idF = movsF[0].IdArchivo;
+                Blindar(idF);
+                var regla = HomologacionStorage.ObtenerListado(perfilId).Single(r => r.ValorOriginal == "COBRO");
+                int reapuntado = HomologacionAdminService.Reapuntar(regla, perfil, "REAPUNTADO", out int saltados);
+                Check(reapuntado > 0 && saltados == 2, "Dos movimientos de COBRO en el archivo blindado: " + saltados);
+                Check(movsE.Where(m => m.ConceptoOriginal.StartsWith("COBRO")).All(m => Estandar(m.Id) == "REAPUNTADO" && Final(m.Id) == "REAPUNTADO"), "El archivo sin blindar sí se arrastra");
+                Check(movsF.Where(m => m.ConceptoOriginal.StartsWith("COBRO")).All(m => Estandar(m.Id) == "COBRANZAS" && Final(m.Id) == "COBRANZAS"), "El blindado queda como estaba");
+                var regla2 = HomologacionStorage.ObtenerListado(perfilId).Single(r => r.ValorOriginal == "COBRO");
+                var impacto = HomologacionAdminService.CalcularImpactoBaja(regla2, perfil);
+                Check(impacto.EnArchivosBlindados == 2 && impacto.Afectados.All(i => i.Movimiento.IdArchivo != idF), "El impacto no incluye al blindado y lo cuenta aparte");
+                HomologacionAdminService.AplicarBaja(regla2, impacto, null);
+                Check(movsE.Where(m => m.ConceptoOriginal.StartsWith("COBRO")).All(m => Estandar(m.Id) == ConceptosBancarios.PendienteHomologar), "El archivo sin blindar vuelve a pendiente");
+                Check(movsF.Where(m => m.ConceptoOriginal.StartsWith("COBRO")).All(m => Estandar(m.Id) == "COBRANZAS"), "El blindado sigue igual");
+            });
+
             // ---------- Baja de archivo: aviso, archivo inactivo y movimientos archivados ----------
             test("Baja con modificaciones: cuenta lo editado, deja el archivo inactivo y archiva los movimientos en JSON comprimido", () =>
             {

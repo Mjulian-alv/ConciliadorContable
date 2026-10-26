@@ -5,7 +5,7 @@ namespace Conciliador.Web.Security;
 public static class Permisos
 {
     public static readonly string[] Arca = { "ArcaOffline", "ArcaPerfiles", "ArcaEquivalencias", "ArcaPyR" };
-    public static readonly string[] Agrupador = { "AgrProcesador", "AgrHomologaciones", "AgrConciliacion", "AgrConciliacionInterna", "AgrCuentasContables" };
+    public static readonly string[] Agrupador = { "AgrProcesador", "AgrHomologaciones", "AgrConciliacion", "AgrConciliacionInterna", "AgrCuentasContables", "AgrClaveMaestra" }; // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - AgrClaveMaestra: definir y cambiar la clave maestra del blindaje
     /// <summary>Una política por permiso: Admin o el permiso propio, como en el escritorio.</summary>
     public static void Registrar(AuthorizationOptions o)
     {

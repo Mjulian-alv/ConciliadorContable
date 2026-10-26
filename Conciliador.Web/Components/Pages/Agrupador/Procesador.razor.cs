@@ -10,7 +10,7 @@ using Microsoft.JSInterop;
 namespace Conciliador.Web.Components.Pages.Agrupador;
 public partial class Procesador
 {
-    enum Dialogo { Ninguno, Homologar, ConfirmarRehomologar, Pendientes, PendientesHomologar, Consolidado, BorrarArchivo, EliminarSeleccion, Bloqueo, MarcarConciliados }
+    enum Dialogo { Ninguno, Homologar, ConfirmarRehomologar, Pendientes, PendientesHomologar, Consolidado, BorrarArchivo, EliminarSeleccion, Bloqueo, MarcarConciliados, Desblindar, ClaveMaestra, Historial } // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 2, 3 - Diálogos de blindaje, clave maestra e historial
     static readonly System.Globalization.CultureInfo ar = new("es-AR");
     [Inject] AccessGuard Access { get; set; } = default!;
     [Inject] IJSRuntime JS { get; set; } = default!;
@@ -40,6 +40,13 @@ public partial class Procesador
     List<MovimientoProcesado>? Movs => Work.Movimientos;
     PerfilBanco? Perfil => perfiles.Find(p => p.Id == perfilId);
     ArchivoImportado? archivoSeleccionado => archivos.Find(a => a.Id == archivoSel);
+    // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - El blindaje se mira sobre el archivo cuyos movimientos están en la grilla, no sobre el elegido en la lista
+    ArchivoImportado? ArchivoEnTrabajo => Work.ArchivoId == 0 ? null : archivos.Find(a => a.Id == Work.ArchivoId);
+    bool Blindado => ArchivoEnTrabajo?.Blindado == true;
+    bool claveExiste;
+    ModificacionesArchivo modBaja = new();
+    string tituloBloqueo = "No se puede borrar"; string? notaBloqueo;
+    const string NotaBaja = "Los motivos posibles: movimientos tomados por pares de conciliación, o una sesión externa o interna en proceso o finalizada que alcanza el archivo. Un error de base de datos se informa aparte, con su mensaje.";
     static bool EsPendiente(MovimientoProcesado m) => m.ConceptoEstandar == ConceptosBancarios.PendienteHomologar;
 
     protected override async Task OnInitializedAsync()
@@ -166,7 +173,8 @@ public partial class Procesador
         string anterior = m.ConceptoFinal; string nuevo = e.Value?.ToString() ?? "";
         // Fecha: 23/10/2026 - TAREA: 00125 - Linea: 4 - Un movimiento conciliado no se edita (como en el escritorio).
         if (m.Conciliado) { error = "Este movimiento ya está marcado como conciliado y no se puede editar."; StateHasChanged(); return; }
-        try { await Access.Require("AgrProcesador"); m.ConceptoFinal = nuevo; await Task.Run(() => MovimientoStorage.ActualizarConceptoFinal(m.Id, nuevo)); }
+        // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 2 - El historial guarda quién editó
+        try { string usuario = await Access.RequireUser("AgrProcesador"); using var aud = AuditoriaContexto.Usar(usuario: usuario); m.ConceptoFinal = nuevo; await Task.Run(() => MovimientoStorage.ActualizarConceptoFinal(m.Id, nuevo)); }
         catch (Exception ex) { m.ConceptoFinal = anterior; error = ex is UnauthorizedAccessException ? ex.Message : "No se pudo guardar el concepto final: " + ex.Message; }
     }
     async Task CambioCuentaFinal(MovimientoProcesado m, ChangeEventArgs e)
@@ -176,7 +184,7 @@ public partial class Procesador
         if (m.Conciliado) { error = "Este movimiento ya está marcado como conciliado y no se puede editar."; StateHasChanged(); return; }
         try
         {
-            await Access.Require("AgrProcesador");
+            string usuario = await Access.RequireUser("AgrProcesador"); using var aud = AuditoriaContexto.Usar(usuario: usuario);
             // Una cuenta conciliada en una sesión interna en proceso se fija sola al cerrarla: editarla a mano se perdería.
             string? sesion = await Task.Run(() => ConciliacionInternaService.ObtenerSesionEnProcesoDelMovimiento(m.Id));
             if (sesion != null)
@@ -207,6 +215,8 @@ public partial class Procesador
         try
         {
             var perfil = Perfil; var movs = Movs; bool rehomologa = yaHomologado;
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 2 - El historial guarda quién homologó
+            string usuario = await Access.RequireUser("AgrProcesador"); using var aud = AuditoriaContexto.Usar(usuario: usuario);
             await Task.Run(() =>
             {
                 // Sólo en la re-homologación (que el usuario confirmó) se re-resuelven los de la misma regla; en el alta sobre un pendiente alcanza con el barrido de pendientes.
@@ -237,7 +247,7 @@ public partial class Procesador
         dialogo = Dialogo.Pendientes;
         if (!r.Exitosa || Perfil == null || Movs == null) return;
         var perfil = Perfil; var movs = Movs;
-        try { await Task.Run(() => SesionMovimientosService.RehomologarEnMemoria(movs, perfil)); Recalcular(); aviso = $"Homologación guardada: «{r.Valor}» → «{r.Concepto}»."; }
+        try { string usuario = await Access.RequireUser("AgrProcesador"); using var aud = AuditoriaContexto.Usar(usuario: usuario); await Task.Run(() => SesionMovimientosService.RehomologarEnMemoria(movs, perfil)); Recalcular(); aviso = $"Homologación guardada: «{r.Valor}» → «{r.Concepto}»."; }
         catch (Exception ex) { error = "No se pudo aplicar la homologación: " + ex.Message; dialogo = Dialogo.Ninguno; }
     }
 
@@ -286,22 +296,30 @@ public partial class Procesador
     }
 
     // ---- bajas ----
-    void PedirBorrarArchivo() { aviso = error = null; if (archivoSeleccionado != null) dialogo = Dialogo.BorrarArchivo; }
+    // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 1 - Antes de pedir la confirmación se cuenta lo modificado en el archivo
+    async Task PedirBorrarArchivo()
+    {
+        aviso = error = null;
+        var archivo = archivoSeleccionado; if (archivo == null) return;
+        try { modBaja = await Task.Run(() => EliminacionMovimientosStorage.ContarModificaciones(archivo.Id)); dialogo = Dialogo.BorrarArchivo; }
+        catch (Exception ex) { error = "No se pudo revisar el archivo antes de darlo de baja: " + ex.Message; }
+    }
     async Task TrasBorrarArchivo(bool confirma)
     {
         if (!confirma || archivoSeleccionado == null) { dialogo = Dialogo.Ninguno; return; }
         var archivo = archivoSeleccionado; ocupado = true;
         try
         {
-            await Access.Require("AgrProcesador");
+            string usuario = await Access.RequireUser("AgrProcesador"); using var aud = AuditoriaContexto.Usar(usuario: usuario);
             await Task.Run(() => ArchivoImportadoStorage.Eliminar(archivo.Id));
             if (Work.ArchivoId == archivo.Id) { Work.LimpiarArchivo(); actual = null; seleccion.Clear(); }
             await CargarArchivos(null); Recalcular();
-            aviso = $"Archivo borrado: «{archivo.NombreArchivo}».";
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 1 - El archivo queda inactivo y sus movimientos archivados dentro de él
+            aviso = $"Archivo dado de baja: «{archivo.NombreArchivo}». Sus movimientos quedaron archivados y el historial se conserva.";
             dialogo = Dialogo.Ninguno;
         }
         // La conciliación se informa por InvalidOperationException con su motivo; un error de base de datos no es «está conciliado».
-        catch (InvalidOperationException ex) { mensajeBloqueo = ex.Message; dialogo = Dialogo.Bloqueo; }
+        catch (InvalidOperationException ex) { tituloBloqueo = "No se puede dar de baja"; notaBloqueo = NotaBaja; mensajeBloqueo = ex.Message; dialogo = Dialogo.Bloqueo; }
         catch (UnauthorizedAccessException ex) { error = ex.Message; dialogo = Dialogo.Ninguno; }
         catch (Exception ex) { error = "No se pudo borrar el archivo por un error de la base de datos: " + ex.Message; dialogo = Dialogo.Ninguno; }
         finally { ocupado = false; }
@@ -313,14 +331,14 @@ public partial class Procesador
         var ids = SeleccionVisible(); int idArchivo = Work.ArchivoId; ocupado = true;
         try
         {
-            await Access.Require("AgrProcesador");
+            string usuario = await Access.RequireUser("AgrProcesador"); using var aud = AuditoriaContexto.Usar(usuario: usuario);
             await Task.Run(() => EliminacionMovimientosService.EliminarSeleccion(idArchivo, ids));
             Work.Movimientos = await Task.Run(() => MovimientoStorage.ObtenerPorArchivo(idArchivo));
             seleccion.Clear(); actual = null; Recalcular();
             aviso = $"{ids.Count.ToString("N0", ar)} movimiento(s) eliminado(s).";
             dialogo = Dialogo.Ninguno;
         }
-        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { mensajeBloqueo = ex.Message; dialogo = Dialogo.Bloqueo; }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { tituloBloqueo = "No se pueden eliminar"; notaBloqueo = NotaBaja; mensajeBloqueo = ex.Message; dialogo = Dialogo.Bloqueo; }
         catch (UnauthorizedAccessException ex) { error = ex.Message; dialogo = Dialogo.Ninguno; }
         catch (Exception ex) { error = "No se pudo eliminar: " + ex.Message; dialogo = Dialogo.Ninguno; }
         finally { ocupado = false; }
@@ -334,7 +352,7 @@ public partial class Procesador
         var ids = IdsParaConciliar(); int idArchivo = Work.ArchivoId; ocupado = true;
         try
         {
-            await Access.Require("AgrProcesador");
+            string usuario = await Access.RequireUser("AgrProcesador"); using var aud = AuditoriaContexto.Usar(usuario: usuario);
             var r = await Task.Run(() => ConciliacionManualService.MarcarConciliados(ids));
             Work.Movimientos = await Task.Run(() => MovimientoStorage.ObtenerPorArchivo(idArchivo));
             seleccion.Clear(); actual = null; Recalcular();
@@ -343,9 +361,49 @@ public partial class Procesador
                 aviso += $" No se marcaron {r.Omitidos.Count.ToString("N0", ar)}: " + string.Join("; ", r.Omitidos.GroupBy(o => o.Motivo).Select(g => $"{g.Count()} {g.Key}")) + ".";
             dialogo = Dialogo.Ninguno;
         }
-        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { mensajeBloqueo = ex.Message; dialogo = Dialogo.Bloqueo; }
+        // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Conciliar con el archivo sin blindar se rechaza con su propio título
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { tituloBloqueo = "No se puede conciliar"; notaBloqueo = "Todos los archivos que intervienen en una conciliación tienen que estar blindados."; mensajeBloqueo = ex.Message; dialogo = Dialogo.Bloqueo; }
         catch (UnauthorizedAccessException ex) { error = ex.Message; dialogo = Dialogo.Ninguno; }
         catch (Exception ex) { error = "No se pudo marcar como conciliados: " + ex.Message; dialogo = Dialogo.Ninguno; }
         finally { ocupado = false; }
+    }
+
+    // ---- blindaje ----
+    // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Blindar, desblindar y clave maestra del archivo en trabajo
+    async Task Blindar()
+    {
+        aviso = error = null;
+        var archivo = ArchivoEnTrabajo; if (archivo == null) return;
+        ocupado = true;
+        try
+        {
+            string usuario = await Access.RequireUser("AgrProcesador");
+            // Sin clave maestra nadie podría desblindar después: primero se define.
+            if (!await Task.Run(() => BlindajeService.HayClaveMaestra())) { claveExiste = false; dialogo = Dialogo.ClaveMaestra; return; }
+            bool cambio = await Task.Run(() => BlindajeService.Blindar(archivo.Id, usuario));
+            await CargarArchivos(archivo.Id);
+            aviso = cambio ? $"Archivo blindado: «{archivo.NombreArchivo}». Ya se puede conciliar; la homologación quedó cerrada." : "El archivo ya estaba blindado.";
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or UnauthorizedAccessException) { error = ex.Message; }
+        catch (Exception ex) { error = "No se pudo blindar el archivo: " + ex.Message; }
+        finally { ocupado = false; }
+    }
+    async Task TrasDesblindar(bool desblindado)
+    {
+        dialogo = Dialogo.Ninguno;
+        if (!desblindado) return;
+        await CargarArchivos(Work.ArchivoId);
+        aviso = "Archivo desblindado. Ya se puede homologar y editar; para conciliar hay que blindarlo de nuevo.";
+    }
+    async Task AbrirClaveMaestra()
+    {
+        aviso = error = null;
+        try { claveExiste = await Task.Run(() => BlindajeService.HayClaveMaestra()); dialogo = Dialogo.ClaveMaestra; }
+        catch (Exception ex) { error = "No se pudo leer la clave maestra: " + ex.Message; }
+    }
+    void TrasClaveMaestra(bool guardada)
+    {
+        dialogo = Dialogo.Ninguno;
+        if (guardada) aviso = claveExiste ? "Clave maestra cambiada." : "Clave maestra definida. Ya se pueden blindar archivos.";
     }
 }

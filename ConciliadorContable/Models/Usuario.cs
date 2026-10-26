@@ -35,6 +35,7 @@ namespace ConciliadorContable.Models
             "ArcaOffline", "ArcaPerfiles", "ArcaEquivalencias",
             "AgrProcesador", "AgrHomologaciones", "AgrConciliacion", "AgrCuentasContables",
             "AgrConciliacionInterna",
+            "AgrClaveMaestra", // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Definir y cambiar la clave maestra del blindaje
             // Fecha: 21/09/2026 - TAREA: 00041 - Linea: 3, 4 - Modulo nuevo: conciliacion de percepciones y retenciones
             "ArcaPyR"
         };
@@ -49,6 +50,7 @@ namespace ConciliadorContable.Models
             ["AgrConciliacion"]     = "Agrupador - Conciliación Externa",
             ["AgrCuentasContables"] = "Agrupador - Cuentas Contables",
             ["AgrConciliacionInterna"] = "Agrupador - Conciliación Interna",
+            ["AgrClaveMaestra"]     = "Agrupador - Clave maestra del blindaje", // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3
             ["ArcaPyR"]             = "ARCA - Percepciones y Retenciones",
         };
     }

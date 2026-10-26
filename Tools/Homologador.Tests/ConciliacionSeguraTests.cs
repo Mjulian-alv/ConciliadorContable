@@ -71,8 +71,11 @@ internal static class ConciliacionSeguraTests
         var ids = cn.Query<int>("SELECT TOP 3 Id FROM bancos.MovimientosArchivo WHERE IdArchivo = @Id ORDER BY Id", new { Id = archivo }).ToArray();
         var libre = ids[0];
         var protegido = ids[1];
+        // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Conciliar exige el archivo blindado; para seguir probando las protecciones de baja (pares y sesiones) se lo vuelve a dejar sin blindar apenas se crea la sesión
+        Blindaje(archivo, true);
         var sesion = ConciliacionExternService.CrearSesion("Prueba de protección", new List<int> { archivo },
             new[] { "A" }, new[] { new ConciliacionItemExterno { Fecha = new DateTime(2026, 9, 2), Importe = 100m, Detalle = "Grupo" } });
+        Blindaje(archivo, false);
         Rechazar(() => EliminacionMovimientosService.EliminarSeleccion(archivo, new[] { libre, protegido }));
         Igual(cn.QuerySingle<int>("SELECT COUNT(*) FROM bancos.MovimientosArchivo WHERE Id IN @Ids", new { Ids = new[] { libre, protegido } }), 2, "Lote mixto no atómico");
         Rechazar(() => EliminacionMovimientosService.EliminarArchivo(archivo));
@@ -84,6 +87,7 @@ internal static class ConciliacionSeguraTests
         var segundo = cn.QuerySingle<int>("SELECT TOP 1 Id FROM bancos.MovimientosArchivo WHERE IdArchivo = @Id AND Id <> @Otro ORDER BY Id", new { Id = archivo, Otro = nuevo });
         cn.Execute("UPDATE bancos.MovimientosArchivo SET Debitos = @Importe, Creditos = 0 WHERE Id = @Id", new { Importe = 60m, Id = nuevo });
         cn.Execute("UPDATE bancos.MovimientosArchivo SET Debitos = @Importe, Creditos = 0 WHERE Id = @Id", new { Importe = 40m, Id = segundo });
+        Blindaje(archivo, true); // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Esta sesión concilia y finaliza: el archivo queda blindado hasta el final de la prueba
         var grupo = ConciliacionExternService.CrearSesion("Prueba grupo", new List<int> { archivo },
             new[] { "A" }, new[] { new ConciliacionItemExterno { Fecha = new DateTime(2026, 9, 2), Importe = 100m, Detalle = "Grupo" } });
         int externo = ConciliacionExternService.ObtenerTodosItemsExternos(grupo.Id).Single().Id;
@@ -97,6 +101,15 @@ internal static class ConciliacionSeguraTests
         ConciliacionExternService.MarcarFinalizada(grupo.Id);
         Rechazar(() => ConciliacionExternService.ConciliarSeleccion(grupo.Id, externo, new[] { nuevo, segundo }, TipoMatch.Manual));
         ConciliacionExternService.EliminarSesion(grupo.Id);
+        Blindaje(archivo, false);
+    }
+
+    // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Atajo de prueba: fija la marca de blindaje sin pasar por la clave maestra
+    private static void Blindaje(int archivo, bool blindado)
+    {
+        using var cn = SqlDb.GetConnection();
+        cn.Open();
+        cn.Execute("UPDATE bancos.ArchivosImportados SET Blindado = @B WHERE Id = @Id", new { B = blindado, Id = archivo });
     }
 
     // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 3, 4 - El archivo importado en otra fecha se elige por sus movimientos reales.
@@ -243,14 +256,18 @@ internal static class ConciliacionSeguraTests
         int libre = Crear("Masivo libre.xlsx", Cantidad);
         EliminacionMovimientosService.EliminarArchivo(libre);
         Igual(Cuenta("bancos.MovimientosArchivo", "IdArchivo = @Id", new { Id = libre }), 0, "Quedaron movimientos del archivo libre");
-        Igual(Cuenta("bancos.ArchivosImportados", "Id = @Id", new { Id = libre }), 0, "Quedó la cabecera del archivo libre");
+        // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 1 - La baja deja la cabecera del archivo, inactiva, en vez de borrarla
+        Igual(Cuenta("bancos.ArchivosImportados", "Id = @Id AND Activo = 1", new { Id = libre }), 0, "Quedó activa la cabecera del archivo libre");
+        Igual(Cuenta("bancos.ArchivosImportados", "Id = @Id AND Activo = 0", new { Id = libre }), 1, "La cabecera del archivo libre no quedó inactiva");
 
         // 2) Un par sobre un solo movimiento (el último) protege todo el archivo, aunque falte la sesión que lo originó.
         int chico = Crear("Masivo chico.xlsx", 3);
         int protegido = Crear("Masivo protegido.xlsx", Cantidad);
         int ultimo = cn.QuerySingle<int>("SELECT MAX(Id) FROM bancos.MovimientosArchivo WHERE IdArchivo = @Id", new { Id = protegido });
+        Blindaje(chico, true); // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3
         var sesionExterna = ConciliacionExternService.CrearSesion("Sesión sobre otro archivo", new List<int> { chico }, new[] { "Masivo" },
             new[] { new ConciliacionItemExterno { Fecha = new DateTime(2026, 10, 1), Importe = 1m, Detalle = "Ítem" } });
+        Blindaje(chico, false);
         int item = ConciliacionExternService.ObtenerTodosItemsExternos(sesionExterna.Id).Single().Id;
         cn.Execute(@"INSERT bancos.ConciliacionPares(IdSesion, IdItemExterno, IdMovimientoProcesado, TipoMatch, FechaConciliacion)
             VALUES (@Sesion, @Item, @Mov, N'Manual', SYSDATETIME())", new { Sesion = sesionExterna.Id, Item = item, Mov = ultimo });
