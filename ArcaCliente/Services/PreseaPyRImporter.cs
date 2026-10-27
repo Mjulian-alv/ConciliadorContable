@@ -11,6 +11,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using ArcaCliente.Core.Web.Models;
 using ArcaCliente.Models;
 using ExcelDataReader;
 
@@ -36,7 +37,8 @@ namespace ArcaCliente.Services
         public static MayorPreseaPyR Importar(string ruta, PerfilOfflinePyR perfil, CuentaPyR cuenta)
         {
             string nombre = Path.GetFileName(ruta);
-
+            // Fecha: 27/10/2026 - TAREA: 00136 - Linea: 3 - Lista de CUITs excluidos de la carga del mayor de PRESEA.
+            CUITSExcluidos excluidos = new();
             // FileShare.ReadWrite: el mayor suele estar abierto en Excel mientras se trabaja.
             using var fs = new FileStream(ruta, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             using var reader = ExcelReaderFactory.CreateReader(fs);
@@ -71,7 +73,11 @@ namespace ArcaCliente.Services
                 }
 
                 var fila = LeerFila(reader, cols, perfil, cuenta, nombre);
-                if (fila != null) mayor.Registros.Add(fila);
+                // Fecha: 27/10/2026 - TAREA: 00136 - Linea: 3 - Se omite la fila (con o sin comprobante) si su CUIT está en la lista de excluidos.
+                if (fila != null && !excluidos.CUITS.Contains(fila.Cuit))
+                {
+                    mayor.Registros.Add(fila);
+                }
             }
 
             if (cols == null)
@@ -158,7 +164,9 @@ namespace ArcaCliente.Services
                 SinComprobante   = parte == null,
                 Importe          = (debe ?? 0m) - (haber ?? 0m),
                 ArchivoOrigen    = archivo,
-                Operador         = operador
+                Operador         = operador,
+                // Fecha: 27/10/2026 - TAREA: 00136 - Linea: 2 - Se lee el CUIT del mayor para la exclusión.
+                Cuit             = Convert.ToString(Valor("cuit"), CultureInfo.InvariantCulture)?.Trim() ?? string.Empty
             };
         }
 

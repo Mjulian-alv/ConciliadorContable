@@ -74,7 +74,7 @@ namespace AgrupadorConceptos.Services
                 pendientes.Cell(pendienteFila, 1).Value = "Extracto";
                 EscribirFecha(pendientes, pendienteFila, 2, movimiento.Fecha);
                 pendientes.Cell(pendienteFila, 3).Value = ComparadorConciliacion.ImporteEfectivo(movimiento); // Fecha: 14/10/2026 - TAREA: 00097 - Linea: 7 - Valor absoluto, como el resto de las pantallas.
-                pendientes.Cell(pendienteFila, 4).Value = movimiento.ConceptoFinal ?? "";
+                pendientes.Cell(pendienteFila, 4).Value = movimiento.DescripcionOriginal ?? ""; // Fecha: 27/10/2026 - TAREA: 00136 - Linea: 5 - Los pendientes del extracto muestran la descripción original, no el concepto final.
                 pendienteFila++;
             }
             pendientes.Column(3).Style.NumberFormat.Format = "#,##0.00";

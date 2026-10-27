@@ -1431,3 +1431,25 @@ tarea de las columnas Conciliado; el correlativo global está en 00133 y esas l�
 **Ajuste posterior (a pedido):** la clave maestra se define y cambia desde el ABM de usuarios del escritorio (botón «Clave maestra del blindaje», permiso `AgrClaveMaestra`) y no desde el procesador de archivos; la web y el procesador sólo blindan y desblindan.
 
 **Anotación:** el cambio suelto del Core y de `NuGet.Config` que había en el árbol de trabajo se registró aparte como TAREA 00134.
+
+## TAREA 00136 — 27/10/2026 — CUITs excluidos de la conciliación PyR (cambios hechos a mano)
+
+**Pedido:** «numerame con el siguiente en la lista de tareas las modificaciones que hice en el proyecto y ponele un numero de linea a cada modificacion». Numeración propuesta por Claude a partir del diff y aceptada:
+1. Clase nueva `CUITSExcluidos` con la lista fija de 14 CUITs a excluir de PyR.
+2. Campo `Cuit` en el registro de PRESEA y lectura de la columna `cuit` del mayor.
+3. El importador de PRESEA no carga las filas cuyo CUIT está excluido.
+4. El importador de ARCA salta las filas excluidas, contadas como `FilasNoReconocidas`.
+5. En «Pendientes» del Excel de conciliación, la columna 4 muestra `DescripcionOriginal` en vez de `ConceptoFinal`.
+
+**Ejecutado (código escrito a mano por el usuario; Claude sólo agregó los comentarios de versionado y registró).**
+1. `ArcaCliente.Core/Web/Models/CUITSExcluidos.cs`. Va en `Core/Web` y no en `Models`/`Services` del Core porque esas carpetas son vínculos de solo lectura a `ArcaCliente` (TAREA 00064); así la ven escritorio y web.
+2. `RegistrosPyR.cs` (`Cuit`) y `PreseaPyRImporter.LeerFila`.
+3. `PreseaPyRImporter.Importar`: omite la fila si `excluidos.CUITS.Contains(fila.Cuit)`.
+4. `ArcaPyRImporter.LeerExcelAfip`: compara contra `TextParsingUtils.SoloDigitos(cuit)`.
+5. `AgrupadorConceptos/Services/ConciliacionExcelExporter.cs`.
+
+Sin diseño previo (no cambia pantallas ni circuito) y sin revisión de Codex. Compilan `ArcaCliente` y `AgrupadorConceptos` (Debug, 0 errores); sin probar con archivos reales.
+
+**Pendiente (no corregido):** PRESEA compara el CUIT tal como viene en el Excel y ARCA lo normaliza con `SoloDigitos`, así que un CUIT con guiones en el mayor no se excluiría; la lista está fija en el código.
+
+**Anotación:** la rama `feature/00135-blindaje-historial` se mergeó a `main` (merge `24c158f`, sin push) y se borró antes de abrir esta.
