@@ -1450,6 +1450,6 @@ tarea de las columnas Conciliado; el correlativo global está en 00133 y esas l�
 
 Sin diseño previo (no cambia pantallas ni circuito) y sin revisión de Codex. Compilan `ArcaCliente` y `AgrupadorConceptos` (Debug, 0 errores); sin probar con archivos reales.
 
-**Pendiente (no corregido):** PRESEA compara el CUIT tal como viene en el Excel y ARCA lo normaliza con `SoloDigitos`, así que un CUIT con guiones en el mayor no se excluiría; la lista está fija en el código.
+**Aclaración (27/10/2026):** PRESEA entrega el CUIT como número, sin guiones ni espacios, así que comparar el valor tal cual alcanza y no hace falta `SoloDigitos` (que sí usa ARCA). La lista sigue fija en el código.
 
 **Anotación:** la rama `feature/00135-blindaje-historial` se mergeó a `main` (merge `24c158f`, sin push) y se borró antes de abrir esta.
