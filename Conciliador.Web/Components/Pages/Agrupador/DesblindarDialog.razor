@@ -1,0 +1,35 @@
+@* Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Desblindar un archivo con la clave maestra y un motivo (maqueta 02-desblindar). *@
+@using AgrupadorConceptos.Services
+@using Conciliador.Web.Security
+@inject AccessGuard Access
+<div class="backdrop"><div class="modal" style="max-width:520px" role="dialog" aria-modal="true" aria-labelledby="titulo-desblindar">
+    <h2 id="titulo-desblindar">Desblindar archivo</h2>
+    <div class="sub">@Archivo</div>
+    @if(error!=null){<div class="notice error" role="alert">@error</div>}
+    <div class="form-row"><label>Clave maestra<input type="password" autocomplete="off" @bind="clave" @bind:event="oninput" disabled="@ocupado" /></label></div>
+    <div class="form-row"><label>Motivo<input type="text" maxlength="500" @bind="motivo" @bind:event="oninput" disabled="@ocupado" placeholder="Por qué hace falta modificar el archivo" /></label></div>
+    <p class="note">La clave maestra no es la de ningún usuario. Queda registrado quién desblindó, cuándo y por qué. Mientras el archivo esté desblindado no se puede conciliar.</p>
+    <div class="foot"><button @onclick="()=>OnCerrar.InvokeAsync(false)" disabled="@ocupado">Cancelar</button><button class="primary" @onclick="Desblindar" disabled="@(ocupado||string.IsNullOrWhiteSpace(clave)||string.IsNullOrWhiteSpace(motivo))">Desblindar</button></div>
+</div></div>
+@code {
+    [Parameter,EditorRequired] public int IdArchivo{get;set;}
+    [Parameter,EditorRequired] public string Archivo{get;set;}="";
+    /// <summary>True si el archivo quedó desblindado.</summary>
+    [Parameter] public EventCallback<bool> OnCerrar{get;set;}
+    string clave="", motivo=""; string? error; bool ocupado;
+    async Task Desblindar()
+    {
+        error=null; ocupado=true;
+        try
+        {
+            string usuario = await Access.RequireUser("AgrProcesador");
+            string c = clave, m = motivo; int id = IdArchivo;
+            await Task.Run(() => BlindajeService.Desblindar(id, c, m, usuario));
+            clave = "";
+            await OnCerrar.InvokeAsync(true);
+        }
+        catch(Exception ex) when (ex is InvalidOperationException or ArgumentException or UnauthorizedAccessException){ error=ex.Message; clave=""; }
+        catch(Exception ex){ error="No se pudo desblindar: "+ex.Message; clave=""; }
+        finally{ ocupado=false; }
+    }
+}

@@ -263,7 +263,8 @@ else
         ocupado=true;
         try
         {
-            await Access.Require("AgrConciliacionInterna");
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 2 - El historial guarda quién finalizó la conciliación
+            string usuario=await Access.RequireUser("AgrConciliacionInterna");using var aud=AuditoriaContexto.Usar(usuario:usuario);
             int id=sesion.Id;
             var r=await Task.Run(()=>ConciliacionInternaService.Finalizar(id));
             if(!r.Exito)

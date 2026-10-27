@@ -67,6 +67,9 @@ namespace AgrupadorConceptos.Data
             int[] ids = { idMovimientoA, idMovimientoB };
             int encontrados = cn.ExecuteScalar<int>("SELECT COUNT(*) FROM bancos.MovimientosArchivo WHERE Id IN @Ids", new { Ids = ids }, tx);
             if (idMovimientoA == idMovimientoB || encontrados != 2) return "Uno de los movimientos ya no existe. Actualizá la pantalla.";
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Conciliar exige que los archivos de los dos movimientos estén blindados
+            try { BlindajeStorage.ExigirBlindadosPorMovimientos(cn, tx, ids); }
+            catch (ArchivoSinBlindarException ex) { return ex.Message; }
             // Fecha: 23/10/2026 - TAREA: 00125 - Linea: 3 - Un movimiento ya marcado como conciliado no entra en otro par
             if (cn.ExecuteScalar<int>("SELECT COUNT(*) FROM bancos.MovimientosArchivo WHERE Id IN @Ids AND Conciliado = 1", new { Ids = ids }, tx) != 0)
                 return "Uno de los movimientos ya figura como conciliado. Actualizá la pantalla.";
@@ -110,6 +113,8 @@ namespace AgrupadorConceptos.Data
 
         public static void Finalizar(int idSesion, IReadOnlyCollection<(int IdMovimientoA, string CuentaParaA, int IdMovimientoB, string CuentaParaB)> cuentas)
         {
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 2 - El historial registra que la conciliación vino de una sesión interna
+            using var origen = AuditoriaContexto.Usar(AuditoriaContexto.ConciliacionInterna);
             using var cn = DatabaseHelper.Open();
             using var tx = cn.BeginTransaction();
             ConciliacionMutationStorage.Bloquear(cn, tx);
@@ -119,6 +124,9 @@ namespace AgrupadorConceptos.Data
                 "SELECT IdMovimientoA, IdMovimientoB FROM bancos.ConciliacionInternaPares WHERE IdSesion = @Id", new { Id = idSesion }, tx).ToList();
             if (paresActuales.Count != cuentas.Count || paresActuales.Any(p => !cuentas.Any(c => c.IdMovimientoA == p.IdMovimientoA && c.IdMovimientoB == p.IdMovimientoB)))
                 throw new InvalidOperationException("Los pares cambiaron durante el cierre. Actualizá la pantalla.");
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Los archivos de los pares tienen que seguir blindados al cerrar
+            BlindajeStorage.ExigirBlindadosPorMovimientos(cn, tx,
+                paresActuales.SelectMany(p => new[] { p.IdMovimientoA, p.IdMovimientoB }).ToList());
             foreach (var cuenta in cuentas)
             {
                 // Fecha: 23/10/2026 - TAREA: 00125 - Linea: 1 - El cierre deja el movimiento marcado como conciliado, con su fecha

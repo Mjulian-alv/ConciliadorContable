@@ -15,13 +15,30 @@ namespace ConciliadorContable.Forms
         private List<Usuario> _usuarios = new();
         private Usuario? _usuarioEditando;
 
+        // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - La clave maestra del blindaje se administra acá, no en el procesador de archivos
+        private readonly Button _btnClaveMaestra = new()
+        {
+            Name = "btnClaveMaestra", Location = new Point(260, 0), Size = new Size(300, 34), FlatStyle = FlatStyle.Flat, BackColor = Color.LemonChiffon
+        };
+
         public FormAdminUsuarios()
         {
             InitializeComponent();
+            pnlBotones.Controls.Add(_btnClaveMaestra);
+            _btnClaveMaestra.Click += (_, _) =>
+            {
+                AgrupadorConceptos.ClaveMaestraAdministracion.Administrar(this);
+                ActualizarBotonClaveMaestra();
+            };
+            Load += (_, _) => ActualizarBotonClaveMaestra();
             foreach (var mod in Usuario.TodosLosModulos)
                 clbPermisos.Items.Add(mod, false);
             Load += (_, _) => CargarUsuarios();
         }
+
+        // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - El botón muestra si la clave maestra ya está definida
+        private void ActualizarBotonClaveMaestra() =>
+            _btnClaveMaestra.Text = "🔑 Clave maestra del blindaje: " + AgrupadorConceptos.ClaveMaestraAdministracion.Estado();
 
         // ── Carga ─────────────────────────────────────────────────────────
 

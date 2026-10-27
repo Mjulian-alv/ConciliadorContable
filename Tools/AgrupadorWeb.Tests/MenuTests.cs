@@ -22,7 +22,8 @@ static class MenuTests
         {
             var admin = Usuario("Admin");
             foreach (var p in Permisos.Arca.Concat(Permisos.Agrupador)) Check(Autoriza(admin, p), "Admin rechazado en " + p);
-            Check(Permisos.Agrupador.Length == 5 && Permisos.Arca.Length == 4, "Cantidad de permisos");
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Seis permisos del Agrupador: se suma AgrClaveMaestra
+            Check(Permisos.Agrupador.Length == 6 && Permisos.Arca.Length == 4, "Cantidad de permisos");
         });
         test("Permisos: un usuario sólo pasa las políticas que tiene, y un anónimo ninguna", () =>
         {

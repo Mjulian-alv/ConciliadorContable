@@ -53,11 +53,14 @@ namespace AgrupadorConceptos.Services
 
             var dicCompleto = HomologacionStorage.ObtenerDiccionario(perfil.Id);
             var dicSinRegla = HomologacionStorage.ObtenerDiccionario(perfil.Id, regla.Id);
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Los archivos blindados tienen la homologación cerrada: la baja no los toca
+            var blindados = ArchivoImportadoStorage.ObtenerIdsBlindados();
 
             foreach (var mov in MovimientoStorage.ObtenerPorPerfil(perfil.Id))
             {
                 string clave = HomologacionMatcher.ResolverClave(dicCompleto, mov.ConceptoOriginal, perfil.EsCodigo);
                 if (!string.Equals(clave, regla.ValorOriginal, StringComparison.OrdinalIgnoreCase)) continue;
+                if (blindados.Contains(mov.IdArchivo)) { impacto.EnArchivosBlindados++; continue; }
 
                 var item = new MovimientoImpactado
                 {
@@ -131,6 +134,8 @@ namespace AgrupadorConceptos.Services
         /// ejecuta sea exactamente lo que él aceptó.</param>
         public static void AplicarBaja(HomologacionListado regla, ImpactoHomologacion impacto, string conceptoDestino)
         {
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 2 - El historial registra que el cambio vino de la baja de una regla
+            using var origen = AuditoriaContexto.Usar(AuditoriaContexto.BajaDeRegla);
             var cambiados = new List<MovimientoProcesado>();
             // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Completar CuentaFinal al propagar la baja
             var cuentasPorConcepto = HomologacionStorage.ObtenerCuentasPorConcepto();
@@ -153,8 +158,17 @@ namespace AgrupadorConceptos.Services
         /// Reapunta la regla a otro concepto y arrastra los movimientos que hoy resuelve.
         /// </summary>
         /// <returns>Id del concepto estándar al que quedó apuntando.</returns>
-        public static int Reapuntar(HomologacionListado regla, PerfilBanco perfil, string nombreConcepto)
+        public static int Reapuntar(HomologacionListado regla, PerfilBanco perfil, string nombreConcepto) =>
+            Reapuntar(regla, perfil, nombreConcepto, out _);
+
+        // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Informar cuántos movimientos de archivos blindados no se arrastraron
+        /// <param name="saltadosPorBlindaje">Movimientos que la regla alcanza en archivos blindados y que no se modificaron.</param>
+        public static int Reapuntar(HomologacionListado regla, PerfilBanco perfil, string nombreConcepto, out int saltadosPorBlindaje)
         {
+            saltadosPorBlindaje = 0;
+            var blindados = ArchivoImportadoStorage.ObtenerIdsBlindados();
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 2 - El historial registra que el cambio vino de reapuntar una regla
+            using var origen = AuditoriaContexto.Usar(AuditoriaContexto.ReapuntarRegla);
             var dic = HomologacionStorage.ObtenerDiccionario(perfil.Id);
             // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Completar CuentaFinal al reapuntar
             var cuentasPorConcepto = HomologacionStorage.ObtenerCuentasPorConcepto();
@@ -164,6 +178,7 @@ namespace AgrupadorConceptos.Services
             {
                 string clave = HomologacionMatcher.ResolverClave(dic, mov.ConceptoOriginal, perfil.EsCodigo);
                 if (!string.Equals(clave, regla.ValorOriginal, StringComparison.OrdinalIgnoreCase)) continue;
+                if (blindados.Contains(mov.IdArchivo)) { saltadosPorBlindaje++; continue; }
 
                 if (AplicarConcepto(mov, nombreConcepto, cuentasPorConcepto)) cambiados.Add(mov);
             }

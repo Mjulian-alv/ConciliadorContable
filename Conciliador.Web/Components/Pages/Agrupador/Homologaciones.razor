@@ -99,12 +99,15 @@
         ocupado=true;
         try
         {
-            await Access.Require("AgrHomologaciones");
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 2 - El historial guarda quién cambió la regla que arrastró los movimientos
+            string usuario=await Access.RequireUser("AgrHomologaciones");using var aud=AuditoriaContexto.Usar(usuario:usuario);
             // La cuenta se guarda aunque el concepto no cambie: si sólo se corrigió la cuenta, no hay movimientos que arrastrar.
             bool cambio=!string.Equals(r.Concepto,fila.ConceptoEstandar,StringComparison.OrdinalIgnoreCase);
-            int idConcepto=await Task.Run(()=>cambio?HomologacionAdminService.Reapuntar(fila,perfil,r.Concepto):fila.IdConceptoEstandar);
+            int saltados=0;
+            int idConcepto=await Task.Run(()=>{if(!cambio)return fila.IdConceptoEstandar;int id=HomologacionAdminService.Reapuntar(fila,perfil,r.Concepto,out int s);saltados=s;return id;});
             await Task.Run(()=>HomologacionStorage.ActualizarCuentaConcepto(idConcepto,r.IdCuentaContable));
             aviso=$"Homologación actualizada: «{fila.ValorOriginal}» → «{r.Concepto}».";
+            if(saltados>0)aviso+=$" {saltados.ToString("N0")} movimiento(s) de archivos blindados no se modificaron.";
         }
         catch(UnauthorizedAccessException ex){error=ex.Message;}
         catch(Exception ex){error="Error al editar la homologación: "+ex.Message;}
@@ -138,9 +141,11 @@
         ocupado=true;
         try
         {
-            await Access.Require("AgrHomologaciones");
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 2 - El historial guarda quién dio de baja la regla
+            string usuario=await Access.RequireUser("AgrHomologaciones");using var aud=AuditoriaContexto.Usar(usuario:usuario);
             await Task.Run(()=>HomologacionAdminService.AplicarBaja(fila,imp,destino));
             aviso=$"Homologación eliminada: «{fila.ValorOriginal}».";
+            if(imp.EnArchivosBlindados>0)aviso+=$" {imp.EnArchivosBlindados.ToString("N0")} movimiento(s) de archivos blindados no se modificaron.";
         }
         catch(UnauthorizedAccessException ex){error=ex.Message;}
         catch(Exception ex){error="Error al eliminar la homologación: "+ex.Message;}

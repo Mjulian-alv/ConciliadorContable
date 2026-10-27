@@ -1410,3 +1410,24 @@ tarea de las columnas Conciliado; el correlativo global está en 00133 y esas l�
    Build del Core sin errores. Sin diseño previo: dependencias.
 
 **Revisión de Codex:** no se hizo (cambio de dependencias).
+
+## TAREA 00135 — 26/10/2026 — Concepto final protegido, historial de movimientos y blindaje de archivo
+
+**Pedido:**
+1. Chequear dónde se modifica el concepto final: el usuario lo edita y en algunos casos vuelve a quedar igual al estándar. Sólo se puede modificar a mano, o por un proceso automático únicamente si es igual al estándar. (Ahí se agregó: el borrado de un archivo con modificaciones avisa antes y el archivo queda inactivo, con sus movimientos archivados en un JSON dentro de la tabla de archivos.)
+2. Tabla de historial de cambios de `MovimientosArchivo`: concepto estándar, concepto final, conciliado y fecha de conciliado.
+3. Blindaje del archivo (cierre de homologación): cerrado sólo se modifica si alguien lo desblinda con una clave maestra distinta de la de los usuarios; con el archivo blindado sólo se puede conciliar o usarlo en conciliaciones externas; y conciliar exige que el archivo esté blindado.
+
+**Ejecutado.**
+1. La causa: el `UPDATE` de `MovimientoStorage` escribía `ConceptoFinal` desde la copia en memoria, y una copia vieja (otra sesión, diálogo de baja calculado antes de la edición) lo dejaba otra vez igual al estándar. Ahora `UpdateConceptos` evalúa la condición contra la base en el mismo `UPDATE` y relee la fila para dejar la copia en memoria igual; `RehomologarEnMemoria` ya no reescribe los pendientes sin match. La baja de archivo cuenta modificaciones, avisa (web y escritorio) y desactiva el archivo (`Activo = 0`) archivando los movimientos en `MovimientosJson` (gzip, con sus `Id`).
+2. `bancos.MovimientosArchivoHistorial` (sin FK, una fila por campo) llenada por el trigger `TR_MovimientosArchivo_Historial`; origen y usuario viajan por `SESSION_CONTEXT` desde `DatabaseHelper.Open` (`AuditoriaContexto`). Consulta por movimiento en ambas pantallas.
+3. `ArchivosImportados.Blindado` + `BlindajeLog` + `ClaveMaestra` (PBKDF2, bloqueo de 5 minutos tras 5 intentos, verificación serializada con un bloqueo de aplicación). Guardias en un solo lugar (`BlindajeStorage`) dentro de las transacciones de cada método de escritura; las reglas del perfil saltean los archivos blindados e informan cuántos movimientos no se tocaron. Permiso nuevo `AgrClaveMaestra`. No se desblinda un archivo alcanzado por una sesión de conciliación en proceso.
+   Diseño previo (flujograma y 16 maquetas hechos por Codex) en `docs/Diseño/00135-blindaje-historial/`; la guía se actualizó con los desvíos de la revisión.
+
+**Pruebas:** `Tools/AgrupadorWeb.Tests/BlindajeTests.cs` (19 pruebas contra SQL Server local) y adaptación de las existentes, que ahora blindan antes de conciliar. Web 60 correctas y 1 con error previo (Login, ya fallaba antes de esta tarea); `Homologador.Tests` 15 correctas. `FechasBancarias.Tests` no se pudo correr (no conecta a su instancia). Las pantallas no se probaron a mano.
+
+**Revisión de Codex:** ronda 1 en `docs/Revisiones/00135-review-1.md` (4 hallazgos, corregidos). No hubo ronda 2.
+
+**Ajuste posterior (a pedido):** la clave maestra se define y cambia desde el ABM de usuarios del escritorio (botón «Clave maestra del blindaje», permiso `AgrClaveMaestra`) y no desde el procesador de archivos; la web y el procesador sólo blindan y desblindan.
+
+**Anotación:** el cambio suelto del Core y de `NuGet.Config` que había en el árbol de trabajo se registró aparte como TAREA 00134.

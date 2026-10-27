@@ -12,4 +12,10 @@ public sealed class AccessGuard(AuthenticationStateProvider authentication,UserS
         var user=await users.Find(p.Identity.Name??"");
         if(user==null||!user.Allows(permission))throw new UnauthorizedAccessException("Tu usuario no tiene permiso para esta operación.");
     }
+    // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 2 - El historial y el registro del blindaje necesitan saber quién operó
+    /// <summary>Igual que <see cref="Require"/> y devuelve el nombre del usuario, para el historial de cambios y el registro del blindaje.</summary>
+    public async Task<string> RequireUser(string permission) {
+        await Require(permission);
+        return (await authentication.GetAuthenticationStateAsync()).User.Identity?.Name ?? "";
+    }
 }

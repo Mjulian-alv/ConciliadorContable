@@ -64,24 +64,27 @@ namespace AgrupadorConceptos.Services
         /// solo lo sobrescribe si seguía pendiente.
         /// No hace nada si no hubo match.
         /// </summary>
+        /// <returns>True si algo cambió; sirve para persistir sólo lo que realmente se modificó.</returns>
         /// <param name="cuentasPorConcepto">
         /// Nombre del concepto → cuenta, para completar CuentaFinal en el mismo paso
         /// (HomologacionStorage.ObtenerCuentasPorConcepto). Null si el llamador no la tiene
         /// a mano: en ese caso CuentaFinal no se toca.
         /// </param>
-        public static void AplicarA(MovimientoProcesado mov, bool esCodigo,
+        public static bool AplicarA(MovimientoProcesado mov, bool esCodigo,
             IDictionary<string, string> dicHomologacion, IDictionary<string, string> cuentasPorConcepto = null)
         {
             string valorABuscar = mov.ConceptoOriginal;
 
             string homologado = Resolver(dicHomologacion, valorABuscar, esCodigo);
-            if (homologado == null) return;
+            if (homologado == null) return false;
 
-            EscribirConcepto(mov, homologado);
+            bool cambio = EscribirConcepto(mov, homologado);
 
             // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Completar CuentaFinal junto con el concepto
             if (cuentasPorConcepto != null && cuentasPorConcepto.TryGetValue(homologado, out string cuenta))
-                EscribirCuenta(mov, cuenta);
+                cambio |= EscribirCuenta(mov, cuenta);
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 1 - Devolver si cambió: antes todo pendiente se reescribía aunque no hubiera match
+            return cambio;
         }
 
         // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 6 - Unica regla de escritura del concepto

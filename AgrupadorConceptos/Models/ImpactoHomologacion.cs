@@ -28,6 +28,9 @@ namespace AgrupadorConceptos.Models
         public List<MovimientoImpactado> CubiertosPorOtraRegla { get; } = new List<MovimientoImpactado>();
 
         public int Total => Afectados.Count + CubiertosPorOtraRegla.Count;
+
+        // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Movimientos de archivos blindados que la regla alcanza: no se tocan y no entran en Total
+        public int EnArchivosBlindados { get; set; }
     }
 
     // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 5 - Desglose del impacto por archivo importado

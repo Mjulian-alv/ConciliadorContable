@@ -1,0 +1,34 @@
+flowchart TB
+  S([Solicitar blindar o desblindar]) --> V{Archivo activo?}
+  V -->|No| N[Rechazar: archivo inactivo no se puede abrir ni blindar]
+  V -->|Sí| A{Acción}
+  A -->|Blindar| B{Permiso AgrProcesador?}
+  B -->|No| X[Rechazar por permisos]
+  B -->|Sí| B1{Existe clave maestra?}
+  B1 -->|No| B2[No permitir blindar; solicitar definir clave]
+  B1 -->|Sí| B3[Marcar Blindado, fecha y usuario] --> LG[Registrar Blindar en BlindajeLog]
+  A -->|Desblindar| D0{Archivo en sesión de conciliación EnProceso?}
+  D0 -->|Sí| D00[Rechazar; informar la sesión en curso]
+  D0 -->|No| D1{Bloqueo temporal vigente?}
+  D1 -->|Sí| D2[Rechazar hasta terminar 5 minutos]
+  D1 -->|No| D3[Solicitar clave maestra distinta a las claves de usuario + motivo obligatorio]
+  D3 --> D4{Hash PBKDF2-SHA256 + sal coincide en tiempo constante?}
+  D4 -->|No| F[No cambiar blindaje; registrar DesblindoFallido] --> F1{5 intentos fallidos consecutivos?}
+  F1 -->|No| F2[Informar intentos restantes]
+  F1 -->|Sí| F3[Bloquear nuevos intentos por 5 minutos]
+  D4 -->|Sí| O[Desmarcar Blindado; limpiar fecha y usuario] --> O1[Registrar Desblindar con usuario, fecha y motivo]
+  K[Administrar clave maestra] --> K1[Requiere permiso AgrClaveMaestra] --> K2{Definir o cambiar?}
+  K2 -->|Cambiar| K3[Verificar clave actual] --> K4[Guardar hash y sal; nunca guardar ni registrar la clave]
+  K2 -->|Definir| K4
+  B3 --> Q{Operaciones con archivo blindado}
+  Q -->|Permitidas| Q1[Conciliación manual, cierre interno y conciliación externa] --> Q2[Usar en conciliaciones externas, leer y exportar]
+  Q -->|Bloqueadas| Q3[Editar conceptos/cuentas; homologar, rehomologar o masiva; eliminar movimientos/archivo] --> Q4["Mensaje: El archivo está blindado (cierre de homologación). Para modificarlo hay que desblindarlo con la clave maestra."]
+  N --> Z([Fin])
+  X --> Z
+  B2 --> Z
+  D2 --> Z
+  F2 --> Z
+  F3 --> Z
+  O1 --> Z
+  Q2 --> Z
+  Q4 --> Z

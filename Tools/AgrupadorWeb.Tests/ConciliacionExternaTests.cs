@@ -67,6 +67,8 @@ static class ConciliacionExternaTests
             var d1 = new DateTime(2026, 9, 1); var d2 = new DateTime(2026, 9, 2); var d3 = new DateTime(2026, 9, 3);
             var movs = ImportacionService.ImportarArchivo(Extracto((d1, "COBRO 1", 1000m), (d2, "COBRO 2", 600m), (d2, "COBRO 3", 400m), (d3, "COBRO 4", -250m), (d3, "COBRO 5", 77m)), "x.xlsx", p);
             int idArchivo = movs[0].IdArchivo;
+            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Conciliar exige el archivo blindado
+            BlindajeTests.Blindar(idArchivo);
             var externos = new List<ConciliacionItemExterno>
             {
                 new() { Fecha = d1, Importe = 1000m, Detalle = "Cobranza 1" },   // fecha+importe
