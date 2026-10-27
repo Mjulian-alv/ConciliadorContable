@@ -47,6 +47,9 @@ namespace ArcaCliente.Models
         public string AnulacionTexto => EsAnulacion ? "Sí" : string.Empty;
 
         public string Operador {  get; set; }
+        // Fecha: 27/10/2026 - TAREA: 00136 - Linea: 2 - CUIT leído del mayor de PRESEA, para poder excluirlo de la conciliación.
+        /// <summary>El CUIT de la fila del mayor, tal como viene en la columna «cuit» (vacío si el perfil no la mapea).</summary>
+        public string Cuit { get; set; }    = string.Empty;
     }
 
     /// <summary>Un mayor de PRESEA cargado en la pantalla, atado a una cuenta del perfil.</summary>

@@ -15,6 +15,7 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
+using ArcaCliente.Core.Web.Models;
 using ArcaCliente.Models;
 using ExcelDataReader;
 using ExcelDataReader.Exceptions;
@@ -132,7 +133,8 @@ namespace ArcaCliente.Services
         {
             using var ms = new MemoryStream(bytes);
             using var reader = ExcelReaderFactory.CreateReader(ms);
-
+            // Fecha: 27/10/2026 - TAREA: 00136 - Linea: 4 - Lista de CUITs excluidos de la carga de ARCA.
+            CUITSExcluidos Cuits = new();
             do
             {
                 // Se busca la hoja cuyo primer renglón con datos es el encabezado de AFIP.
@@ -166,6 +168,13 @@ namespace ArcaCliente.Services
                     var impuesto  = ImpuestoDesdeCodigoAfip(Celda("impuesto"));
                     var operacion = OperacionDesdeTexto(Celda("descripcion operacion"));
                     if (impuesto == null || operacion == null)
+                    {
+                        carga.FilasNoReconocidas++;
+                        continue;
+                    }
+
+                    // Fecha: 27/10/2026 - TAREA: 00136 - Linea: 4 - Las filas de CUITs excluidos no entran a la conciliación; se cuentan como no reconocidas.
+                    if (Cuits.CUITS.Contains(TextParsingUtils.SoloDigitos(cuit)))
                     {
                         carga.FilasNoReconocidas++;
                         continue;
