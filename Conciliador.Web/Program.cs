@@ -15,6 +15,8 @@ builder.Services.AddSingleton(new WebMode(demo));builder.Services.AddSingleton<S
 // Fecha: 06/10/2026 - TAREA: 00067 - Linea: 1 - Permite resolver la carpeta compartida cuando un perfil aún no tiene ubicación ARCA.
 builder.Services.AddSingleton(new ArcaFolderOptions(builder.Configuration["Web:ArcaDirectory"]??""));
 builder.Services.AddSingleton(new UserStorage(builder.Configuration["Web:UsersDatabasePath"]??""));
+// Fecha: 28/10/2026 - TAREA: 00140 - Linea: 2 - Identidad de AppHub: con AppHub:ClaveCompartida vacía queda apagada y la web funciona sola, como antes.
+builder.Services.AddSingleton(IdentidadAppHubOptions.Desde(builder.Configuration));
 // Fecha: 06/10/2026 - TAREA: 00072 - Linea: 1,2 - PyR comparte identidad y conexión, con persistencia independiente de los perfiles fiscales.
 if(demo){builder.Services.AddSingleton<IWebConfigurationStore,DemoConfigurationStorage>();builder.Services.AddSingleton<IPyRProfileStore,DemoPyRProfileStorage>();}
 else {
@@ -49,6 +51,8 @@ if(!demo){app.UseExceptionHandler("/Error");if(builder.Configuration.GetValue("W
     AgrupadorConceptos.Data.DatabaseHelper.InitializeDatabase();}
 if(demo)app.Use(async(ctx,next)=>{if(ctx.Connection.RemoteIpAddress==null||!System.Net.IPAddress.IsLoopback(ctx.Connection.RemoteIpAddress)){ctx.Response.StatusCode=403;return;}await next();});
 app.Use(async(ctx,next)=>{ctx.Response.Headers["X-Content-Type-Options"]="nosniff";ctx.Response.Headers["X-Frame-Options"]="DENY";await next();});
+// Fecha: 28/10/2026 - TAREA: 00140 - Linea: 2,3 - Antes de la autenticación: si el pedido trae una identidad válida de AppHub abre la sesión de la web.
+if(!demo)app.UseMiddleware<IdentidadAppHub>();
 app.UseAuthentication();app.UseAuthorization();app.UseRateLimiter();app.UseAntiforgery();
 app.MapStaticAssets();app.MapRazorPages().RequireRateLimiting("login");app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 app.Run();
