@@ -50,7 +50,8 @@ static class LoginTests
                 foreach (var u in new[] { "pyr", "agr", "nada" })
                 {
                     var (entro, r) = Ingresar(db, u, "prueba");
-                    if (!entro || r is not LocalRedirectResult red || red.Url != "/") throw new Exception($"{u}: no ingresó o no fue al menú ({r.GetType().Name})");
+                    // Fecha: 28/10/2026 - TAREA: 00125 - Linea: 4 - El login redirige a «~/» (relativo al PathBase de AppHub); la prueba esperaba «/» y quedó desactualizada.
+                    if (!entro || r is not LocalRedirectResult red || red.Url != "~/") throw new Exception($"{u}: no ingresó o no fue al menú ({r.GetType().Name})");
                 }
                 if (Ingresar(db, "agr", "otra").Entro) throw new Exception("Aceptó una contraseña incorrecta");
                 if (Ingresar(db, "baja", "prueba").Entro) throw new Exception("Aceptó un usuario dado de baja");

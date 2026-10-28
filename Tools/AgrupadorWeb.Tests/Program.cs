@@ -13,5 +13,6 @@ ConciliacionInternaTests.Run(Test);
 ConciliacionExternaTests.Run(Test);
 BlindajeTests.Run(Test); // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 1, 2, 3 - Concepto final protegido, historial y blindaje
 LoginTests.Run(Test);
+IdentidadAppHubTests.Run(Test); // Fecha: 28/10/2026 - TAREA: 00140 - Linea: 2,3 - Identidad de AppHub: token, usuarios de Microsoft y middleware
 Console.WriteLine($"{passed} pruebas correctas, {failed} con error.");
 return failed == 0 ? 0 : 1;

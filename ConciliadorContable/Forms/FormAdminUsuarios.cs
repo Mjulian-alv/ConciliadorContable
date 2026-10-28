@@ -57,7 +57,8 @@ namespace ConciliadorContable.Forms
             using var cn = DatabaseHelper.GetConnection();
             cn.Open();
             using var cmd = cn.CreateCommand();
-            cmd.CommandText = "SELECT Id, Username, PasswordHash, Nombre, Activo, Rol, PermisosJson FROM Usuarios ORDER BY Nombre";
+            // Fecha: 28/10/2026 - TAREA: 00140 - Linea: 3,4 - Se leen también el correo y el id de Microsoft.
+            cmd.CommandText = "SELECT Id, Username, PasswordHash, Nombre, Activo, Rol, PermisosJson, COALESCE(Correo, ''), COALESCE(OidMicrosoft, '') FROM Usuarios ORDER BY Nombre";
             using var r = cmd.ExecuteReader();
             while (r.Read())
                 lista.Add(new Usuario
@@ -69,6 +70,8 @@ namespace ConciliadorContable.Forms
                     Activo       = r.GetInt32(4) == 1,
                     Rol          = r.IsDBNull(5) ? "Usuario" : r.GetString(5),
                     PermisosJson = r.IsDBNull(6) ? "[]"      : r.GetString(6),
+                    Correo       = r.GetString(7),
+                    OidMicrosoft = r.GetString(8),
                 });
             return lista;
         }
@@ -82,6 +85,8 @@ namespace ConciliadorContable.Forms
             txtUsername.Text  = u.Username;
             txtNombre.Text    = u.Nombre;
             txtPassword.Text  = "";
+            txtCorreo.Text    = u.Correo;
+            ActualizarNotasMicrosoft(u);
             chkActivo.Checked = u.Activo;
             cmbRol.SelectedItem = u.Rol;
 
@@ -113,6 +118,7 @@ namespace ConciliadorContable.Forms
             string username = txtUsername.Text.Trim();
             string nombre   = txtNombre.Text.Trim();
             string password = txtPassword.Text;
+            string correo   = txtCorreo.Text.Trim();
             string rol      = cmbRol.SelectedItem?.ToString() ?? "Usuario";
             bool   activo   = chkActivo.Checked;
 
@@ -120,8 +126,11 @@ namespace ConciliadorContable.Forms
             { MessageBox.Show("El nombre de usuario es obligatorio.", "Validación", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
             if (string.IsNullOrEmpty(nombre))
             { MessageBox.Show("El nombre completo es obligatorio.", "Validación", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
-            if (_usuarioEditando == null && string.IsNullOrEmpty(password))
-            { MessageBox.Show("La contraseña es obligatoria para usuarios nuevos.", "Validación", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+            // Fecha: 28/10/2026 - TAREA: 00140 - Linea: 3,4 - Con correo de Microsoft la contraseña es opcional: el usuario entra por AppHub y queda sin contraseña utilizable.
+            if (correo.Length > 0 && !CorreoValido(correo))
+            { MessageBox.Show("El correo de Microsoft no es válido.", "Validación", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+            if (_usuarioEditando == null && string.IsNullOrEmpty(password) && correo.Length == 0)
+            { MessageBox.Show("La contraseña es obligatoria para usuarios nuevos sin correo de Microsoft.", "Validación", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
 
             var permisosSel = Enumerable.Range(0, clbPermisos.Items.Count)
                 .Where(i => clbPermisos.GetItemChecked(i))
@@ -132,14 +141,17 @@ namespace ConciliadorContable.Forms
             using var cn = DatabaseHelper.GetConnection();
             cn.Open();
 
+            try
+            {
             if (_usuarioEditando == null)
             {
                 // Nuevo usuario
-                string hash = AuthService.HashPassword(password);
+                string hash = string.IsNullOrEmpty(password) ? Usuario.SinClave : AuthService.HashPassword(password);
                 using var cmd = cn.CreateCommand();
                 cmd.CommandText = @"
-                    INSERT INTO Usuarios (Username, PasswordHash, Nombre, Activo, Rol, PermisosJson)
-                    VALUES (@u, @p, @n, @a, @r, @pm)";
+                    INSERT INTO Usuarios (Username, PasswordHash, Nombre, Activo, Rol, PermisosJson, Correo)
+                    VALUES (@u, @p, @n, @a, @r, @pm, @c)";
+                cmd.Parameters.AddWithValue("@c", correo.Length == 0 ? DBNull.Value : correo);
                 cmd.Parameters.AddWithValue("@u", username);
                 cmd.Parameters.AddWithValue("@p", hash);
                 cmd.Parameters.AddWithValue("@n", nombre);
@@ -155,14 +167,14 @@ namespace ConciliadorContable.Forms
                 if (!string.IsNullOrEmpty(password))
                 {
                     cmd.CommandText = @"
-                        UPDATE Usuarios SET Username=@u, PasswordHash=@p, Nombre=@n, Activo=@a, Rol=@r, PermisosJson=@pm
+                        UPDATE Usuarios SET Username=@u, PasswordHash=@p, Nombre=@n, Activo=@a, Rol=@r, PermisosJson=@pm, Correo=@c
                         WHERE Id=@id";
                     cmd.Parameters.AddWithValue("@p", AuthService.HashPassword(password));
                 }
                 else
                 {
                     cmd.CommandText = @"
-                        UPDATE Usuarios SET Username=@u, Nombre=@n, Activo=@a, Rol=@r, PermisosJson=@pm
+                        UPDATE Usuarios SET Username=@u, Nombre=@n, Activo=@a, Rol=@r, PermisosJson=@pm, Correo=@c
                         WHERE Id=@id";
                 }
                 cmd.Parameters.AddWithValue("@u",  username);
@@ -170,8 +182,15 @@ namespace ConciliadorContable.Forms
                 cmd.Parameters.AddWithValue("@a",  activo ? 1 : 0);
                 cmd.Parameters.AddWithValue("@r",  rol);
                 cmd.Parameters.AddWithValue("@pm", permisosJson);
+                cmd.Parameters.AddWithValue("@c",  correo.Length == 0 ? DBNull.Value : correo);
                 cmd.Parameters.AddWithValue("@id", _usuarioEditando.Id);
                 cmd.ExecuteNonQuery();
+            }
+            }
+            catch (SqliteException ex) when (ex.SqliteErrorCode == 19)
+            {
+                MessageBox.Show("Ya existe un usuario con ese nombre de usuario o con ese correo de Microsoft.", "Validación", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
             }
 
             CargarUsuarios();
@@ -206,12 +225,29 @@ namespace ConciliadorContable.Forms
             lblPermisosTodos.Visible = esAdmin;
         }
 
+        // Fecha: 28/10/2026 - TAREA: 00140 - Linea: 3,4 - Avisos del formulario según cómo entra el usuario (maquetas 03 y 04 de la 00140).
+        private void ActualizarNotasMicrosoft(Usuario u)
+        {
+            lblNotaCorreo.Text = string.IsNullOrEmpty(u.OidMicrosoft)
+                ? "Con el correo cargado, esta persona entra con su cuenta de Microsoft a través de AppHub."
+                : "Vinculado con su cuenta de Microsoft. Cambiar el correo no rompe el vínculo.";
+            lblNotaClave.Text = u.PasswordHash == Usuario.SinClave
+                ? "Cuenta de Microsoft: no tiene contraseña. Escribí una solo si también debe entrar con usuario y contraseña."
+                : (string.IsNullOrEmpty(u.Correo) ? "" : "Sigue pudiendo entrar con usuario y contraseña. Dejar vacío para no cambiarla.");
+        }
+
+        private static bool CorreoValido(string correo) =>
+            correo.Length <= 200 && System.Net.Mail.MailAddress.TryCreate(correo, out var m) && m.Address == correo && correo.Contains('@');
+
         private void LimpiarFormulario()
         {
             _usuarioEditando  = null;
             txtUsername.Text  = "";
             txtNombre.Text    = "";
             txtPassword.Text  = "";
+            txtCorreo.Text    = "";
+            lblNotaClave.Text = "";
+            lblNotaCorreo.Text = "Con el correo cargado, esta persona entra con su cuenta de Microsoft a través de AppHub.";
             chkActivo.Checked = true;
             cmbRol.SelectedIndex = 1; // "Usuario"
             for (int i = 0; i < clbPermisos.Items.Count; i++)

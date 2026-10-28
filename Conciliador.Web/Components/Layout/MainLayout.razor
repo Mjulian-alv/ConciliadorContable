@@ -16,7 +16,8 @@
     @foreach(var a in accesos){<NavLink href="@a.Ruta.TrimStart('/')" Match="NavLinkMatch.All"><span>@a.Glifo</span> @a.Titulo</NavLink>}
     </nav>
 }
-<div class="sidebar-foot"><span class="status-dot"></span> @nombre<small>Alvear Supermercados</small><a href="account/logout" data-enhance-nav="false">Cerrar sesión ↗</a></div></aside>
+@* Fecha: 28/10/2026 - TAREA: 00140 - Linea: 2 - Si la sesión la abrió AppHub no se ofrece «Cerrar sesión» (el pedido siguiente la volvería a abrir): se sale desde AppHub. *@
+<div class="sidebar-foot"><span class="status-dot"></span> @nombre<small>Alvear Supermercados@(viaAppHub?" · sesión de AppHub":"")</small>@if(!viaAppHub){<a href="account/logout" data-enhance-nav="false">Cerrar sesión ↗</a>}</div></aside>
 <div class="main-shell"><header class="topbar"><span>Conciliador Contable @if(seccion!=null){<span class="muted"> / @seccion</span>}</span><span class="pill">@(Mode.Demo?"DEMOSTRACIÓN LOCAL":"ENTORNO CONFIGURADO")</span></header>
 @if(Mode.Demo){<div class="demo-bar">Datos de ejemplo · La configuración de demostración se conserva hasta reiniciar la aplicación.</div>}
 <main class="content">@Body</main><footer>Conciliador Contable · ARCA Cliente · Agrupador de Conceptos</footer></div></div>
@@ -25,12 +26,14 @@
 @code {
     List<Acceso> lateral=new();
     string nombre="";
+    bool viaAppHub;
     string? seccion;
     protected override async Task OnInitializedAsync()
     {
         var usuario=(await Authentication.GetAuthenticationStateAsync()).User;
         lateral=MenuPrincipal.Lateral(usuario,Mode.Demo).ToList();
         nombre=usuario.FindFirst("display_name")?.Value??usuario.Identity?.Name??"";
+        viaAppHub=usuario.HasClaim("via","apphub");
     }
     protected override void OnParametersSet()
     {

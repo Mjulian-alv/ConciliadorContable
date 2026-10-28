@@ -13,6 +13,12 @@ namespace ConciliadorContable.Models
         public string Rol          { get; set; } = "Usuario"; // "Admin" | "Usuario"
         public string PermisosJson { get; set; } = "[]";
 
+        // Fecha: 28/10/2026 - TAREA: 00140 - Linea: 3,4 - Correo de Microsoft e id de Microsoft (lo guarda la web al primer ingreso por AppHub).
+        public string Correo       { get; set; } = string.Empty;
+        public string OidMicrosoft { get; set; } = string.Empty;
+        /// <summary>Marcador de contraseña de los usuarios de Microsoft: nunca coincide con un hash SHA-256.</summary>
+        public const string SinClave = "!";
+
         public List<string> Permisos
         {
             get
@@ -26,7 +32,10 @@ namespace ConciliadorContable.Models
         public bool TienePermiso(string modulo) =>
             Rol == "Admin" || Permisos.Contains(modulo);
 
-        public string DisplayName => $"{Nombre} ({Username}){(Activo ? "" : " [Inactivo]")}{(Rol == "Admin" ? " ⭐" : "")}";
+        // Fecha: 28/10/2026 - TAREA: 00140 - Linea: 3,4 - La lista marca a quien entra con Microsoft y a quien todavía no tiene permisos.
+        public string DisplayName => $"{Nombre} ({Username}){(Activo ? "" : " [Inactivo]")}{(Rol == "Admin" ? " ⭐" : "")}{MarcaMicrosoft}";
+
+        private string MarcaMicrosoft => string.IsNullOrEmpty(Correo) ? "" : (Rol != "Admin" && Permisos.Count == 0 ? " [Microsoft · sin permisos]" : " [Microsoft]");
 
         // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 1 - Modulo nuevo: catalogo de cuentas contables
         // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Modulo nuevo: conciliacion interna

@@ -36,6 +36,11 @@ namespace ConciliadorContable.Data
             // Migrar columnas si la tabla ya existía sin ellas
             TryAddColumn(cn, "Usuarios", "Rol",          "TEXT NOT NULL DEFAULT 'Usuario'");
             TryAddColumn(cn, "Usuarios", "PermisosJson", "TEXT NOT NULL DEFAULT '[]'");
+            // Fecha: 28/10/2026 - TAREA: 00140 - Linea: 2,3,4 - Ingreso con Microsoft a través de AppHub: correo y id de Microsoft del usuario (la web guarda el id al primer ingreso). Un usuario de Microsoft no tiene contraseña: PasswordHash queda en «!», que nunca coincide con un hash SHA-256.
+            TryAddColumn(cn, "Usuarios", "Correo",       "TEXT NULL");
+            TryAddColumn(cn, "Usuarios", "OidMicrosoft", "TEXT NULL");
+            cn.ExecuteNonQuery("CREATE UNIQUE INDEX IF NOT EXISTS UX_Usuarios_Oid ON Usuarios(OidMicrosoft) WHERE OidMicrosoft IS NOT NULL");
+            cn.ExecuteNonQuery("CREATE UNIQUE INDEX IF NOT EXISTS UX_Usuarios_Correo ON Usuarios(Correo COLLATE NOCASE) WHERE Correo IS NOT NULL AND Correo <> ''");
 
             // Admin por defecto: rol Admin, todos los permisos
             cn.ExecuteNonQuery(@"

@@ -10,6 +10,8 @@ namespace Conciliador.Web.Pages.Account;
 public sealed class LoginModel(UserStorage users,WebMode mode,SessionRegistry sessions,ILogger<LoginModel> logger) : PageModel
 {
     public bool Demo=>mode.Demo;public string? Error{get;set;}
+    // Fecha: 28/10/2026 - TAREA: 00140 - Linea: 2,3 - Aviso si se vino de AppHub y no se pudo abrir la sesión: «rechazada» (token inválido) o «desactivado».
+    public string? AvisoAppHub=>HttpContext.Items[Conciliador.Web.Security.IdentidadAppHub.ItemAviso] as string;
     [BindProperty]public string Username{get;set;}="";[BindProperty]public string Password{get;set;}="";
     public async Task<IActionResult> OnPostAsync(){
         WebUser? user=null;

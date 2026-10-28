@@ -21,10 +21,14 @@ namespace ConciliadorContable.Forms
             lblFormTitulo = new Label();
             lblUsername = new Label();
             txtUsername = new TextBox();
+            lblCorreo = new Label();
+            txtCorreo = new TextBox();
+            lblNotaCorreo = new Label();
             lblNombre = new Label();
             txtNombre = new TextBox();
             lblPassword = new Label();
             txtPassword = new TextBox();
+            lblNotaClave = new Label();
             lblRol = new Label();
             cmbRol = new ComboBox();
             chkActivo = new CheckBox();
@@ -115,10 +119,14 @@ namespace ConciliadorContable.Forms
             pnlForm.Controls.Add(lblFormTitulo);
             pnlForm.Controls.Add(lblUsername);
             pnlForm.Controls.Add(txtUsername);
+            pnlForm.Controls.Add(lblCorreo);
+            pnlForm.Controls.Add(txtCorreo);
+            pnlForm.Controls.Add(lblNotaCorreo);
             pnlForm.Controls.Add(lblNombre);
             pnlForm.Controls.Add(txtNombre);
             pnlForm.Controls.Add(lblPassword);
             pnlForm.Controls.Add(txtPassword);
+            pnlForm.Controls.Add(lblNotaClave);
             pnlForm.Controls.Add(lblRol);
             pnlForm.Controls.Add(cmbRol);
             pnlForm.Controls.Add(chkActivo);
@@ -157,10 +165,44 @@ namespace ConciliadorContable.Forms
             txtUsername.Size = new Size(430, 23);
             txtUsername.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
             txtUsername.TabIndex = 2;
+            //
+            // lblCorreo
+            //
+            lblCorreo.Location = new Point(0, 64);
+            lblCorreo.Name = "lblCorreo";
+            lblCorreo.Size = new Size(145, 20);
+            lblCorreo.TabIndex = 2;
+            lblCorreo.Text = "Correo de Microsoft:";
+            //
+            // txtCorreo
+            //
+            txtCorreo.Location = new Point(150, 61);
+            txtCorreo.Name = "txtCorreo";
+            txtCorreo.Size = new Size(430, 23);
+            txtCorreo.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
+            txtCorreo.MaxLength = 200;
+            txtCorreo.TabIndex = 2;
+            //
+            // lblNotaCorreo
+            //
+            lblNotaCorreo.ForeColor = Color.FromArgb(11, 79, 156);
+            lblNotaCorreo.Location = new Point(150, 87);
+            lblNotaCorreo.Name = "lblNotaCorreo";
+            lblNotaCorreo.Size = new Size(430, 18);
+            lblNotaCorreo.TabIndex = 2;
+            lblNotaCorreo.Text = "Con el correo cargado, esta persona entra con su cuenta de Microsoft a través de AppHub.";
+            //
+            // lblNotaClave
+            //
+            lblNotaClave.ForeColor = Color.DimGray;
+            lblNotaClave.Location = new Point(150, 165);
+            lblNotaClave.Name = "lblNotaClave";
+            lblNotaClave.Size = new Size(430, 18);
+            lblNotaClave.TabIndex = 5;
             // 
             // lblNombre
             // 
-            lblNombre.Location = new Point(0, 64);
+            lblNombre.Location = new Point(0, 112);
             lblNombre.Name = "lblNombre";
             lblNombre.Size = new Size(115, 20);
             lblNombre.TabIndex = 3;
@@ -168,7 +210,7 @@ namespace ConciliadorContable.Forms
             // 
             // txtNombre
             // 
-            txtNombre.Location = new Point(150, 61);
+            txtNombre.Location = new Point(150, 109);
             txtNombre.Name = "txtNombre";
             txtNombre.Size = new Size(430, 23);
             txtNombre.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
@@ -176,7 +218,7 @@ namespace ConciliadorContable.Forms
             // 
             // lblPassword
             // 
-            lblPassword.Location = new Point(0, 94);
+            lblPassword.Location = new Point(0, 142);
             lblPassword.Name = "lblPassword";
             lblPassword.Size = new Size(145, 20);
             lblPassword.TabIndex = 5;
@@ -184,7 +226,7 @@ namespace ConciliadorContable.Forms
             // 
             // txtPassword
             // 
-            txtPassword.Location = new Point(150, 91);
+            txtPassword.Location = new Point(150, 139);
             txtPassword.Name = "txtPassword";
             txtPassword.Size = new Size(280, 23);
             txtPassword.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
@@ -193,7 +235,7 @@ namespace ConciliadorContable.Forms
             // 
             // lblRol
             // 
-            lblRol.Location = new Point(0, 124);
+            lblRol.Location = new Point(0, 192);
             lblRol.Name = "lblRol";
             lblRol.Size = new Size(145, 20);
             lblRol.TabIndex = 7;
@@ -203,7 +245,7 @@ namespace ConciliadorContable.Forms
             // 
             cmbRol.DropDownStyle = ComboBoxStyle.DropDownList;
             cmbRol.Items.AddRange(new object[] { "Admin", "Usuario" });
-            cmbRol.Location = new Point(150, 121);
+            cmbRol.Location = new Point(150, 189);
             cmbRol.Name = "cmbRol";
             cmbRol.Size = new Size(150, 23);
             cmbRol.TabIndex = 8;
@@ -214,7 +256,7 @@ namespace ConciliadorContable.Forms
             chkActivo.AutoSize = true;
             chkActivo.Checked = true;
             chkActivo.CheckState = CheckState.Checked;
-            chkActivo.Location = new Point(320, 123);
+            chkActivo.Location = new Point(320, 191);
             chkActivo.Name = "chkActivo";
             chkActivo.Size = new Size(60, 19);
             chkActivo.TabIndex = 9;
@@ -223,7 +265,7 @@ namespace ConciliadorContable.Forms
             // lblPermisos
             // 
             lblPermisos.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-            lblPermisos.Location = new Point(0, 156);
+            lblPermisos.Location = new Point(0, 224);
             lblPermisos.Name = "lblPermisos";
             lblPermisos.Size = new Size(200, 20);
             lblPermisos.TabIndex = 10;
@@ -233,7 +275,7 @@ namespace ConciliadorContable.Forms
             // 
             lblPermisosTodos.Font = new Font("Segoe UI", 9F, FontStyle.Italic);
             lblPermisosTodos.ForeColor = Color.DarkGreen;
-            lblPermisosTodos.Location = new Point(0, 180);
+            lblPermisosTodos.Location = new Point(0, 248);
             lblPermisosTodos.Name = "lblPermisosTodos";
             lblPermisosTodos.Size = new Size(300, 20);
             lblPermisosTodos.TabIndex = 11;
@@ -243,7 +285,7 @@ namespace ConciliadorContable.Forms
             // pnlPermisos
             // 
             pnlPermisos.Controls.Add(clbPermisos);
-            pnlPermisos.Location = new Point(0, 180);
+            pnlPermisos.Location = new Point(0, 248);
             pnlPermisos.Name = "pnlPermisos";
             pnlPermisos.Size = new Size(580, 200);
             pnlPermisos.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
@@ -262,7 +304,7 @@ namespace ConciliadorContable.Forms
             // 
             pnlBotones.Controls.Add(btnGuardar);
             pnlBotones.Controls.Add(btnEliminar);
-            pnlBotones.Location = new Point(0, 395);
+            pnlBotones.Location = new Point(0, 458);
             pnlBotones.Name = "pnlBotones";
             pnlBotones.Size = new Size(580, 44);
             pnlBotones.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
@@ -325,6 +367,10 @@ namespace ConciliadorContable.Forms
         private Label           lblFormTitulo;
         private Label           lblUsername;
         private TextBox         txtUsername;
+        private Label           lblCorreo;
+        private TextBox         txtCorreo;
+        private Label           lblNotaCorreo;
+        private Label           lblNotaClave;
         private Label           lblNombre;
         private TextBox         txtNombre;
         private Label           lblPassword;
