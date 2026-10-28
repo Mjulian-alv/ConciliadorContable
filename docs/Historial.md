@@ -1453,3 +1453,31 @@ Sin diseño previo (no cambia pantallas ni circuito) y sin revisión de Codex. C
 **Aclaración (27/10/2026):** PRESEA entrega el CUIT como número, sin guiones ni espacios, así que comparar el valor tal cual alcanza y no hace falta `SoloDigitos` (que sí usa ARCA). La lista sigue fija en el código.
 
 **Anotación:** la rama `feature/00135-blindaje-historial` se mergeó a `main` (merge `24c158f`, sin push) y se borró antes de abrir esta.
+
+## TAREA 00140 — 28/10/2026 — Identidad de AppHub en el Conciliador (piloto)
+
+**Pedido (numerado, confirmado en el chat):**
+1. AppHub manda a cada app activada un token firmado y de vida corta con la identidad del usuario.
+2. Conciliador web acepta ese token, crea o vincula al usuario por correo y abre su sesión propia; el login propio sigue.
+3. Primer ingreso: el usuario se crea sin permisos; `AdministradoresIniciales` por configuración.
+4. Vinculación de usuarios que ya existen, por correo, desde el formulario de usuarios del escritorio.
+5. Contrato de integración con AppHub y checklist para apps nuevas.
+6. (Después del piloto) Ofertas y luego Portal y Admin: fuera de esta tarea.
+
+Diseño aprobado en el chat: `Docs/Diseño/00140-identidad-apps/` del repo de AppHub (`D:\Sistemas\Concentrador`), con guía, contrato, flujograma y maquetas. Decisión: la web del Conciliador deja de ser solo lectura
+sobre la base de usuarios (revierte lo decidido en la 00064) y solo puede crear usuarios de Microsoft y guardar su id; los permisos se asignan en el formulario de usuarios del escritorio.
+
+**Ejecutado (rama `feature/00140-identidad-apphub`):**
+- Web: `Security/TokenAppHub.cs` (validación del JWT HS256: firma en tiempo constante, `alg`, `iss`, `aud`, vencimiento con tolerancia y correo), `Security/IdentidadAppHub.cs` (middleware antes de la
+  autenticación: abre la sesión con las mismas claims del login más `via=apphub` y `correo`, reemplaza la sesión de otro usuario y deja un aviso si el token no vale o el usuario está desactivado),
+  `UserStorage.IngresarMicrosoftAsync` (busca por oid y luego por correo solo si el usuario no tiene oid; crea administrador solo para la lista inicial, si no usuario sin permisos y con contraseña «!»;
+  agrega las columnas si faltan), sección `AppHub` en `appsettings.json` (clave vacía = modo autónomo; una clave de menos de 32 caracteres no arranca), avisos en el login y sin «Cerrar sesión» cuando
+  la sesión vino de AppHub.
+- Escritorio: columnas `Correo` y `OidMicrosoft` con índices únicos en `DatabaseHelper`, campo «Correo de Microsoft» y avisos en `FormAdminUsuarios` (contraseña opcional si hay correo, lista con la marca
+  «Microsoft · sin permisos»), `Usuario` con `Correo`, `OidMicrosoft` y `SinClave`.
+- Pruebas: `Tools/AgrupadorWeb.Tests/IdentidadAppHubTests.cs`, 15 pruebas (token, configuración, usuarios, middleware y un pipeline real con cookie). Total del proyecto: 77 correctas, 0 con error;
+  `Tools/ArcaWeb.Tests`: 35 correctas. Además se corrigieron dos pruebas viejas (`LoginTests` y `PyRWebTests`) que esperaban que el login redirigiera a `/` y desde la 00125 redirige a `~/`.
+
+**No probado:** el formulario de usuarios del escritorio en pantalla (compila, pero no se vio el diseño), la web contra una base de usuarios real compartida con el escritorio abierto, y el recorrido completo
+con AppHub y el Conciliador publicados (la web solo arranca con SQL Server o en modo demostración, y el modo demostración no usa esta identidad).
+**Sin revisión de Codex** (su cuenta falla).
