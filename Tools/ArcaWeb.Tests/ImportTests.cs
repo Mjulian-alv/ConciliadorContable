@@ -2,6 +2,7 @@
 using ArcaCliente.Web.Models;
 using ArcaCliente.Web.Services;
 using ClosedXML.Excel;
+using System.IO.Compression;
 using System.Text;
 static class ImportTests
 {
@@ -37,6 +38,45 @@ static class ImportTests
             ws.Cell(2,1).Value="FA";ws.Cell(2,2).Value=new DateTime(2026,9,5);ws.Cell(2,3).Value="5-1234";ws.Cell(2,4).Value=1000.5;
             using var stream=new MemoryStream();book.SaveAs(stream);
             var p=ProviderImporter.Preview(new("ejemplo.xlsx",stream.ToArray()),config);Check(p.Ready && p.Included.Single().Total==1000.50m);
+        });
+        // Fecha: 29/10/2026 - TAREA: 00142 - Linea: 1 - Excel exporta cachés de tablas dinámicas que ClosedXML no puede leer; la hoja de datos debe leerse igual.
+        byte[] ExcelConPivote() {
+            using var book=new XLWorkbook(); var ws=book.AddWorksheet("ECC");
+            ws.Cell(1,1).Value="Tipo";ws.Cell(1,2).Value="Fecha";ws.Cell(1,3).Value="Documento";ws.Cell(1,4).Value="Importe";
+            ws.Cell(2,1).Value="FA";ws.Cell(2,2).Value=new DateTime(2026,9,5);ws.Cell(2,3).Value="5-1234";ws.Cell(2,4).Value=1000.5;
+            using var plain=new MemoryStream();book.SaveAs(plain);
+            using var result=new MemoryStream();
+            using(var src=new ZipArchive(new MemoryStream(plain.ToArray()),ZipArchiveMode.Read))
+            using(var dst=new ZipArchive(result,ZipArchiveMode.Create,true)) {
+                foreach(var e in src.Entries) {
+                    using var r=new StreamReader(e.Open()); var text=r.ReadToEnd();
+                    if(e.FullName=="xl/workbook.xml") text=text.Replace("</workbook>","<pivotCaches><pivotCache cacheId=\"1\" r:id=\"rIdP1\"/></pivotCaches></workbook>");
+                    if(e.FullName=="xl/_rels/workbook.xml.rels") text=text.Replace("</Relationships>","<Relationship Id=\"rIdP1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotCacheDefinition\" Target=\"pivotCache/pivotCacheDefinition1.xml\"/></Relationships>");
+                    if(e.FullName=="[Content_Types].xml") text=text.Replace("</Types>","<Override PartName=\"/xl/pivotCache/pivotCacheDefinition1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.pivotCacheDefinition+xml\"/><Override PartName=\"/xl/pivotCache/pivotCacheRecords1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.pivotCacheRecords+xml\"/></Types>");
+                    using var w=new StreamWriter(dst.CreateEntry(e.FullName).Open()); w.Write(text);
+                }
+                const string ns="xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\"";
+                // El caché declara dos campos y cada registro trae uno: la misma discrepancia que rompe el archivo real.
+                void Add(string name,string xml){using var w=new StreamWriter(dst.CreateEntry(name).Open());w.Write(xml);}
+                Add("xl/pivotCache/pivotCacheDefinition1.xml",$"<pivotCacheDefinition {ns} r:id=\"rId1\" recordCount=\"1\"><cacheSource type=\"worksheet\"><worksheetSource ref=\"A1:D2\" sheet=\"ECC\"/></cacheSource><cacheFields count=\"2\"><cacheField name=\"Tipo\" numFmtId=\"0\"><sharedItems/></cacheField><cacheField name=\"Extra\" numFmtId=\"0\"><sharedItems/></cacheField></cacheFields></pivotCacheDefinition>");
+                Add("xl/pivotCache/_rels/pivotCacheDefinition1.xml.rels","<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotCacheRecords\" Target=\"pivotCacheRecords1.xml\"/></Relationships>");
+                Add("xl/pivotCache/pivotCacheRecords1.xml",$"<pivotCacheRecords {ns} count=\"1\"><r><n v=\"1\"/></r></pivotCacheRecords>");
+            }
+            return result.ToArray();
+        }
+        test("XLSX con tabla dinámica se lee igual (ClosedXML solo falla)", () => {
+            var bytes=ExcelConPivote(); bool falla=false;
+            try { using var b=new XLWorkbook(new MemoryStream(bytes)); } catch(Exception) { falla=true; }
+            Check(falla);
+            var p=ProviderImporter.Preview(new("ECC.xlsx",bytes),new ProviderConfiguration{Cuit="30123456781",Format=new FileFormat{Date="Fecha",Type="Tipo",Number="Documento",Amount="Importe",Sheet="ECC",NumberMode=NumberMode.Separated},Types=new(){["FA"]="001"}});
+            Check(p.Ready && p.Included.Single().Total==1000.50m);
+        });
+        test("Letra opcional se une al tipo para homologar cada combinación", () => {
+            var f=new FileFormat{Date="Fecha",Type="Tipo",Letter="Letra",Number="Documento",Amount="Importe",NumberMode=NumberMode.Separated};
+            var doc=new UploadedDocument("p.csv",Encoding.UTF8.GetBytes("Tipo;Letra;Fecha;Documento;Importe\nFC;A;05/09/2026;5-1;10,00\nFC;B;05/09/2026;5-2;20,00"));
+            var p=ProviderImporter.Preview(doc,new ProviderConfiguration{Cuit="30123456781",Format=f,Types=new(){["FC A"]="001",["FC B"]="006"}});
+            Check(p.Ready && p.Included[0].TipoComprobante=="001" && p.Included[1].TipoComprobante=="006");
+            f.Letter="Inexistente"; Check(!ProviderImporter.Preview(doc,new ProviderConfiguration{Cuit="30123456781",Format=f}).Ready);
         });
         test("Cabeceras duplicadas y CSV roto se bloquean", () => {
             try { TabularReader.Read(new("m.csv",Encoding.UTF8.GetBytes("Tipo;Tipo\nFA;NC")),format);throw new Exception("Aceptó duplicadas"); } catch(ImportException) {}

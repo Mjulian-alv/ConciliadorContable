@@ -14,6 +14,8 @@
 </div><p class="muted">@(Format.Header?"Escribí el nombre exacto de cada columna.":"Indicá la posición de cada columna, empezando en 1.") Los cambios válidos se guardan automáticamente.</p>
 <div class="format-grid mappings">
 <label>Tipo de comprobante<input @bind="Format.Type" @bind:after="Changed" /></label>
+@* Fecha: 29/10/2026 - TAREA: 00142 - Linea: 2 - Letra del comprobante, sólo para el formato del proveedor. *@
+@if(Provider){<label>Letra del comprobante (opcional)<input @bind="Format.Letter" @bind:after="Changed" /></label>}
 <label>Fecha<input @bind="Format.Date" @bind:after="Changed" /></label>
 @if(Format.NumberMode==NumberMode.Columns){<label>Punto de venta<input @bind="Format.Point" @bind:after="Changed" /></label>}
 <label>@(Format.NumberMode==NumberMode.Columns?"Número":"Comprobante combinado")<input @bind="Format.Number" @bind:after="Changed" /></label>
