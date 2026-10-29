@@ -33,9 +33,12 @@ public static class ProviderImporter
             int type=Column(f.Type);
             // Los campos fiscales se requieren sólo si hay documentos incluidos; un recibo no los necesita.
             int date=Column(f.Date,false),point=Column(f.Point,false),number=Column(f.Number,false),amount=Column(f.Amount,false),cuit=Column(f.Cuit,false),name=Column(f.Name,false);
+            // Fecha: 29/10/2026 - TAREA: 00142 - Linea: 2 - La letra es opcional; si se indica una columna que no existe se avisa en vez de ignorarla.
+            int letter=string.IsNullOrWhiteSpace(f.Letter)?-1:Column(f.Letter);
             foreach(var row in table.Rows) {
                 string At(int index)=>index>=0 && index<row.Cells.Length?row.Cells[index].Trim():"";
-                var raw=At(type);var p=new PreviewRow { Line=row.Line,RawType=raw,RawAmount=At(amount),RawCells=row.Cells }; result.Rows.Add(p);
+                // Fecha: 29/10/2026 - TAREA: 00142 - Linea: 2 - Tipo y letra forman un solo valor («FC A») para que cada combinación se homologue por separado: FC A y FC B son códigos fiscales distintos.
+                var raw=At(type);if(letter>=0&&At(letter).Length>0)raw=raw+" "+At(letter);var p=new PreviewRow { Line=row.Line,RawType=raw,RawAmount=At(amount),RawCells=row.Cells }; result.Rows.Add(p);
                 string mapped="";
                 if(canonical) mapped=FiscalCatalog.Normalize(raw);
                 else if(types!=null) { var entry=types.FirstOrDefault(x=>x.Key.Equals(raw,StringComparison.OrdinalIgnoreCase));mapped=entry.Value??""; }

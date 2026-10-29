@@ -18,6 +18,8 @@ public sealed class FileFormat
     public string Type { get; set; } = "Tipo";
     public string Point { get; set; } = "PuntoVenta";
     public string Number { get; set; } = "Numero";
+    // Fecha: 29/10/2026 - TAREA: 00142 - Linea: 2 - Columna opcional con la letra del comprobante (A, B, C); vacía = el archivo no la trae.
+    public string Letter { get; set; } = "";
     public string Amount { get; set; } = "Importe";
     public string Cuit { get; set; } = "CUIT";
     public string Name { get; set; } = "Proveedor";
