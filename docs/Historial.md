@@ -1481,3 +1481,21 @@ sobre la base de usuarios (revierte lo decidido en la 00064) y solo puede crear 
 **No probado:** el formulario de usuarios del escritorio en pantalla (compila, pero no se vio el diseño), la web contra una base de usuarios real compartida con el escritorio abierto, y el recorrido completo
 con AppHub y el Conciliador publicados (la web solo arranca con SQL Server o en modo demostración, y el modo demostración no usa esta identidad).
 **Sin revisión de Codex** (su cuenta falla).
+
+## TAREA 00142 — 29/10/2026 — Excel del proveedor con tabla dinámica y letra del comprobante
+
+**Pedido (numerado, confirmado en el chat):**
+1. No se puede leer el xlsx del proveedor (`ECC 26-10-26.xlsx`) en la conciliación web: el lector debe ignorar las tablas dinámicas y leer la hoja elegida, con prueba que use ese caso.
+2. Agregar la columna «Letra» del comprobante al formato del proveedor en el Conciliador web.
+
+**Diagnóstico (línea 1):** el libro trae una tabla dinámica (hoja «TD ECC») cuyo caché declara 18 campos y registros de 16; ClosedXML 0.105 lanza `PartStructureException` en `PivotTableCacheDefinitionPartReader.ReadRecords` y se rechazaba el libro entero con el mensaje genérico. La hoja «ECC» estaba bien.
+
+**Sin diseño previo:** una corrección de bug y un campo en una sola pantalla existente, sin cambio de flujo.
+
+**Ejecutado (rama `tarea-00142-xlsx-pivote-letra`):**
+- Línea 1: `TabularReader.WithoutPivots` reescribe el .xlsx en memoria sin las partes `xl/pivot*`, su referencia en `workbook.xml`, las relaciones y los `Override` de `[Content_Types].xml`; sólo actúa si el libro tiene pivotes.
+- Línea 2: `FileFormat.Letter` (opcional, se guarda en el JSON del formato del proveedor), campo «Letra del comprobante (opcional)» en `FormatEditor` sólo para el proveedor, y `ProviderImporter` une tipo y letra en un solo valor («FC A»), de modo que cada combinación se homologa por separado (FC A → 001, FC B → 006). Una columna de letra inexistente se informa como error. Si ya había homologaciones guardadas con sólo «FC», al configurar la letra hay que homologar de nuevo.
+- Pruebas (`Tools/ArcaWeb.Tests/ImportTests.cs`): libro con caché de pivote inconsistente (ClosedXML solo falla, el lector no) y letra opcional. 37 correctas. Con el archivo real y el formato Tipo CPT / Letra CPT / Prefijo / Nro CPT / Fecha CPT / Monto: 37 filas válidas.
+- Revisión de Codex: `docs/Revisiones/00142-review-1.md` (1 hallazgo, corregido). La primera corrida no pudo leer el repo y no cuenta como ronda; queda 1 ronda disponible.
+
+**No probado:** la pantalla en el navegador (el campo se agregó en el editor pero no se lo vio renderizado).

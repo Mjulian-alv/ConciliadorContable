@@ -82,6 +82,11 @@ public static class TabularReader
                     var doc=System.Xml.Linq.XDocument.Load(read);
                     doc.Descendants().Where(x=>x.Name.LocalName=="pivotCaches").ToList().ForEach(x=>x.Remove());
                     doc.Save(write);
+                } else if(path.Equals("[Content_Types].xml",StringComparison.OrdinalIgnoreCase)) {
+                    // Fecha: 29/10/2026 - TAREA: 00142 - Linea: 1 - Revisión de Codex (ronda 1): el paquete no debe declarar partes que ya no existen.
+                    var doc=System.Xml.Linq.XDocument.Load(read);
+                    doc.Descendants().Where(x=>x.Name.LocalName=="Override"&&((string?)x.Attribute("PartName")??"").StartsWith("/xl/pivot",StringComparison.OrdinalIgnoreCase)).ToList().ForEach(x=>x.Remove());
+                    doc.Save(write);
                 } else if(path.EndsWith(".rels",StringComparison.OrdinalIgnoreCase)) {
                     var doc=System.Xml.Linq.XDocument.Load(read);
                     doc.Descendants().Where(x=>x.Name.LocalName=="Relationship"&&((string?)x.Attribute("Type")??"").Contains("pivot",StringComparison.OrdinalIgnoreCase)).ToList().ForEach(x=>x.Remove());
