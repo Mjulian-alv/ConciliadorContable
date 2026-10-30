@@ -31,7 +31,9 @@ public static class ProviderImporter
                 int i=Array.FindIndex(table.Headers,x=>x.Equals(name.Trim(),StringComparison.OrdinalIgnoreCase));
                 if(i<0 && required) throw new ImportException($"No se encontró la columna «{name}».");return i;
             }
-            int type=Column(f.Type);
+            // Fecha: 30/10/2026 - TAREA: 00151 - Linea: 1 - El proveedor puede no traer columna de tipo: entonces el importe negativo es nota de crédito («NC») y el resto factura («FC»), y siguen la homologación de siempre junto con la letra.
+            bool noType=string.IsNullOrWhiteSpace(f.Type)&&!canonical;
+            int type=noType?-1:Column(f.Type);
             // Los campos fiscales se requieren sólo si hay documentos incluidos; un recibo no los necesita.
             int date=Column(f.Date,false),point=Column(f.Point,false),number=Column(f.Number,false),amount=Column(f.Amount,false),cuit=Column(f.Cuit,false),name=Column(f.Name,false);
             // Fecha: 29/10/2026 - TAREA: 00142 - Linea: 2 - La letra es opcional; si se indica una columna que no existe se avisa en vez de ignorarla.
@@ -43,7 +45,7 @@ public static class ProviderImporter
                 string pv=At(point),num=At(number),letterValue=letter>=0?At(letter):"";
                 string? numberError=null;
                 if(f.NumberMode!=NumberMode.Columns)(pv,num,letterValue,numberError)=SplitNumber(f,pv,num,letterValue);
-                var raw=At(type);if(letterValue.Length>0)raw=raw+" "+letterValue;var p=new PreviewRow { Line=row.Line,RawType=raw,RawAmount=At(amount),RawCells=row.Cells }; result.Rows.Add(p);
+                var raw=noType?(IsNegative(At(amount))?"NC":"FC"):At(type);if(letterValue.Length>0)raw=raw+" "+letterValue;var p=new PreviewRow { Line=row.Line,RawType=raw,RawAmount=At(amount),RawCells=row.Cells }; result.Rows.Add(p);
                 string mapped="";
                 if(canonical) mapped=FiscalCatalog.Normalize(raw);
                 else if(types!=null) { var entry=types.FirstOrDefault(x=>x.Key.Equals(raw,StringComparison.OrdinalIgnoreCase));mapped=entry.Value??""; }
@@ -106,6 +108,8 @@ public static class ProviderImporter
         letter=letter.Trim().ToUpperInvariant();
         return Regex.IsMatch(letter,"^[A-Z]$")?(pv,num,letter,null):(pv,num,"","Letra inválida: tiene que ser una sola letra de la A a la Z.");
     }
+    // Fecha: 30/10/2026 - TAREA: 00151 - Linea: 1 - Mismas formas de negativo que acepta ParseAmount (signo adelante y paréntesis); el signo se pierde recién al tomar el valor absoluto.
+    static bool IsNegative(string value){var s=value.Trim();return s.StartsWith('-')||(s.StartsWith('(')&&s.EndsWith(')'));}
     public static decimal ParseAmount(string value,string dec)
     {
         var raw=value.Trim(); bool parens=raw.StartsWith('(')&&raw.EndsWith(')');if(parens)raw=raw[1..^1];
