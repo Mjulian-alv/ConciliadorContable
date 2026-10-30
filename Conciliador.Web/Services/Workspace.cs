@@ -57,7 +57,11 @@ public sealed class Workspace(IWebConfigurationStore store,AccessGuard access,Ar
         if(Profile==null)throw new ImportException("Seleccioná un perfil.");
         if(files.Count==0||files.Count>10||files.Sum(f=>(long)f.Content.Length)>TabularReader.MaxBytes)throw new ImportException("Máximo 10 archivos y 20 MB en total.");
         if(Provider!=null&&files.Count!=1)throw new ImportException("El proveedor se importa desde un archivo por conciliación.");
-        ExternalFiles=files;Refresh();
+        ExternalFiles=files;
+        // Fecha: 30/10/2026 - TAREA: 00150 - Linea: 1 - Un listado SAP precarga el formato del proveedor y lo guarda: no se pisa si ya está aplicado, para respetar ajustes posteriores.
+        if(Provider!=null&&SapListReader.IsSapList(files[0].Name)&&!(Provider.Format.NumberOrder==NumberOrder.PointLetterNumber&&Provider.Format.NumberMode==NumberMode.Fixed&&Provider.Format.Number=="Referencia")){
+            SapListReader.Apply(files[0],Provider.Format);await SaveProviderFormat();Saved="Se aplicó el formato del listado SAP";
+        } else Refresh();
     }
     public async Task UploadSystem(UploadedDocument file){await access.Require("ArcaOffline");Invalidate();System=null;SystemFile=null;
         // Fecha: 06/10/2026 - TAREA: 00067 - Linea: 2 - El rango se calcula al cambiar el archivo, sin pisar ajustes manuales al recargar ARCA.

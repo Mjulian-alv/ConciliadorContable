@@ -14,6 +14,8 @@ public static class TabularReader
     {
         ValidateFormat(format);
         if(file.Content.Length==0 || file.Content.Length>MaxBytes) throw new ImportException("Archivo vacío o mayor a 20 MB.");
+        // Fecha: 30/10/2026 - TAREA: 00150 - Linea: 1 - El listado SAP trae sus propias columnas y no usa hoja, separador ni primera fila.
+        if(SapListReader.IsSapList(file.Name)) return SapListReader.Read(file);
         var rows=new List<TabularRow>();
         var ext=Path.GetExtension(file.Name).ToLowerInvariant();
         try {

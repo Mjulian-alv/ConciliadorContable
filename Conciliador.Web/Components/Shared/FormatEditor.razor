@@ -9,6 +9,8 @@
 <label>Separador decimal<select @bind="Format.DecimalSeparator" @bind:after="Changed"><option value=",">Coma · 1.234,56</option><option value=".">Punto · 1,234.56</option></select></label>
 <label class="check"><input type="checkbox" @bind="Format.Header" @bind:after="Changed" /> Incluye cabecera</label>
 <label>Número de comprobante<select @bind="Format.NumberMode" @bind:after="Changed"><option value="@NumberMode.Columns">Punto y número en columnas</option><option value="@NumberMode.Separated">Combinados con separador</option><option value="@NumberMode.Fixed">Combinados por posiciones</option></select></label>
+@* Fecha: 30/10/2026 - TAREA: 00150 - Linea: 2 - Orden de las partes cuando el comprobante viene en un solo campo (con la letra, o sin ella). *@
+@if(Provider&&Format.NumberMode!=NumberMode.Columns){<label>Partes del comprobante<select @bind="Format.NumberOrder" @bind:after="Changed"><option value="@NumberOrder.PointNumber">Punto · Número</option><option value="@NumberOrder.PointLetterNumber">Punto · Letra · Número</option><option value="@NumberOrder.LetterPointNumber">Letra · Punto · Número</option><option value="@NumberOrder.NumberLetter">Número · Letra (punto en su columna)</option></select></label>}
 @if(Format.NumberMode==NumberMode.Separated){<label>Separador de punto y número<input @bind="Format.NumberSeparator" @bind:after="Changed" maxlength="3" /></label>}
 @if(Format.NumberMode==NumberMode.Fixed){<label>Dígitos del punto de venta<input type="number" min="1" max="5" @bind="Format.PointLength" @bind:after="Changed" /></label>}
 </div><p class="muted">@(Format.Header?"Escribí el nombre exacto de cada columna.":"Indicá la posición de cada columna, empezando en 1.") Los cambios válidos se guardan automáticamente.</p>
@@ -17,7 +19,7 @@
 @* Fecha: 29/10/2026 - TAREA: 00142 - Linea: 2 - Letra del comprobante, sólo para el formato del proveedor. *@
 @if(Provider){<label>Letra del comprobante (opcional)<input @bind="Format.Letter" @bind:after="Changed" /></label>}
 <label>Fecha<input @bind="Format.Date" @bind:after="Changed" /></label>
-@if(Format.NumberMode==NumberMode.Columns){<label>Punto de venta<input @bind="Format.Point" @bind:after="Changed" /></label>}
+@if(Format.NumberMode==NumberMode.Columns||Format.NumberOrder==NumberOrder.NumberLetter){<label>Punto de venta<input @bind="Format.Point" @bind:after="Changed" /></label>}
 <label>@(Format.NumberMode==NumberMode.Columns?"Número":"Comprobante combinado")<input @bind="Format.Number" @bind:after="Changed" /></label>
 <label>Importe<input @bind="Format.Amount" @bind:after="Changed" /></label>
 @if(!Provider){<label>CUIT<input @bind="Format.Cuit" @bind:after="Changed" /></label>}
