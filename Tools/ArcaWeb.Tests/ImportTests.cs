@@ -119,6 +119,12 @@ static class ImportTests
         test("HTML que no es un listado SAP se rechaza con un mensaje claro", () => {
             try { SapListReader.Read(new("otro.htm",Encoding.UTF8.GetBytes("<html><body>nada</body></html>")));throw new Exception("Aceptó HTML ajeno"); } catch(ImportException) {}
         });
+        test("HTML con celdas sin cierre no cuelga la lectura", () => {
+            var bomba=Encoding.UTF8.GetBytes("<html>"+string.Concat(Enumerable.Repeat("<nobr id=l0001001>x",150000)));
+            var reloj=System.Diagnostics.Stopwatch.StartNew();
+            try { SapListReader.Read(new("bomba.htm",bomba));throw new Exception("Aceptó HTML dañado"); } catch(ImportException) {}
+            Check(reloj.Elapsed<TimeSpan.FromSeconds(20));
+        });
         test("Listado SAP real del proveedor (si está disponible)", () => {
             var path=@"D:\DESARROLLOS CONTABLE\CONCILIACION FICHA PROVEEDORES\Lista part.indiv.deudores.htm";
             if(!File.Exists(path)) return;

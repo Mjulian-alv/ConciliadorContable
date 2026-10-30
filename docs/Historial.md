@@ -1499,3 +1499,19 @@ con AppHub y el Conciliador publicados (la web solo arranca con SQL Server o en 
 - Revisión de Codex: `docs/Revisiones/00142-review-1.md` (1 hallazgo, corregido). La primera corrida no pudo leer el repo y no cuenta como ronda; queda 1 ronda disponible.
 
 **No probado:** la pantalla en el navegador (el campo se agregó en el editor pero no se lo vio renderizado).
+
+## TAREA 00150 — 30/10/2026 — Listado SAP (.htm) y comprobante con la letra en un solo campo
+
+**Pedido (numerado, confirmado en el chat):**
+1. Leer el listado SAP «Lista de partidas individuales de deudores» (.htm) en el formato del proveedor. Los PDF de «CC Antoniazzi» y «pendientes» se descartaron por no tener formato de tabla.
+2. Comprobante con punto de venta, letra y número en un solo campo, con varias combinaciones.
+
+**Sin diseño previo:** opciones nuevas en el editor de formato y un formato de archivo más, sobre una pantalla existente; la descripción en el chat hizo de acuerdo.
+
+**Ejecutado (rama `tarea-00150-sap-htm-letra-combinada`):**
+- Línea 1: `SapListReader` (nuevo) convierte la salida HTML de SAP en una tabla: lee el id de cada celda (`l{fila}{columna}`), toma los títulos de la fila «Referencia / Fecha doc. / Importe», descarta cabeceras repetidas, subtotales (`*`) y totales, pasa las fechas a `dd/MM/yyyy` y el importe «31 255,75-» a «-31255,75». `TabularReader` lo usa para `.htm`/`.html`. Al cargar un listado SAP en un proveedor, `Workspace.UploadExternal` precarga y guarda el formato (Clase, Referencia, Fecha doc., Importe, por posiciones con 4 dígitos de punto de venta y orden Punto · Letra · Número). Sugerencias de homologación nuevas: DI A/B/C = factura, DG A/B/C = nota de crédito, DZ = excluir (el usuario las confirma).
+- Línea 2: `FileFormat.NumberOrder` (Punto · Número, Punto · Letra · Número, Letra · Punto · Número, Número · Letra) para los modos combinados, con o sin separador; la letra se separa antes de homologar y se une al tipo («FC A»); debe ser una sola letra A–Z o la fila queda con error. «Número · Letra» toma el punto de venta de su columna. Campo «Partes del comprobante» en el editor del proveedor.
+- Pruebas (`Tools/ArcaWeb.Tests/ImportTests.cs`): 43 correctas. Con el listado real: 92 partidas, 91 comprobantes y 1 pago excluido.
+- Revisión de Codex: `docs/Revisiones/00150-review-1.md` (2 hallazgos de HTML dañado, corregidos con tiempo máximo y tope de celdas). Queda 1 ronda disponible.
+
+**No probado:** las pantallas en el navegador (editor con el campo nuevo y la carga del .htm). «DG = nota de crédito» es una suposición por el signo negativo: queda como sugerencia a confirmar.
