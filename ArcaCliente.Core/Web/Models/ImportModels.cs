@@ -4,6 +4,8 @@ namespace ArcaCliente.Web.Models;
 public record UploadedDocument(string Name, byte[] Content);
 public enum ReconciliationSource { Arca, Provider }
 public enum NumberMode { Columns, Separated, Fixed }
+// Fecha: 30/10/2026 - TAREA: 00150 - Linea: 2 - Orden de las partes cuando el comprobante viene en un solo campo (PointNumber es el comportamiento anterior).
+public enum NumberOrder { PointNumber, PointLetterNumber, LetterPointNumber, NumberLetter }
 public sealed class FileFormat
 {
     public TipoArchivoOffline FileType { get; set; } = TipoArchivoOffline.Csv;
@@ -24,6 +26,8 @@ public sealed class FileFormat
     public string Cuit { get; set; } = "CUIT";
     public string Name { get; set; } = "Proveedor";
     public NumberMode NumberMode { get; set; }
+    // Fecha: 30/10/2026 - TAREA: 00150 - Linea: 2 - Sólo se usa con los modos combinados; NumberLetter toma el punto de venta de su propia columna.
+    public NumberOrder NumberOrder { get; set; }
     public string NumberSeparator { get; set; } = "-";
     public int PointLength { get; set; } = 5;
     public static FileFormat From(PerfilOffline p) => new() {

@@ -78,6 +78,54 @@ static class ImportTests
             Check(p.Ready && p.Included[0].TipoComprobante=="001" && p.Included[1].TipoComprobante=="006");
             f.Letter="Inexistente"; Check(!ProviderImporter.Preview(doc,new ProviderConfiguration{Cuit="30123456781",Format=f}).Ready);
         });
+        // Fecha: 30/10/2026 - TAREA: 00150 - Linea: 2 - Comprobante en un solo campo con la letra, en las combinaciones de orden y separador.
+        ImportPreview Combined(string value,NumberMode mode,NumberOrder order,string? pointColumn=null) {
+            var f=new FileFormat{Date="Fecha",Type="Tipo",Number="Documento",Amount="Importe",NumberMode=mode,NumberOrder=order,NumberSeparator="-",PointLength=4,Point=pointColumn??"PuntoVenta"};
+            var doc=new UploadedDocument("c.csv",Encoding.UTF8.GetBytes("Tipo;Fecha;Documento;Importe;PuntoVenta\nFC;05/09/2026;"+value+";10,00;0219"));
+            return ProviderImporter.Preview(doc,new ProviderConfiguration{Cuit="30123456781",Format=f,Types=new(){["FC A"]="001"}});
+        }
+        test("Letra dentro del comprobante: todas las combinaciones", () => {
+            foreach(var (value,mode,order) in new[]{("0219A00060055",NumberMode.Fixed,NumberOrder.PointLetterNumber),("0219-A-00060055",NumberMode.Separated,NumberOrder.PointLetterNumber),
+                ("A021900060055",NumberMode.Fixed,NumberOrder.LetterPointNumber),("A-0219-00060055",NumberMode.Separated,NumberOrder.LetterPointNumber),
+                ("00060055A",NumberMode.Fixed,NumberOrder.NumberLetter),("00060055-A",NumberMode.Separated,NumberOrder.NumberLetter),("0219a00060055",NumberMode.Fixed,NumberOrder.PointLetterNumber)}) {
+                var p=Combined(value,mode,order);
+                Check(p.Ready && p.Rows[0].RawType=="FC A" && p.Included[0].PuntoVenta=="00219" && p.Included[0].Numero=="00060055" && p.Included[0].TipoComprobante=="001");
+            }
+        });
+        test("Comprobante sin letra sigue igual y letra inválida bloquea", () => {
+            var f=new FileFormat{Date="Fecha",Type="Tipo",Number="Documento",Amount="Importe",NumberMode=NumberMode.Fixed,PointLength=4};
+            var doc=new UploadedDocument("c.csv",Encoding.UTF8.GetBytes("Tipo;Fecha;Documento;Importe\nFA;05/09/2026;021900060055;10,00"));
+            Check(ProviderImporter.Preview(doc,new ProviderConfiguration{Cuit="30123456781",Format=f,Types=new(){["FA"]="001"}}).Ready);
+            Check(!Combined("02191000060055",NumberMode.Fixed,NumberOrder.PointLetterNumber).Ready);
+            Check(!Combined("0219-A",NumberMode.Separated,NumberOrder.PointLetterNumber).Ready);
+        });
+        // Fecha: 30/10/2026 - TAREA: 00150 - Linea: 1 - Listado SAP: cabecera repetida, subtotales, pago sin comprobante e importes con el signo al final.
+        byte[] Sap() {
+            string C(int row,int col,string text,string attrs="")=>$"<td><font><nobr {attrs}id=l{row:0000}{col:000}>{text.Replace(" ","&nbsp;")}</nobr></font></td>";
+            string Header(int row)=>"<tr>"+C(row,3,"")+C(row,9,"Ref.fact.","title=\"Referencia a factura\" ")+C(row,20,"Cl")+C(row,23,"Referencia")+C(row,44,"Fecha doc.")+C(row,55,"Importe en ML")+C(row,73,"Fecha pago")+"</tr>";
+            string Data(int row,string cl,string reference,string date,string amount)=>"<tr>"+C(row,5,"7000"+row)+C(row,20,cl)+C(row,23,reference)+C(row,44,date)+C(row,55,amount)+C(row,73,"13.10.2026")+"</tr>";
+            return Encoding.UTF8.GetBytes("<html><body><table>"+C(2,2,"Deudor")+Header(6)+Data(8,"DG","0219A00060055","18.09.2026","31 255,75-")+Data(9,"DI","0219A00298530","16.09.2026","675 335,76 ")
+                +"<tr>"+C(10,5,"*")+C(10,55,"706 591,51 ")+"</tr>"+Header(12)+Data(13,"DZ","C000001900075655","20.10.2026","204 259,12-")+"</table></body></html>");
+        }
+        test("Listado SAP se lee como tabla y se homologa por clase y letra", () => {
+            var t=SapListReader.Read(new("lista.htm",Sap()));
+            Check(t.Rows.Count==3 && t.Headers.Contains("Referencia") && t.Headers.Contains("Importe en ML"));
+            var f=new FileFormat(); SapListReader.Apply(new("lista.htm",Sap()),f);
+            var p=ProviderImporter.Preview(new("lista.htm",Sap()),new ProviderConfiguration{Cuit="30123456781",Format=f,Types=new(){["DI A"]="001",["DG A"]="003",["DZ"]="EXCLUIR"}});
+            Check(p.Ready && p.Included.Count==2 && p.ExcludedCount==1);
+            Check(p.Included[0].TipoComprobante=="003" && p.Included[0].Total==31255.75m && p.Included[0].PuntoVenta=="00219" && p.Included[0].Numero=="00060055" && p.Included[0].Fecha==new DateTime(2026,9,18));
+            Check(FiscalCatalog.Suggest("DI A")=="001" && FiscalCatalog.Suggest("DG A")=="003" && FiscalCatalog.Suggest("DZ")=="EXCLUIR");
+        });
+        test("HTML que no es un listado SAP se rechaza con un mensaje claro", () => {
+            try { SapListReader.Read(new("otro.htm",Encoding.UTF8.GetBytes("<html><body>nada</body></html>")));throw new Exception("Aceptó HTML ajeno"); } catch(ImportException) {}
+        });
+        test("Listado SAP real del proveedor (si está disponible)", () => {
+            var path=@"D:\DESARROLLOS CONTABLE\CONCILIACION FICHA PROVEEDORES\Lista part.indiv.deudores.htm";
+            if(!File.Exists(path)) return;
+            var doc=new UploadedDocument("Lista part.indiv.deudores.htm",File.ReadAllBytes(path)); var f=new FileFormat(); SapListReader.Apply(doc,f);
+            var p=ProviderImporter.Preview(doc,new ProviderConfiguration{Cuit="30123456781",Format=f,Types=new(){["DI A"]="001",["DG A"]="003",["DZ"]="EXCLUIR"}});
+            Check(p.Rows.Count==92 && p.Ready && p.Included.Count==91 && p.ExcludedCount==1);
+        });
         test("Cabeceras duplicadas y CSV roto se bloquean", () => {
             try { TabularReader.Read(new("m.csv",Encoding.UTF8.GetBytes("Tipo;Tipo\nFA;NC")),format);throw new Exception("Aceptó duplicadas"); } catch(ImportException) {}
             try { TabularReader.Read(Csv("\"FA;sin cierre"),format);throw new Exception("Aceptó CSV roto"); } catch(ImportException) {}

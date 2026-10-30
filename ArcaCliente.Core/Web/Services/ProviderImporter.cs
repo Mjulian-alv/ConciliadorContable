@@ -13,7 +13,8 @@ public static class FiscalCatalog
         .ToDictionary(x=>x.Key,x=>x.Value);
     public static string Normalize(string s)=>int.TryParse(s.Trim(),out var n)?n.ToString("000"):s.Trim().ToUpperInvariant();
     public static int Sign(string s)=>All.TryGetValue(Normalize(s),out var d)&&d.Contains("CREDITO")?-1:1;
-    public static string Suggest(string value)=>value.Trim().ToUpperInvariant() switch { "FA" or "FC A"=>"001", "FB" or "FC B"=>"006", "FC C"=>"011", "NCA"=>"003", "NCB"=>"008", "NCC"=>"013", "NDA"=>"002", "NDB"=>"007", "NDC"=>"012", _=>All.ContainsKey(Normalize(value))?Normalize(value):"" };
+    // Fecha: 30/10/2026 - TAREA: 00150 - Linea: 1 - Clases SAP de la lista de partidas de deudores (DI factura, DG nota de crédito, DZ pago) y tipos con letra unida; sólo son sugerencias que el usuario confirma.
+    public static string Suggest(string value)=>value.Trim().ToUpperInvariant() switch { "DI A"=>"001", "DI B"=>"006", "DI C"=>"011", "DG A" or "NC A"=>"003", "DG B" or "NC B"=>"008", "DG C" or "NC C"=>"013", "ND A"=>"002", "ND B"=>"007", "ND C"=>"012", "DZ"=>"EXCLUIR", "FA" or "FC A"=>"001", "FB" or "FC B"=>"006", "FC C"=>"011", "NCA"=>"003", "NCB"=>"008", "NCC"=>"013", "NDA"=>"002", "NDB"=>"007", "NDC"=>"012", _=>All.ContainsKey(Normalize(value))?Normalize(value):"" };
 }
 public static class ProviderImporter
 {
@@ -38,7 +39,11 @@ public static class ProviderImporter
             foreach(var row in table.Rows) {
                 string At(int index)=>index>=0 && index<row.Cells.Length?row.Cells[index].Trim():"";
                 // Fecha: 29/10/2026 - TAREA: 00142 - Linea: 2 - Tipo y letra forman un solo valor («FC A») para que cada combinación se homologue por separado: FC A y FC B son códigos fiscales distintos.
-                var raw=At(type);if(letter>=0&&At(letter).Length>0)raw=raw+" "+At(letter);var p=new PreviewRow { Line=row.Line,RawType=raw,RawAmount=At(amount),RawCells=row.Cells }; result.Rows.Add(p);
+                // Fecha: 30/10/2026 - TAREA: 00150 - Linea: 2 - La letra puede venir dentro del comprobante combinado: se separa antes de homologar porque forma parte del tipo.
+                string pv=At(point),num=At(number),letterValue=letter>=0?At(letter):"";
+                string? numberError=null;
+                if(f.NumberMode!=NumberMode.Columns)(pv,num,letterValue,numberError)=SplitNumber(f,pv,num,letterValue);
+                var raw=At(type);if(letterValue.Length>0)raw=raw+" "+letterValue;var p=new PreviewRow { Line=row.Line,RawType=raw,RawAmount=At(amount),RawCells=row.Cells }; result.Rows.Add(p);
                 string mapped="";
                 if(canonical) mapped=FiscalCatalog.Normalize(raw);
                 else if(types!=null) { var entry=types.FirstOrDefault(x=>x.Key.Equals(raw,StringComparison.OrdinalIgnoreCase));mapped=entry.Value??""; }
@@ -61,9 +66,7 @@ public static class ProviderImporter
                 if(!DateTime.TryParseExact(At(date),datePatterns,CultureInfo.InvariantCulture,DateTimeStyles.None,out var parsedDate)) p.Errors.Add("Fecha inválida para el formato elegido.");
                 string parsedCuit=assignedCuit??"";
                 if(assignedCuit==null) try{parsedCuit=CuitListImporter.Normalize(At(cuit));}catch(ImportException){p.Errors.Add("CUIT inválido.");}
-                string pv=At(point),num=At(number);
-                if(f.NumberMode==NumberMode.Separated) { var parts=num.Split(f.NumberSeparator,StringSplitOptions.None);if(parts.Length==2){pv=parts[0];num=parts[1];}else p.Errors.Add("El comprobante debe contener punto de venta y número."); }
-                if(f.NumberMode==NumberMode.Fixed) { if(num.Length>f.PointLength){pv=num[..f.PointLength];num=num[f.PointLength..];}else p.Errors.Add("Número compuesto demasiado corto."); }
+                if(numberError!=null)p.Errors.Add(numberError);
                 if(!Regex.IsMatch(pv,@"^[0-9]{1,5}$"))p.Errors.Add("Punto de venta inválido (1 a 5 dígitos).");
                 if(!Regex.IsMatch(num,@"^[0-9]{1,8}$")||!long.TryParse(num,out var sequence)||sequence==0)p.Errors.Add("Número inválido (1 a 8 dígitos, mayor a cero).");
                 decimal total=0;try{total=ParseAmount(At(amount),f.DecimalSeparator);}catch(ImportException e){p.Errors.Add(e.Message);}
@@ -72,6 +75,36 @@ public static class ProviderImporter
             if(result.Rows.Count==0)result.Errors.Add("El archivo no contiene comprobantes.");
         } catch(ImportException e) {result.Errors.Add(e.Message);}
         return result;
+    }
+    // Fecha: 30/10/2026 - TAREA: 00150 - Linea: 2 - Parte el comprobante combinado según el orden elegido; devuelve el error en vez de lanzarlo para que la fila quede marcada y el resto se siga validando.
+    // Con NumberLetter no hay punto de venta en el campo: se conserva el de su propia columna.
+    static (string Point,string Number,string Letter,string? Error) SplitNumber(FileFormat f,string pv,string num,string letter)
+    {
+        var order=f.NumberOrder;string[] parts;int n=f.PointLength;
+        if(f.NumberMode==NumberMode.Separated) {
+            parts=num.Split(f.NumberSeparator,StringSplitOptions.None);
+            int expected=order is NumberOrder.PointLetterNumber or NumberOrder.LetterPointNumber?3:2;
+            if(parts.Length!=expected) return (pv,num,letter,order switch {
+                NumberOrder.PointNumber=>"El comprobante debe contener punto de venta y número.",
+                NumberOrder.NumberLetter=>"El comprobante debe contener número y letra.",
+                _=>"El comprobante debe contener punto de venta, letra y número." });
+        } else {
+            int minimum=order switch { NumberOrder.PointNumber=>n+1, NumberOrder.NumberLetter=>2, _=>n+2 };
+            if(num.Length<minimum) return (pv,num,letter,"Número compuesto demasiado corto.");
+            parts=order switch {
+                NumberOrder.PointNumber=>new[]{num[..n],num[n..]},
+                NumberOrder.PointLetterNumber=>new[]{num[..n],num.Substring(n,1),num[(n+1)..]},
+                NumberOrder.LetterPointNumber=>new[]{num[..1],num.Substring(1,n),num[(1+n)..]},
+                _=>new[]{num[..^1],num[^1..]} };
+        }
+        switch(order) {
+            case NumberOrder.PointNumber: return (parts[0],parts[1],letter,null);
+            case NumberOrder.NumberLetter: letter=parts[1];num=parts[0];break;
+            case NumberOrder.PointLetterNumber: pv=parts[0];letter=parts[1];num=parts[2];break;
+            default: letter=parts[0];pv=parts[1];num=parts[2];break;
+        }
+        letter=letter.Trim().ToUpperInvariant();
+        return Regex.IsMatch(letter,"^[A-Z]$")?(pv,num,letter,null):(pv,num,"","Letra inválida: tiene que ser una sola letra de la A a la Z.");
     }
     public static decimal ParseAmount(string value,string dec)
     {
