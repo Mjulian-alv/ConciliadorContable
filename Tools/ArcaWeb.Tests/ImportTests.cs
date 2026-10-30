@@ -119,6 +119,16 @@ static class ImportTests
         test("HTML que no es un listado SAP se rechaza con un mensaje claro", () => {
             try { SapListReader.Read(new("otro.htm",Encoding.UTF8.GetBytes("<html><body>nada</body></html>")));throw new Exception("Aceptó HTML ajeno"); } catch(ImportException) {}
         });
+        // Fecha: 30/10/2026 - TAREA: 00151 - Linea: 1 - Sin columna de tipo, el importe negativo es nota de crédito y el resto factura.
+        test("Sin columna de tipo: negativos son notas de crédito", () => {
+            var f=new FileFormat{Date="Fecha",Type="",Number="Documento",Amount="Importe",NumberMode=NumberMode.Fixed,NumberOrder=NumberOrder.PointLetterNumber,PointLength=4};
+            var doc=new UploadedDocument("s.csv",Encoding.UTF8.GetBytes("Fecha;Documento;Importe\n05/09/2026;0219A00000001;100,00\n05/09/2026;0219A00000002;-50,00\n05/09/2026;0219B00000003;(25,00)\n05/09/2026;0219A00000004;-10,00"));
+            var cfg=new ProviderConfiguration{Cuit="30123456781",Format=f,Types=new(){["FC A"]="001",["NC A"]="003",["NC B"]="008"}};
+            var p=ProviderImporter.Preview(doc,cfg);
+            Check(p.Ready && p.Included.Select(x=>x.TipoComprobante).SequenceEqual(new[]{"001","003","008","003"}) && p.Included[1].Total==50.00m);
+            Check(p.Rows.Select(r=>r.RawType).SequenceEqual(new[]{"FC A","NC A","NC B","NC A"}));
+            f.Type="Tipo"; Check(!ProviderImporter.Preview(doc,cfg).Ready);
+        });
         test("HTML con celdas sin cierre no cuelga la lectura", () => {
             var bomba=Encoding.UTF8.GetBytes("<html>"+string.Concat(Enumerable.Repeat("<nobr id=l0001001>x",150000)));
             var reloj=System.Diagnostics.Stopwatch.StartNew();

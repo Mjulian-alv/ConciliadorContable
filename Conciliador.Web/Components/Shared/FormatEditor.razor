@@ -15,7 +15,8 @@
 @if(Format.NumberMode==NumberMode.Fixed){<label>Dígitos del punto de venta<input type="number" min="1" max="5" @bind="Format.PointLength" @bind:after="Changed" /></label>}
 </div><p class="muted">@(Format.Header?"Escribí el nombre exacto de cada columna.":"Indicá la posición de cada columna, empezando en 1.") Los cambios válidos se guardan automáticamente.</p>
 <div class="format-grid mappings">
-<label>Tipo de comprobante<input @bind="Format.Type" @bind:after="Changed" /></label>
+@* Fecha: 30/10/2026 - TAREA: 00151 - Linea: 1 - En el proveedor la columna de tipo es opcional: vacía, los importes negativos son notas de crédito. *@
+<label>@(Provider?"Tipo de comprobante (opcional)":"Tipo de comprobante")<input @bind="Format.Type" @bind:after="Changed" placeholder="@(Provider?"Vacío: negativo = nota de crédito":null)" /></label>
 @* Fecha: 29/10/2026 - TAREA: 00142 - Linea: 2 - Letra del comprobante, sólo para el formato del proveedor. *@
 @if(Provider){<label>Letra del comprobante (opcional)<input @bind="Format.Letter" @bind:after="Changed" /></label>}
 <label>Fecha<input @bind="Format.Date" @bind:after="Changed" /></label>

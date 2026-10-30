@@ -1515,3 +1515,17 @@ con AppHub y el Conciliador publicados (la web solo arranca con SQL Server o en 
 - Revisión de Codex: `docs/Revisiones/00150-review-1.md` (2 hallazgos de HTML dañado, corregidos con tiempo máximo y tope de celdas). Queda 1 ronda disponible.
 
 **No probado:** las pantallas en el navegador (editor con el campo nuevo y la carga del .htm). «DG = nota de crédito» es una suposición por el signo negativo: queda como sugerencia a confirmar.
+
+## TAREA 00151 — 30/10/2026 — Proveedor sin columna de tipo: los negativos son notas de crédito
+
+**Pedido (confirmado en el chat, un solo ítem):**
+1. Puede que el archivo del proveedor no tenga columna de tipo; si es así, los importes negativos se toman como notas de crédito.
+
+**Sin diseño previo:** una opción en el formato de una pantalla existente.
+
+**Ejecutado (rama `tarea-00151-sin-tipo-negativos`):**
+- Línea 1: con la columna «Tipo de comprobante» vacía (sólo en el formato del proveedor), `ProviderImporter` asigna el tipo «NC» si el importe es negativo (signo adelante o paréntesis) y «FC» si no, y le suma la letra: «NC A», «FC A». Siguen la homologación de siempre, con las sugerencias ya existentes (FC A = 001, NC A = 003). En el editor, la etiqueta pasa a «Tipo de comprobante (opcional)» con la pista «Vacío: negativo = nota de crédito». El sistema sigue exigiendo el tipo.
+- Prueba nueva en `Tools/ArcaWeb.Tests/ImportTests.cs` (44 correctas). Con `koandina.xlsx` (hoja `Hoja1`, referencia `4552A00059731`, orden Punto · Letra · Número, 4 dígitos): 73 filas, 55 facturas A y 16 notas de crédito A; las 2 filas restantes son renglones de resumen del Excel («VTOS SEMANA», «PROX VTOS»), sin referencia, y hay que excluirlas en la pantalla de tipos («FC» → Excluir). Ese archivo también trae una tabla dinámica y se lee gracias a la 00142.
+- Revisión de Codex: `docs/Revisiones/00151-review-1.md` (sin hallazgos). Queda 1 ronda disponible.
+
+**No probado:** las pantallas en el navegador.
