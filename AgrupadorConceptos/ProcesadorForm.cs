@@ -79,6 +79,15 @@ namespace AgrupadorConceptos
 
         private void DgvDatos_CellFormatting(object sender, CellFormattingEventArgs e)
         {
+            DgvDatos_CellFormattingBase(sender, e);
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Las filas apareadas se ven atenuadas: no se pueden modificar (el rojo de un débito negativo se conserva)
+            if (e.CellElement is GridDataCellElement && e.Row?.DataBoundItem is MovimientoProcesado { Apareado: true }
+                && e.CellElement.ColumnInfo?.Name != "Debitos")
+                e.CellElement.ForeColor = Color.DimGray;
+        }
+
+        private void DgvDatos_CellFormattingBase(object sender, CellFormattingEventArgs e)
+        {
             if (e.CellElement is GridDataCellElement dataCell && e.CellElement.ColumnInfo.Name == "Debitos")
             {
                 if (dataCell.Value != null && dataCell.Value is decimal debitos)
@@ -383,7 +392,7 @@ namespace AgrupadorConceptos
             finally
             {
                 _marcandoConciliados = false;
-                _btnMarcarConciliados.Enabled = !pnlProgreso.Visible && Blindado; // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Conciliar exige el archivo blindado
+                _btnMarcarConciliados.Enabled = _archivoEnGrilla != null && !pnlProgreso.Visible; // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - Conciliar ya no exige el archivo blindado
             }
         }
 
@@ -400,9 +409,10 @@ namespace AgrupadorConceptos
                 catch (Exception) { /* sin base no se puede confirmar: se deja el último estado conocido */ }
             }
             bool hay = _archivoEnGrilla != null, b = Blindado, libre = !pnlProgreso.Visible;
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - Conciliar ya no depende del blindaje: el texto sólo habla de la homologación y la edición
             _lblBlindaje.Text = !hay ? "Sin archivo en trabajo."
-                : b ? "ARCHIVO BLINDADO · se permite conciliar; la homologación y la edición están bloqueadas."
-                    : "Archivo sin blindar · para conciliar, blindalo primero.";
+                : b ? "ARCHIVO BLINDADO · la homologación y la edición están bloqueadas."
+                    : "Archivo sin blindar · la homologación y la edición están abiertas.";
             _lblBlindaje.ForeColor = !hay ? SystemColors.GrayText : b ? Color.DarkGreen : Color.DarkGoldenrod;
             _btnBlindar.Text = b ? "Desblindar…" : "Blindar archivo";
             _btnBlindar.Enabled = hay && libre;
@@ -410,7 +420,8 @@ namespace AgrupadorConceptos
             btnHomologar.Enabled = libre && !b;
             btnHomologacionMasiva.Enabled = libre && !b;
             _btnEliminarMovimientos.Enabled = libre && !b && !_eliminandoMovimientos;
-            _btnMarcarConciliados.Enabled = libre && b && !_marcandoConciliados;
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - Marcar como conciliados ya no exige el archivo blindado
+            _btnMarcarConciliados.Enabled = hay && libre && !_marcandoConciliados;
             if (dgvDatos.Columns.Count > 0)
             {
                 // El estado de lectura de la grilla acompaña al blindaje: ConfigurarGrilla ya deja editables sólo las dos columnas finales.
@@ -429,7 +440,8 @@ namespace AgrupadorConceptos
                     if (BlindajeDialogos.Desblindar(this, _archivoEnGrilla))
                     {
                         ActualizarBlindaje();
-                        MessageBox.Show("Archivo desblindado. Ya se puede homologar y editar; para conciliar hay que blindarlo de nuevo.",
+                        // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - Conciliar no necesita volver a blindar
+                        MessageBox.Show("Archivo desblindado. Ya se puede homologar y editar.",
                             "Desblindado", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                     return;
@@ -437,7 +449,8 @@ namespace AgrupadorConceptos
                 // Sin clave maestra nadie podría desblindar después. Se define en Administración de usuarios, no acá: el servicio lo avisa.
                 BlindajeService.Blindar(_archivoEnGrilla.Id, BlindajeDialogos.UsuarioActual);
                 ActualizarBlindaje();
-                MessageBox.Show("Archivo blindado. Ya se puede conciliar; la homologación quedó cerrada.", "Blindado", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - Blindar sólo cierra la homologación: conciliar no lo necesita
+                MessageBox.Show("Archivo blindado. La homologación quedó cerrada.", "Blindado", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or Microsoft.Data.SqlClient.SqlException)
             {
@@ -515,11 +528,21 @@ namespace AgrupadorConceptos
         {
             if (e.Row.DataBoundItem is not MovimientoProcesado mov) return;
 
-            if (e.Column.Name == "ConceptoFinal")
-                MovimientoStorage.ActualizarConceptoFinal(mov.Id, mov.ConceptoFinal);
-            // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Persistir la edicion inline de CuentaFinal
-            else if (e.Column.Name == "CuentaFinal")
-                MovimientoStorage.ActualizarCuentaFinal(mov.Id, mov.CuentaFinal);
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Si entre el inicio de la edición y el guardado otra sesión apareó el movimiento, el storage lo rechaza:
+            // se avisa y se vuelve a leer de la base para que la grilla no muestre un valor que no se guardó.
+            try
+            {
+                if (e.Column.Name == "ConceptoFinal")
+                    MovimientoStorage.ActualizarConceptoFinal(mov.Id, mov.ConceptoFinal);
+                // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Persistir la edicion inline de CuentaFinal
+                else if (e.Column.Name == "CuentaFinal")
+                    MovimientoStorage.ActualizarCuentaFinal(mov.Id, mov.CuentaFinal);
+            }
+            catch (MovimientoApareadoException ex)
+            {
+                MessageBox.Show(ex.Message, "Movimiento apareado", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                RefrescarSesionDesdeBase();
+            }
         }
 
         // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Cuenta final conciliada: no se edita a mano
@@ -540,16 +563,17 @@ namespace AgrupadorConceptos
                     "No se puede editar", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
-            if (e.Column.Name != "CuentaFinal") return;
-
-            string sesion = ConciliacionInternaService.ObtenerSesionEnProcesoDelMovimiento(mov.Id);
-            if (sesion == null) return;
-
-            e.Cancel = true;
-            MessageBox.Show(
-                $"Este movimiento está conciliado en la sesión interna '{sesion}', todavía en proceso.\n" +
-                "La Cuenta Final se va a fijar sola cuando esa conciliación se cierre, así que no se puede editar a mano ahora.",
-                "No se puede editar", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Un movimiento apareado (interna o externa, de cualquier sesión) no se edita, ni concepto ni cuenta
+            // Reemplaza el chequeo anterior, que sólo miraba la cuenta y sólo sesiones internas en proceso. Se consulta en vivo (no se confía en la marca
+            // de la grilla, que puede haber quedado vieja si otra sesión apareó el movimiento) y se actualiza la marca para que la fila lo muestre.
+            var apareados = ParesMovimientoStorage.ObtenerApareados(new[] { mov.Id });
+            if (apareados.TryGetValue(mov.Id, out var par))
+            {
+                ParesMovimientoStorage.Marcar(new[] { mov }, apareados);
+                e.Cancel = true;
+                MessageBox.Show(new MovimientoApareadoException(par).Message,
+                    "Movimiento apareado", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }
 
         private void ConfigurarGrilla()
@@ -560,6 +584,9 @@ namespace AgrupadorConceptos
                 col.ReadOnly = col.Name != "ConceptoFinal" && col.Name != "CuentaFinal";
                 // Fecha: 15/10/2026 - TAREA: 00098 - Linea: 2 - Ocultar la columna NombreBanco en la grilla
                 col.IsVisible = col.Name != "Id" && col.Name !="IdArchivo" && col.Name != "NombreBanco";
+                // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Se muestra dónde está apareado cada movimiento; las otras dos propiedades auxiliares quedan ocultas
+                if (col.Name == "Apareado" || col.Name == "MensajeApareado") col.IsVisible = false;
+                if (col.Name == "ApareadoEn") col.HeaderText = "Apareado en";
             }
         }
 
@@ -714,7 +741,8 @@ namespace AgrupadorConceptos
             btnBorrarSesion.Enabled = !visible && !_eliminandoMovimientos;
             _btnEliminarMovimientos.Enabled = !visible && !_eliminandoMovimientos && !Blindado;
             // Fecha: 23/10/2026 - TAREA: 00125 - Linea: 3 - El marcado manual tampoco se solapa con una importación
-            _btnMarcarConciliados.Enabled = !visible && !_marcandoConciliados && Blindado;
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - Ya no depende del blindaje
+            _btnMarcarConciliados.Enabled = !visible && !_marcandoConciliados && _archivoEnGrilla != null;
             // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - El blindaje no se cambia durante una importación
             ActualizarBlindaje();
             if (visible)
@@ -741,6 +769,13 @@ namespace AgrupadorConceptos
             if (dgvDatos.CurrentRow?.DataBoundItem is not MovimientoProcesado movInfo)
             {
                 MessageBox.Show("Por favor seleccione un movimiento de la grilla que desee homologar.", "Atención", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Homologar una fila es una acción sobre ese movimiento: si está apareado se rechaza (las reglas del perfil, en cambio, lo saltean)
+            if (movInfo.Apareado)
+            {
+                MessageBox.Show(movInfo.MensajeApareado, "Movimiento apareado", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 

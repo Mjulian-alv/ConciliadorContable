@@ -175,6 +175,7 @@ namespace AgrupadorConceptos.Services
                 // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Reflejar en la grilla lo apareado: una conciliación pudo tomarlo desde que se cargó
                 mov.Apareado = actualizado.Apareado;
                 mov.ApareadoEn = actualizado.ApareadoEn;
+                mov.MensajeApareado = actualizado.MensajeApareado;
             }
         }
     }

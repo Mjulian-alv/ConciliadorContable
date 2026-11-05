@@ -29,5 +29,7 @@ namespace AgrupadorConceptos.Models
         public bool Apareado { get; set; }
         /// <summary>Dónde está apareado, para la grilla: «Conciliación interna «X» · en proceso». Null si está libre.</summary>
         public string ApareadoEn { get; set; }
+        /// <summary>El mensaje de bloqueo ya armado (el mismo que da el storage al rechazar), para que las pantallas no repitan el texto. Null si está libre.</summary>
+        public string MensajeApareado { get; set; }
     }
 }

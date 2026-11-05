@@ -15,6 +15,8 @@ namespace AgrupadorConceptos
             GridViewCheckBoxColumn gridViewCheckBoxColumn1 = new GridViewCheckBoxColumn();
             GridViewTextBoxColumn gridViewTextBoxColumn1 = new GridViewTextBoxColumn();
             GridViewTextBoxColumn gridViewTextBoxColumn2 = new GridViewTextBoxColumn();
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - El blindaje del extracto se muestra como dato: ya no es requisito para conciliar
+            GridViewTextBoxColumn gridViewTextBoxColumnBlindaje = new GridViewTextBoxColumn();
             // Fecha: 09/10/2026 - TAREA: 00084 - Linea: 1 - Las columnas de perfil quedan editables en el diseñador de ambas pestañas del extracto.
             // Fecha: 09/10/2026 - TAREA: 00085 - Linea: 1 - Declarar el conjunto completo evita que la columna Perfil suprima la generación del resto del extracto.
             GridViewDateTimeColumn columnaFechaPendiente = new GridViewDateTimeColumn();
@@ -371,7 +373,13 @@ namespace AgrupadorConceptos
             gridViewDecimalColumn1.Name = "Cantidad";
             gridViewDecimalColumn1.ReadOnly = true;
             gridViewDecimalColumn1.Width = 109;
-            _grillaArchivos.MasterTemplate.Columns.AddRange(new GridViewDataColumn[] { gridViewCheckBoxColumn1, gridViewTextBoxColumn1, gridViewTextBoxColumn2, gridViewDateTimeColumn1, gridViewDateTimeColumn2, gridViewDecimalColumn1 });
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - Columna Blindaje (sólo informativa)
+            gridViewTextBoxColumnBlindaje.FieldName = "Blindaje";
+            gridViewTextBoxColumnBlindaje.HeaderText = "Blindaje";
+            gridViewTextBoxColumnBlindaje.Name = "Blindaje";
+            gridViewTextBoxColumnBlindaje.ReadOnly = true;
+            gridViewTextBoxColumnBlindaje.Width = 109;
+            _grillaArchivos.MasterTemplate.Columns.AddRange(new GridViewDataColumn[] { gridViewCheckBoxColumn1, gridViewTextBoxColumn1, gridViewTextBoxColumn2, gridViewDateTimeColumn1, gridViewDateTimeColumn2, gridViewDecimalColumn1, gridViewTextBoxColumnBlindaje });
             _grillaArchivos.MasterTemplate.ViewDefinition = tableViewDefinition1;
             _grillaArchivos.Name = "_grillaArchivos";
             _grillaArchivos.ShowGroupPanel = false;

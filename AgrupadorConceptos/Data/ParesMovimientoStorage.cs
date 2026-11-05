@@ -97,6 +97,7 @@ namespace AgrupadorConceptos.Data
                 bool esta = apareados.TryGetValue(m.Id, out var par);
                 m.Apareado = esta;
                 m.ApareadoEn = esta ? par.Detalle : null;
+                m.MensajeApareado = esta ? new MovimientoApareadoException(par).Message : null;
             }
         }
 

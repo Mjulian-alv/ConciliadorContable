@@ -212,6 +212,23 @@ namespace AgrupadorConceptos.Services
             return HomologacionStorage.ReapuntarYActualizarMovimientos(regla.Id, nombreConcepto, cambiados);
         }
 
+        // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Un solo texto para escritorio y web: cuántos movimientos no se tocaron y por qué
+        /// <summary>
+        /// El aviso de lo que una regla del perfil no modificó: movimientos de archivos blindados y movimientos apareados en una
+        /// conciliación. Null si no se salteó ninguno.
+        /// </summary>
+        public static string AvisoNoModificados(int enArchivosBlindados, int enMovimientosApareados)
+        {
+            var c = System.Globalization.CultureInfo.CurrentCulture;
+            if (enArchivosBlindados > 0 && enMovimientosApareados > 0)
+                return $"{enArchivosBlindados.ToString("N0", c)} movimiento(s) de archivos blindados y {enMovimientosApareados.ToString("N0", c)} apareados en una conciliación no se modificaron.";
+            if (enArchivosBlindados > 0)
+                return $"{enArchivosBlindados.ToString("N0", c)} movimiento(s) de archivos blindados no se modificaron.";
+            if (enMovimientosApareados > 0)
+                return $"{enMovimientosApareados.ToString("N0", c)} movimiento(s) apareados en una conciliación no se modificaron.";
+            return null;
+        }
+
         // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 4 - Tambien completa CuentaFinal, sin pisar lo editado
         /// <summary>
         /// Escribe el concepto y, si corresponde, la cuenta — respetando lo editado a mano.
