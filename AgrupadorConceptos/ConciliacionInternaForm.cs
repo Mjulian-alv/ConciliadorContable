@@ -290,7 +290,7 @@ namespace AgrupadorConceptos
                     "Confirmar", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
 
             // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 5 - Cierre pisa CuentaFinal con la del perfil opuesto, resuelta por par
-            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Los archivos de los pares tienen que seguir blindados al cerrar
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - Al cerrar sólo se exige que los archivos de los pares sigan activos; el blindaje ya no cuenta
             ResultadoFinalizacionInterna resultado;
             try { resultado = ConciliacionInternaService.Finalizar(_sesionActiva.Id); }
             catch (InvalidOperationException ex)

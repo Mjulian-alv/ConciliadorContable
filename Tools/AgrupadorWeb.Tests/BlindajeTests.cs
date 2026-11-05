@@ -182,26 +182,48 @@ static class BlindajeTests
                       && h.Any(x => (string)x["Campo"]! == "ConciliadoFecha" && x["ValorAnterior"] == null), "Conciliado y fecha");
             });
 
-            // ---------- Conciliar exige blindaje ----------
+            // ---------- Conciliar ya no exige blindaje ----------
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - Las pruebas de la 00135 afirmaban que conciliar exigía el archivo blindado; ahora afirman lo contrario
             var movsB = Importar("b.xlsx");
             int idArchivoB = movsB[0].IdArchivo;
-            test("Conciliar a mano un archivo sin blindar se rechaza entero, nombrando el archivo", () =>
+            test("Conciliar a mano un archivo sin blindar se puede, y queda en el historial como conciliación manual", () =>
             {
-                var ex = Rechaza<ArchivoSinBlindarException>(() => MovimientoStorage.MarcarConciliados(new[] { movsB[0].Id, siguiente.Id }), "conciliar sin blindar");
-                Check(ex.Message.StartsWith("Para conciliar, blindá primero el archivo:") && ex.Message.Contains("b.xlsx") && ex.Message.Contains("Banco X"), ex.Message);
-                Check(cn.QuerySingle<int>("SELECT COUNT(*) FROM bancos.MovimientosArchivo WHERE IdArchivo=@Id AND Conciliado=1", new { Id = idArchivoB }) == 0, "No se marcó nada");
+                Check(!BlindajeService.EstaBlindado(idArchivoB), "b.xlsx no está blindado");
+                var (marcados, omitidos) = MovimientoStorage.MarcarConciliados(new[] { movsB[2].Id, siguiente.Id });
+                Check(marcados == 1 && omitidos.Count == 1 && omitidos[0].Id == siguiente.Id, $"Marcó el libre y omitió el ya conciliado: {marcados}/{omitidos.Count}");
+                Check(cn.QuerySingle<int>("SELECT COUNT(*) FROM bancos.MovimientosArchivo WHERE IdArchivo=@Id AND Conciliado=1", new { Id = idArchivoB }) == 1, "Quedó conciliado un movimiento de un archivo sin blindar");
+                Check(Historial(movsB[2].Id).Any(x => (string)x["Campo"]! == "Conciliado" && (string)x["Origen"]! == "Conciliación manual"), "Queda en el historial");
             });
-            test("Sesión externa: con un archivo sin blindar no se crea; blindado sí, y bloquea desblindar mientras esté en proceso", () =>
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Revisión 1, hallazgos 1 y 2: lo conciliado no se edita (validado en el storage) y el marcado manual no cuenta lo que ya no existe
+            test("Un movimiento conciliado a mano no se edita aunque la pantalla tenga una copia vieja", () =>
+            {
+                Rechaza<MovimientoConciliadoException>(() => MovimientoStorage.ActualizarConceptoFinal(movsB[2].Id, "NO"), "editar el concepto final de un conciliado");
+                Rechaza<MovimientoConciliadoException>(() => MovimientoStorage.ActualizarCuentaFinal(movsB[2].Id, "123"), "editar la cuenta final de un conciliado");
+                Check(Final(movsB[2].Id) != "NO", "No se escribió nada");
+            });
+            test("Marcar a mano un movimiento que ya no existe lo informa como omitido y no como marcado", () =>
+            {
+                var (marcados, omitidos) = MovimientoStorage.MarcarConciliados(new[] { 987654321 });
+                Check(marcados == 0 && omitidos.Count == 1 && omitidos[0].Motivo.Contains("ya no existe"), $"{marcados}/{omitidos.Count}");
+            });
+            test("Sesión externa: se crea con un archivo blindado y otro sin blindar; en proceso, no deja desblindar", () =>
             {
                 var items = new List<ConciliacionItemExterno> { new() { Fecha = d1, Importe = 1000m, Detalle = "Cobranza" } };
-                Rechaza<ArchivoSinBlindarException>(() => ConciliacionExternService.CrearSesion("S", new List<int> { idArchivo, idArchivoB }, new[] { "COBROS NUEVOS" }, items), "sesión con archivo sin blindar");
-                Check(cn.QuerySingle<int>("SELECT COUNT(*) FROM bancos.ConciliacionSesiones") == 0, "No quedó sesión");
-                var sesion = ConciliacionExternService.CrearSesion("S", new List<int> { idArchivo }, new[] { "COBROS NUEVOS" }, items);
+                var sesion = ConciliacionExternService.CrearSesion("S", new List<int> { idArchivo, idArchivoB }, new[] { "COBROS NUEVOS" }, items);
+                Check(cn.QuerySingle<int>("SELECT COUNT(*) FROM bancos.ConciliacionSesiones") == 1, "Se creó con un archivo sin blindar");
                 var ex = Rechaza<InvalidOperationException>(() => BlindajeService.Desblindar(idArchivo, Clave, "probar", "u"), "desblindar con sesión en proceso");
                 Check(ex.Message.Contains("sesión de conciliación") && BlindajeService.EstaBlindado(idArchivo), ex.Message);
                 ConciliacionExternService.EliminarSesion(sesion.Id);
             });
-            test("Sesión interna: un par con un archivo sin blindar se rechaza con el mensaje; entre archivos blindados se concilia", () =>
+            test("Conciliar con un archivo dado de baja se sigue rechazando, con su propio mensaje", () =>
+            {
+                var movsH = Importar("h.xlsx"); int idH = movsH[0].IdArchivo;
+                EliminacionMovimientosService.EliminarArchivo(idH);
+                var items = new List<ConciliacionItemExterno> { new() { Fecha = d1, Importe = 1000m, Detalle = "Cobranza" } };
+                var ex = Rechaza<ArchivoInactivoException>(() => ConciliacionExternService.CrearSesion("Baja", new List<int> { idH }, new[] { "COBRANZAS" }, items), "sesión sobre un archivo dado de baja");
+                Check(ex.Message.Contains("dado de baja") && ex.Message.Contains("h.xlsx"), ex.Message);
+            });
+            test("Sesión interna: un par entre un archivo blindado y otro sin blindar se concilia; en proceso, no deja desblindar", () =>
             {
                 Blindar(idArchivoB);
                 var movsC = Importar("c.xlsx"); // sin blindar
@@ -209,16 +231,128 @@ static class BlindajeTests
                 // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Revisión 1, hallazgo 3: aun sin pares, la sesión en proceso alcanza los movimientos de su rango y conceptos
                 Rechaza<InvalidOperationException>(() => BlindajeService.Desblindar(idArchivoB, Clave, "sin pares todavía", "u"), "desblindar con una sesión interna que alcanza el archivo");
                 Check(BlindajeService.EstaBlindado(idArchivoB), "Sigue blindado");
-                string? msg = ConciliacionInternaMutationStorage.ConciliarPar(sesion.Id, movsB[0].Id, movsC[0].Id, TipoMatch.Manual);
-                Check(msg != null && msg.StartsWith("Para conciliar, blindá primero el archivo:") && msg.Contains("c.xlsx"), "Mensaje: " + msg);
-                Check(ConciliacionInternaMutationStorage.ObtenerPares(sesion.Id).Count == 0, "No hay par");
-                Check(ConciliacionInternaMutationStorage.ConciliarPar(sesion.Id, movsB[0].Id, movsB[1].Id, TipoMatch.Manual) == null, "Entre blindados se concilia");
+                // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - Un archivo blindado con otro sin blindar ya se concilia; también dos sin blindar
+                Check(ConciliacionInternaMutationStorage.ConciliarPar(sesion.Id, movsB[0].Id, movsC[0].Id, TipoMatch.Manual) == null, "Blindado con sin blindar se concilia");
+                Check(ConciliacionInternaMutationStorage.ConciliarPar(sesion.Id, movsC[1].Id, movsC[2].Id, TipoMatch.Manual) == null, "Entre archivos sin blindar también");
+                Check(ConciliacionInternaMutationStorage.ObtenerPares(sesion.Id).Count == 2, "Quedaron los dos pares");
                 var ex = Rechaza<InvalidOperationException>(() => BlindajeService.Desblindar(idArchivoB, Clave, "probar", "u"), "desblindar con sesión interna en proceso");
                 Check(ex.Message.Contains("sesión de conciliación"), ex.Message);
                 ConciliacionInternaService.EliminarSesion(sesion.Id);
                 BlindajeService.Desblindar(idArchivoB, Clave, "prueba terminada", "u");
                 BlindajeService.Desblindar(idArchivo, Clave, "prueba terminada", "u");
                 Blindar(idArchivo);
+            });
+
+            // ---------- Un movimiento apareado no se toca, aunque la conciliación no esté cerrada (00162, línea 2) ----------
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Los datos van en un perfil propio: las reglas del perfil se prueban sin alterar el resto
+            int perfilYId = cn.QuerySingle<int>(@"INSERT bancos.PerfilesBanco(NombreBanco,ColumnaConcepto,ColumnaDescripcion,EsCodigo,FilaEncabezado,TipoImporte,ColumnaImporteUnico,ColumnaFecha)
+                OUTPUT INSERTED.Id VALUES('Banco Y','Concepto','Concepto',0,1,1,'Monto','Fecha')");
+            cn.Execute("INSERT bancos.HomologacionConceptos(IdPerfilBanco,ValorOriginal,IdConceptoEstandar) VALUES(@P,'COBRO',@C)", new { P = perfilYId, C = concepto });
+            var perfilY = cn.QuerySingle<PerfilBanco>("SELECT * FROM bancos.PerfilesBanco WHERE Id=@Id", new { Id = perfilYId });
+            var movsG = ImportacionService.ImportarArchivo(Extracto((d1, "COBRO 1", 1000m), (d2, "COBRO 2", 600m), (d2, "OTRO 3", 400m)), "g.xlsx", perfilY); // sin blindar
+            int idG = movsG[0].IdArchivo;
+            var g0 = movsG.Single(m => m.ConceptoOriginal == "COBRO 1"); var g1 = movsG.Single(m => m.ConceptoOriginal == "COBRO 2"); var g2 = movsG.Single(m => m.ConceptoOriginal == "OTRO 3");
+            var sesionInternaG = ConciliacionInternaService.CrearSesion("Apareados", d1, new DateTime(2026, 10, 31), new[] { "COBRANZAS", ConceptosBancarios.PendienteHomologar });
+            int sesionExternaGId = 0, sesionCarreraId = 0, idK = 0;
+
+            test("Apareado en una sesión interna en proceso: no se edita concepto ni cuenta; uno libre del mismo archivo sí", () =>
+            {
+                Check(ConciliacionInternaMutationStorage.ConciliarPar(sesionInternaG.Id, g0.Id, g1.Id, TipoMatch.Manual) == null, "Se apareó");
+                var ex = Rechaza<MovimientoApareadoException>(() => MovimientoStorage.ActualizarConceptoFinal(g0.Id, "NO"), "editar el concepto final de un apareado");
+                Check(ex.Message.Contains("conciliación interna") && ex.Message.Contains("Apareados") && ex.Message.Contains("no se puede modificar"), ex.Message);
+                Rechaza<MovimientoApareadoException>(() => MovimientoStorage.ActualizarCuentaFinal(g1.Id, "123"), "editar la cuenta final de un apareado");
+                Check(Final(g0.Id) == "COBRANZAS", "No se escribió nada");
+                MovimientoStorage.ActualizarConceptoFinal(g2.Id, "LIBRE EDITADO");
+                Check(Final(g2.Id) == "LIBRE EDITADO", "Un movimiento libre del mismo archivo sí se edita");
+            });
+            test("La grilla marca los apareados al cargar el archivo, con dónde y en qué estado", () =>
+            {
+                var carga = MovimientoStorage.ObtenerPorArchivo(idG);
+                var a = carga.Single(m => m.Id == g0.Id); var libre = carga.Single(m => m.Id == g2.Id);
+                Check(a.Apareado && a.ApareadoEn!.Contains("Apareados") && a.ApareadoEn.Contains("en proceso") && a.MensajeApareado!.Contains("no se puede modificar"), "Marcado: " + a.ApareadoEn);
+                Check(!libre.Apareado && libre.ApareadoEn == null && libre.MensajeApareado == null, "El libre no se marca");
+            });
+            test("Una regla automática saltea al apareado y escribe al libre", () =>
+            {
+                var copia = MovimientoStorage.ObtenerPorArchivo(idG).Where(m => m.Id == g0.Id || m.Id == g2.Id).ToList();
+                foreach (var m in copia) m.ConceptoEstandar = "REGLA NUEVA";
+                Check(MovimientoStorage.ActualizarConceptos(copia) == 1, "Sólo escribió el libre");
+                Check(Estandar(g0.Id) == "COBRANZAS" && Estandar(g2.Id) == "REGLA NUEVA", "El apareado conserva su estándar: " + Estandar(g0.Id));
+                Check(copia.Single(m => m.Id == g0.Id).ConceptoEstandar == "COBRANZAS", "La copia en memoria se corrige con la base");
+            });
+            test("Eliminar rechaza y marcar como conciliado omite al apareado", () =>
+            {
+                var ex = Rechaza<InvalidOperationException>(() => EliminacionMovimientosService.EliminarSeleccion(idG, new[] { g0.Id }), "eliminar un apareado");
+                Check(ex.Message.Contains("pares de conciliación"), ex.Message);
+                var (marcados, omitidos) = MovimientoStorage.MarcarConciliados(new[] { g0.Id });
+                Check(marcados == 0 && omitidos.Count == 1 && omitidos[0].Motivo.Contains("conciliación interna"), $"{marcados}/{omitidos.Count}");
+            });
+            test("Con la sesión interna finalizada el movimiento sigue apareado y no se edita", () =>
+            {
+                ConciliacionInternaMutationStorage.Finalizar(sesionInternaG.Id, new[] { (g0.Id, "1.1.01.001", g1.Id, "1.1.01.002") });
+                var par = ParesMovimientoStorage.ObtenerApareados(new[] { g0.Id })[g0.Id];
+                Check(par.Estado == "Finalizada" && par.Via == "interna", "Finalizada: " + par.Estado);
+                var ex = Rechaza<MovimientoApareadoException>(() => MovimientoStorage.ActualizarConceptoFinal(g1.Id, "NO"), "editar un apareado de una sesión finalizada");
+                Check(ex.Par.Detalle.Contains("finalizada"), ex.Par.Detalle);
+            });
+            test("Apareado en una sesión externa: tampoco se edita", () =>
+            {
+                var items = new List<ConciliacionItemExterno> { new() { Fecha = d2, Importe = 400m, Detalle = "Cobranza externa" } };
+                var sesion = ConciliacionExternService.CrearSesion("Externa apareados", new List<int> { idG }, new[] { ConceptosBancarios.PendienteHomologar }, items);
+                sesionExternaGId = sesion.Id;
+                int idItem = cn.QuerySingle<int>("SELECT Id FROM bancos.ConciliacionItemsExternos WHERE IdSesion=@S", new { S = sesion.Id });
+                ConciliacionExternService.ConciliarPar(sesion.Id, idItem, g2.Id, TipoMatch.Manual);
+                var ex = Rechaza<MovimientoApareadoException>(() => MovimientoStorage.ActualizarConceptoFinal(g2.Id, "NO"), "editar un apareado en una sesión externa");
+                Check(ex.Message.Contains("conciliación externa") && ex.Message.Contains("Externa apareados"), ex.Message);
+            });
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Revisión 1, hallazgos 4 y 6: la prueba ahora ejecuta la baja, y comprueba que lo apareado después de calcular el impacto también se cuenta
+            test("Reglas del perfil: la baja y reapuntar saltean los apareados y los cuentan aparte, también si se aparean después de calcular el impacto", () =>
+            {
+                var regla = HomologacionStorage.ObtenerListado(perfilYId).Single(r => r.ValorOriginal == "COBRO");
+                var impacto0 = HomologacionAdminService.CalcularImpactoBaja(regla, perfilY);
+                Check(impacto0.EnMovimientosApareados == 2 && impacto0.Total == 0, $"Dos apareados y ninguno a tocar: {impacto0.EnMovimientosApareados}/{impacto0.Total}");
+                int reapuntado = HomologacionAdminService.Reapuntar(regla, perfilY, "REAPUNTADO Y", out int porBlindaje, out int porPares);
+                Check(reapuntado > 0 && porBlindaje == 0 && porPares == 2, $"Saltó dos apareados: {porBlindaje}/{porPares}");
+                Check(Estandar(g0.Id) == "COBRANZAS" && Estandar(g1.Id) == "COBRANZAS", "Los apareados no se arrastran");
+
+                // Un archivo nuevo con dos movimientos libres de la misma regla.
+                var movsK = ImportacionService.ImportarArchivo(Extracto((d1, "COBRO 1", 100m), (d2, "COBRO 2", 200m)), "k.xlsx", perfilY);
+                idK = movsK[0].IdArchivo;
+                var regla2 = HomologacionStorage.ObtenerListado(perfilYId).Single(r => r.ValorOriginal == "COBRO");
+                var impacto = HomologacionAdminService.CalcularImpactoBaja(regla2, perfilY);
+                Check(impacto.EnMovimientosApareados == 2 && impacto.Afectados.Count == 2, $"Dos apareados y dos libres: {impacto.EnMovimientosApareados}/{impacto.Afectados.Count}");
+                // Otra sesión aparea los dos libres mientras el diálogo de la baja está abierto.
+                var carrera = ConciliacionInternaService.CrearSesion("Carrera", d1, new DateTime(2026, 10, 31), new[] { "REAPUNTADO Y" });
+                sesionCarreraId = carrera.Id;
+                Check(ConciliacionInternaMutationStorage.ConciliarPar(carrera.Id, movsK[0].Id, movsK[1].Id, TipoMatch.Manual) == null, "Se aparearon");
+                HomologacionAdminService.AplicarBaja(regla2, impacto, null);
+                Check(impacto.EnMovimientosApareados == 4, "La baja suma los que la base salteó: " + impacto.EnMovimientosApareados);
+                Check(Estandar(movsK[0].Id) == "REAPUNTADO Y" && Estandar(movsK[1].Id) == "REAPUNTADO Y", "No se despegaron");
+                Check(HomologacionStorage.ObtenerListado(perfilYId).All(r => r.ValorOriginal != "COBRO"), "La regla se dio de baja");
+            });
+            test("Homologación masiva y reaplicación: los apareados se saltean y se cuentan", () =>
+            {
+                var copia = MovimientoStorage.ObtenerPorArchivo(idG).Where(m => m.Id == g0.Id || m.Id == g2.Id).ToList();
+                var cambiados = SesionMovimientosService.ReaplicarHomologacion(copia, perfilY, out int noModificados);
+                Check(cambiados.Count > 0 && noModificados == cambiados.Count, $"Los dos están apareados: todo lo que había que escribir se salteó y se contó ({noModificados}/{cambiados.Count})");
+                Check(Estandar(g0.Id) == "COBRANZAS", "El apareado no cambia");
+            });
+            test("El aviso de movimientos no modificados junta blindados y apareados", () =>
+            {
+                Check(HomologacionAdminService.AvisoNoModificados(12, 5) == "12 movimiento(s) de archivos blindados y 5 apareados en una conciliación no se modificaron.", "Ambos");
+                Check(HomologacionAdminService.AvisoNoModificados(3, 0) == "3 movimiento(s) de archivos blindados no se modificaron.", "Sólo blindados");
+                Check(HomologacionAdminService.AvisoNoModificados(0, 4) == "4 movimiento(s) apareados en una conciliación no se modificaron.", "Sólo apareados");
+                Check(HomologacionAdminService.AvisoNoModificados(0, 0) == null, "Ninguno");
+            });
+            test("Apareados: limpieza de los datos de prueba", () =>
+            {
+                cn.Execute(@"DELETE FROM bancos.ConciliacionInternaPares WHERE IdSesion=@I; DELETE FROM bancos.ConciliacionInternaSesiones WHERE Id=@I;
+                    DELETE FROM bancos.ConciliacionPares WHERE IdSesion=@E; DELETE FROM bancos.ConciliacionItemsExternos WHERE IdSesion=@E; DELETE FROM bancos.ConciliacionSesiones WHERE Id=@E;
+                    DELETE FROM bancos.ConciliacionInternaPares WHERE IdSesion=@C; DELETE FROM bancos.ConciliacionInternaSesiones WHERE Id=@C;
+                    DELETE FROM bancos.MovimientosArchivo WHERE IdArchivo IN (@G, @K); DELETE FROM bancos.ArchivosImportados WHERE Id IN (@G, @K);
+                    DELETE FROM bancos.HomologacionConceptos WHERE IdPerfilBanco=@Y; DELETE FROM bancos.PerfilesBanco WHERE Id=@Y;",
+                    new { I = sesionInternaG.Id, E = sesionExternaGId, C = sesionCarreraId, G = idG, K = idK, Y = perfilYId });
+                Check(cn.QuerySingle<int>("SELECT COUNT(*) FROM bancos.ConciliacionInternaSesiones") == 0 && cn.QuerySingle<int>("SELECT COUNT(*) FROM bancos.ConciliacionSesiones") == 0, "No quedaron sesiones");
             });
 
             // ---------- Desblindar y clave maestra ----------

@@ -15,12 +15,15 @@ namespace AgrupadorConceptos.Data
             : base("El archivo está blindado (cierre de homologación). Para modificarlo hay que desblindarlo con la clave maestra.") { }
     }
 
-    /// <summary>Se intentó conciliar con un archivo que todavía no está blindado.</summary>
-    public class ArchivoSinBlindarException : InvalidOperationException
+    // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - Conciliar ya no exige archivo blindado: se reemplaza ArchivoSinBlindarException
+    // La guardia vieja rechazaba dos cosas distintas con el mismo mensaje: archivo sin blindar y archivo dado de baja. Sólo la primera
+    // se elimina; la segunda se mantiene (un archivo inactivo no se concilia, aunque su fila siga en ArchivosImportados) con su propio mensaje.
+    /// <summary>Se intentó conciliar con un archivo que fue dado de baja.</summary>
+    public class ArchivoInactivoException : InvalidOperationException
     {
         public IReadOnlyList<string> Archivos { get; }
-        public ArchivoSinBlindarException(IReadOnlyList<string> archivos)
-            : base($"Para conciliar, blindá primero {(archivos.Count == 1 ? "el archivo" : "los archivos")}: {string.Join(", ", archivos)}.")
+        public ArchivoInactivoException(IReadOnlyList<string> archivos)
+            : base($"No se puede conciliar: {(archivos.Count == 1 ? "el archivo está dado de baja" : "los archivos están dados de baja")}: {string.Join(", ", archivos)}.")
             => Archivos = archivos;
     }
 
@@ -51,25 +54,26 @@ namespace AgrupadorConceptos.Data
                 throw new ArchivoBlindadoException();
         }
 
-        /// <summary>Conciliar exige que todos los archivos que intervienen estén blindados (y activos).</summary>
-        public static void ExigirBlindados(IDbConnection cn, IDbTransaction tx, IReadOnlyCollection<int> idsArchivos)
+        // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - Conciliar ya no exige archivo blindado: sólo que el archivo no esté dado de baja
+        /// <summary>Conciliar exige que los archivos que intervienen estén activos. El blindaje ya no es requisito (sigue cerrando la homologación).</summary>
+        public static void ExigirActivos(IDbConnection cn, IDbTransaction tx, IReadOnlyCollection<int> idsArchivos)
         {
             if (idsArchivos == null || idsArchivos.Count == 0) return;
-            var sinBlindar = cn.Query<string>(@"SELECT ISNULL(p.NombreBanco + N' · ', N'') + a.NombreArchivo
+            var inactivos = cn.Query<string>(@"SELECT ISNULL(p.NombreBanco + N' · ', N'') + a.NombreArchivo
                     FROM bancos.ArchivosImportados a LEFT JOIN bancos.PerfilesBanco p ON p.Id = a.IdPerfilBanco
-                    WHERE a.Id IN (SELECT CAST([value] AS int) FROM OPENJSON(@Ids)) AND (a.Blindado = 0 OR a.Activo = 0)
+                    WHERE a.Id IN (SELECT CAST([value] AS int) FROM OPENJSON(@Ids)) AND a.Activo = 0
                     ORDER BY a.Id", new { Ids = JsonSerializer.Serialize(idsArchivos.Distinct().ToList()) }, tx).ToList();
-            if (sinBlindar.Count > 0) throw new ArchivoSinBlindarException(sinBlindar);
+            if (inactivos.Count > 0) throw new ArchivoInactivoException(inactivos);
         }
 
-        /// <summary>Igual que <see cref="ExigirBlindados"/> partiendo de los movimientos que se van a conciliar.</summary>
-        public static void ExigirBlindadosPorMovimientos(IDbConnection cn, IDbTransaction tx, IReadOnlyCollection<int> idsMovimientos)
+        /// <summary>Igual que <see cref="ExigirActivos"/> partiendo de los movimientos que se van a conciliar.</summary>
+        public static void ExigirActivosPorMovimientos(IDbConnection cn, IDbTransaction tx, IReadOnlyCollection<int> idsMovimientos)
         {
             if (idsMovimientos == null || idsMovimientos.Count == 0) return;
             var archivos = cn.Query<int>(@"SELECT DISTINCT m.IdArchivo FROM bancos.MovimientosArchivo m
                     WHERE m.Id IN (SELECT CAST([value] AS int) FROM OPENJSON(@Ids))",
                 new { Ids = JsonSerializer.Serialize(idsMovimientos.Distinct().ToList()) }, tx).ToList();
-            ExigirBlindados(cn, tx, archivos);
+            ExigirActivos(cn, tx, archivos);
         }
 
         // ---- consulta ----

@@ -50,8 +50,15 @@ namespace AgrupadorConceptos.Services
         /// </summary>
         /// <returns>Los movimientos que quedaron modificados.</returns>
         public static ISet<MovimientoProcesado> RehomologarEnMemoria(
-            List<MovimientoProcesado> movs, PerfilBanco perfil)
+            List<MovimientoProcesado> movs, PerfilBanco perfil) =>
+            RehomologarEnMemoria(movs, perfil, out _);
+
+        // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Revisión 1, hallazgo 5: se informa cuántos movimientos no se escribieron (apareados en una conciliación)
+        /// <param name="noModificados">Movimientos que había que escribir y que la base salteó porque están apareados en una conciliación.</param>
+        public static ISet<MovimientoProcesado> RehomologarEnMemoria(
+            List<MovimientoProcesado> movs, PerfilBanco perfil, out int noModificados)
         {
+            noModificados = 0;
             var cambiados = new HashSet<MovimientoProcesado>();
             if (movs == null || movs.Count == 0) return cambiados;
 
@@ -69,7 +76,8 @@ namespace AgrupadorConceptos.Services
                     cambiados.Add(mov);
             }
 
-            MovimientoStorage.ActualizarConceptos(cambiados);
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Lo que el UPDATE no escribió es lo que la base salteó, medido dentro de la transacción y no antes
+            noModificados = cambiados.Count - MovimientoStorage.ActualizarConceptos(cambiados);
             return cambiados;
         }
 
@@ -118,8 +126,15 @@ namespace AgrupadorConceptos.Services
         /// editado a mano nunca pasa por un estado intermedio en el que se pierda.
         /// </summary>
         public static ISet<MovimientoProcesado> ReaplicarHomologacion(
-            IEnumerable<MovimientoProcesado> movs, PerfilBanco perfil)
+            IEnumerable<MovimientoProcesado> movs, PerfilBanco perfil) =>
+            ReaplicarHomologacion(movs, perfil, out _);
+
+        // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Revisión 1, hallazgos 3 y 5: se informa cuántos movimientos no se escribieron (apareados en una conciliación)
+        /// <param name="noModificados">Movimientos que había que escribir y que la base salteó porque están apareados en una conciliación.</param>
+        public static ISet<MovimientoProcesado> ReaplicarHomologacion(
+            IEnumerable<MovimientoProcesado> movs, PerfilBanco perfil, out int noModificados)
         {
+            noModificados = 0;
             var cambiados = new HashSet<MovimientoProcesado>();
             if (movs == null) return cambiados;
 
@@ -141,7 +156,8 @@ namespace AgrupadorConceptos.Services
                 if (cambioConcepto || cambioCuenta) cambiados.Add(mov);
             }
 
-            MovimientoStorage.ActualizarConceptos(cambiados);
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Lo que el UPDATE no escribió es lo que la base salteó, medido dentro de la transacción y no antes
+            noModificados = cambiados.Count - MovimientoStorage.ActualizarConceptos(cambiados);
             return cambiados;
         }
 
@@ -172,6 +188,10 @@ namespace AgrupadorConceptos.Services
                 // Fecha: 23/10/2026 - TAREA: 00125 - Linea: 3 - Reflejar en la grilla lo marcado como conciliado
                 mov.Conciliado = actualizado.Conciliado;
                 mov.ConciliadoFecha = actualizado.ConciliadoFecha;
+                // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Reflejar en la grilla lo apareado: una conciliación pudo tomarlo desde que se cargó
+                mov.Apareado = actualizado.Apareado;
+                mov.ApareadoEn = actualizado.ApareadoEn;
+                mov.MensajeApareado = actualizado.MensajeApareado;
             }
         }
     }

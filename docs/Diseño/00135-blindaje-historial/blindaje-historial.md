@@ -1,5 +1,10 @@
 # TAREA 00135 — Concepto final protegido, historial de movimientos y blindaje de archivo
 
+> **Actualización — TAREA 00162 (05/11/2026): conciliar ya no exige blindaje.** La regla «Conciliar exige archivo blindado» (manual, interna y externa), el filtro de extractos blindados en la conciliación
+> externa y el mensaje «Para conciliar, blindá primero el archivo» **quedan sin efecto**; el blindaje sigue cerrando la homologación y bloqueando editar, homologar, eliminar movimientos y dar de baja el archivo,
+> y la clave maestra no cambia. En cambio, un movimiento **apareado** en una conciliación (interna o externa, de cualquier sesión) no se puede modificar. Ver
+> `docs/Diseño/00162-conciliar-sin-blindaje/conciliar-sin-blindaje.md`. Donde este documento diga lo contrario sobre conciliar, rige el de la 00162.
+
 Módulo: `AgrupadorConceptos` (schema `bancos`), con sus dos anfitriones: el escritorio (`ProcesadorForm`) y la web (`Conciliador.Web`, `Procesador.razor`).
 
 ## Pedido (ítems)

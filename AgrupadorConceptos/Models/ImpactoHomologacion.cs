@@ -31,6 +31,10 @@ namespace AgrupadorConceptos.Models
 
         // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Movimientos de archivos blindados que la regla alcanza: no se tocan y no entran en Total
         public int EnArchivosBlindados { get; set; }
+
+        // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Movimientos apareados en una conciliación que la regla alcanza: no se tocan y no entran en Total
+        // Una regla es del perfil y alcanza muchos archivos: se saltean y se cuentan, igual que con los blindados, en vez de cortar toda la operación.
+        public int EnMovimientosApareados { get; set; }
     }
 
     // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 5 - Desglose del impacto por archivo importado

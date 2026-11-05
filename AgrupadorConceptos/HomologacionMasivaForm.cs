@@ -81,8 +81,11 @@ namespace AgrupadorConceptos
                     // pendientes ya resueltos desaparecen de esta ventana y la grilla de
                     // atrás queda al día sin tener que releerse.
                     HuboCambios = true;
-                    SesionMovimientosService.RehomologarEnMemoria(_movimientos, _perfil);
+                    SesionMovimientosService.RehomologarEnMemoria(_movimientos, _perfil, out int noModificados);
                     CargarDatos();
+                    // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Revisión 1, hallazgo 5: la homologación masiva saltea los apareados y lo avisa
+                    if (HomologacionAdminService.AvisoNoModificados(0, noModificados) is string aviso)
+                        MessageBox.Show(aviso, "Movimientos no modificados", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
         }

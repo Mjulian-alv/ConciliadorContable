@@ -34,12 +34,19 @@ namespace AgrupadorConceptos.Data
                 ConceptoEstandar = @ConceptoEstandar
             FROM bancos.MovimientosArchivo m
             WHERE m.Id = @Id
-              AND NOT EXISTS (SELECT 1 FROM bancos.ArchivosImportados a WHERE a.Id = m.IdArchivo AND a.Blindado = 1)";
+              AND NOT EXISTS (SELECT 1 FROM bancos.ArchivosImportados a WHERE a.Id = m.IdArchivo AND a.Blindado = 1)
+              -- Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Un movimiento apareado en una conciliación (interna o externa, de cualquier sesión) no se reescribe
+              -- Las reglas del perfil alcanzan muchos archivos: acá se saltea en vez de cortar toda la operación (mismo patrón que el blindaje).
+              AND NOT EXISTS (SELECT 1 FROM bancos.ConciliacionPares pe WHERE pe.IdMovimientoProcesado = m.Id)
+              AND NOT EXISTS (SELECT 1 FROM bancos.ConciliacionInternaPares pi WHERE pi.IdMovimientoA = m.Id OR pi.IdMovimientoB = m.Id)";
 
         public static List<MovimientoProcesado> ObtenerPorArchivo(int idArchivo)
         {
             using var cn = DatabaseHelper.Open();
-            return cn.Query<MovimientoProcesado>(SelectPorArchivo, new { IdArchivo = idArchivo }).ToList();
+            var movimientos = cn.Query<MovimientoProcesado>(SelectPorArchivo, new { IdArchivo = idArchivo }).ToList();
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - La grilla marca los apareados: una consulta por carga del archivo, no una por fila
+            ParesMovimientoStorage.Marcar(movimientos, ParesMovimientoStorage.ObtenerApareados(movimientos.Select(m => m.Id).ToList()));
+            return movimientos;
         }
 
         /// <summary>
@@ -124,8 +131,21 @@ namespace AgrupadorConceptos.Data
                 else if (enPares.TryGetValue(id, out var donde)) omitidos.Add((id, $"está en una {donde}"));
                 else libres.Add(id);
             }
-            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Conciliar exige que los archivos de los movimientos estén blindados; si alguno no lo está se rechaza todo
-            BlindajeStorage.ExigirBlindadosPorMovimientos(cn, tx, libres);
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - Revisión 1, hallazgo 2: si una baja concurrente archivó el archivo, sus movimientos ya no están en la tabla viva
+            // La guardia de archivos activos mira desde los movimientos, así que no veía nada y el UPDATE afectaba cero filas mientras se informaba éxito.
+            // Lo que ya no existe se informa como omitido en vez de contarse como marcado.
+            if (libres.Count > 0)
+            {
+                var existentes = cn.Query<int>(@"SELECT Id FROM bancos.MovimientosArchivo WHERE Id IN (SELECT CAST([value] AS int) FROM OPENJSON(@Ids))",
+                    new { Ids = System.Text.Json.JsonSerializer.Serialize(libres) }, tx).ToHashSet();
+                foreach (int id in libres.Where(i => !existentes.Contains(i)).ToList())
+                {
+                    omitidos.Add((id, "ya no existe (el archivo se dio de baja)"));
+                    libres.Remove(id);
+                }
+            }
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - Conciliar ya no exige archivos blindados: sólo que ninguno esté dado de baja
+            BlindajeStorage.ExigirActivosPorMovimientos(cn, tx, libres);
             if (libres.Count > 0)
                 cn.Execute(@"UPDATE bancos.MovimientosArchivo SET Conciliado = 1, ConciliadoFecha = CAST(GETDATE() AS date)
                     WHERE Id IN @Ids AND Conciliado = 0", new { Ids = libres }, tx);
@@ -262,6 +282,10 @@ namespace AgrupadorConceptos.Data
             // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 1 - La edición puntual también modifica el alcance interno.
             using var tx = cn.BeginTransaction();
             ConciliacionMutationStorage.Bloquear(cn, tx);
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Apareado en una conciliación: no se edita, aunque la sesión no esté cerrada
+            ParesMovimientoStorage.ExigirSinPar(cn, tx, new[] { id });
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Revisión 1, hallazgo 1: lo conciliado tampoco se edita, validado acá y no sólo en la pantalla
+            ParesMovimientoStorage.ExigirNoConciliado(cn, tx, new[] { id });
             // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Con el archivo blindado la homologación está cerrada
             BlindajeStorage.ExigirNoBlindadoPorMovimientos(cn, tx, new[] { id });
             cn.Execute("UPDATE bancos.MovimientosArchivo SET ConceptoFinal = @ConceptoFinal WHERE Id = @Id",
@@ -277,6 +301,11 @@ namespace AgrupadorConceptos.Data
             // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Con el archivo blindado la cuenta sólo cambia al conciliar internamente
             using var tx = cn.BeginTransaction();
             ConciliacionMutationStorage.Bloquear(cn, tx);
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Apareado en una conciliación (de cualquier sesión): no se edita
+            // Reemplaza el chequeo que hacían los hosts sólo para sesiones internas en proceso; la regla vive acá, con el lock tomado.
+            ParesMovimientoStorage.ExigirSinPar(cn, tx, new[] { id });
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Revisión 1, hallazgo 1: lo conciliado tampoco se edita, validado acá y no sólo en la pantalla
+            ParesMovimientoStorage.ExigirNoConciliado(cn, tx, new[] { id });
             BlindajeStorage.ExigirNoBlindadoPorMovimientos(cn, tx, new[] { id });
             cn.Execute("UPDATE bancos.MovimientosArchivo SET CuentaFinal = @CuentaFinal WHERE Id = @Id",
                 new { CuentaFinal = cuentaFinal, Id = id }, tx);

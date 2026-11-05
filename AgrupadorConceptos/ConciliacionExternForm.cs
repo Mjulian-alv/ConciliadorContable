@@ -17,9 +17,9 @@ namespace AgrupadorConceptos
     public partial class ConciliacionExternForm : Form
     {
         private ConciliacionSesion _sesionActiva;
+        // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - Se quita el contador de extractos ocultos por no estar blindados (_sinBlindarOcultos): ya no se oculta ninguno
         // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 4 - La selección persiste aunque el rango oculte un archivo.
         private readonly HashSet<int> _idsArchivosSeleccionados = new();
-        private int _sinBlindarOcultos; // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Extractos del rango que no se ofrecen por no estar blindados
         private List<ConciliacionItemExterno> _itemsExternosLeidos;
         private List<ExtractoCandidato> _candidatosVisibles = new();
 
@@ -150,10 +150,8 @@ namespace AgrupadorConceptos
                 _estadoArchivos.Text = "Rango inválido: Desde es posterior a Hasta.";
                 return;
             }
-            var todosLosCandidatos = SelectorExtractosService.Obtener(_desdeArchivos.Value, _hastaArchivos.Value, _mostrarTodos.Checked);
-            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Revisión 1, hallazgo 4: sólo se ofrecen extractos blindados (conciliar lo exige); el servidor igual lo vuelve a comprobar
-            _candidatosVisibles = todosLosCandidatos.Where(c => _archivosDisponibles.Any(a => a.Id == c.IdArchivo && a.Blindado)).ToList();
-            _sinBlindarOcultos = todosLosCandidatos.Count - _candidatosVisibles.Count;
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - Se ofrecen todos los extractos del rango, blindados o no: conciliar ya no exige el blindaje (que queda como dato en la columna Blindaje)
+            _candidatosVisibles = SelectorExtractosService.Obtener(_desdeArchivos.Value, _hastaArchivos.Value, _mostrarTodos.Checked);
             foreach (var candidato in _candidatosVisibles)
                 candidato.Seleccionado = _idsArchivosSeleccionados.Contains(candidato.IdArchivo);
             _grillaArchivos.DataSource = _candidatosVisibles;
@@ -164,8 +162,8 @@ namespace AgrupadorConceptos
         private void ActualizarEstadoArchivos()
         {
             int ocultos = _idsArchivosSeleccionados.Count(id => _candidatosVisibles.All(c => c.IdArchivo != id));
-            _estadoArchivos.Text = $"{_idsArchivosSeleccionados.Count} seleccionados, {ocultos} fuera del rango"
-                + (_sinBlindarOcultos > 0 ? $" · {_sinBlindarOcultos} sin blindar no se ofrecen (blindalos en el Procesador)" : "");
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - Ya no hay extractos ocultos por no estar blindados
+            _estadoArchivos.Text = $"{_idsArchivosSeleccionados.Count} seleccionados, {ocultos} fuera del rango";
         }
 
         private void CargarConceptosPorArchivos()
@@ -226,7 +224,7 @@ namespace AgrupadorConceptos
             using var dlgNombre = new NombreSesionDialog(nombre);
             if (dlgNombre.ShowDialog(this) != DialogResult.OK) return;
 
-            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Conciliar exige los archivos blindados: se muestra qué archivo falta blindar
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - Ya no se exige blindar; el servidor sólo rechaza archivos dados de baja y lo informa acá
             try
             {
                 _sesionActiva = ConciliacionExternService.CrearSesion(
@@ -411,7 +409,7 @@ namespace AgrupadorConceptos
                 MessageBox.Show($"Aún quedan {pendExt.Count} ítems externos sin conciliar. ¿Finalizar igual?",
                     "Confirmar", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
 
-            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Los archivos tienen que seguir blindados al cerrar la sesión
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - Al cerrar sólo se exige que los archivos sigan activos; el blindaje ya no cuenta
             try { ConciliacionExternService.MarcarFinalizada(_sesionActiva.Id); }
             catch (InvalidOperationException ex)
             {

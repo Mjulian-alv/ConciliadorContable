@@ -19,6 +19,9 @@ namespace AgrupadorConceptos.Services
         public int Cantidad { get; init; }
         public int FechasInvalidas { get; init; }
         public bool CoincideRango { get; init; }
+        // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - El blindaje se muestra por extracto como dato; conciliar ya no lo exige
+        public bool Blindado { get; init; }
+        public string Blindaje => Blindado ? "Blindado" : "Sin blindar";
     }
 
     public static class SelectorExtractosService
@@ -52,7 +55,8 @@ namespace AgrupadorConceptos.Services
                     Hasta = validas.Count == 0 ? null : validas.Max(),
                     Cantidad = movs.Count,
                     FechasInvalidas = fechas.Count - validas.Count,
-                    CoincideRango = validas.Any(f => f >= desde.Date && f <= hasta.Date)
+                    CoincideRango = validas.Any(f => f >= desde.Date && f <= hasta.Date),
+                    Blindado = a.Blindado // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1
                 };
             }).Where(c => mostrarTodos || c.CoincideRango).ToList();
         }

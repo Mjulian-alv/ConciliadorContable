@@ -1529,3 +1529,33 @@ con AppHub y el Conciliador publicados (la web solo arranca con SQL Server o en 
 - Revisión de Codex: `docs/Revisiones/00151-review-1.md` (sin hallazgos). Queda 1 ronda disponible.
 
 **No probado:** las pantallas en el navegador.
+
+## TAREA 00162 — 05/11/2026 — Conciliar sin blindar y movimientos apareados intocables
+
+**Pedido (textual, numerado en el chat):** «en la tarea del blindado vamos a hacer un cambio: el usuario quiere poder conciliar sin blindar los archivos. Vamos a hacerlo, pero que continúe con la restricción de que no se
+pueden tocar ítems, en ProcesarForm y en web, que estén en apareados aunque no estén cerradas las conciliaciones.»
+1. Conciliar sin exigir el blindaje del archivo.
+2. No se pueden tocar los movimientos apareados (par interno o externo, en cualquier estado de la sesión), en `ProcesadorForm` y en la web.
+Decisiones acordadas: el blindaje sigue igual salvo el requisito de conciliar; se bloquea editar concepto y cuenta final, eliminar, marcar a mano y homologar; «apareado» es estar en un par de cualquier sesión.
+
+**Diseño previo:** `docs/Diseño/00162-conciliar-sin-blindaje/` (guía, dos flujogramas y siete maquetas). El flujograma y las maquetas los hizo Claude y no Codex: Codex no pudo escribir en este entorno
+(un hook de RTK le rechaza los comandos de lectura por shell y su sandbox quedó en sólo lectura), y el usuario pidió que las hiciera Claude. La revisión sí fue de Codex.
+
+**Ejecutado (rama `feature/00162-conciliar-sin-blindaje`):**
+- Línea 1: se quita la exigencia de archivo blindado en las tres vías de conciliar (`MarcarConciliados`, alta/par/cierre de la externa, par/cierre de la interna); `ExigirBlindados*` y `ArchivoSinBlindarException` pasan a
+  `ExigirActivos*` y `ArchivoInactivoException`, porque la guardia vieja también rechazaba archivos dados de baja. La elección de extractos de la externa ofrece todos los del rango, con el blindaje como dato (columna «Blindaje»,
+  `ExtractoCandidato.Blindado`); los botones y avisos del procesador (escritorio y web) ya no hablan de blindar para conciliar.
+- Línea 2: `Data/ParesMovimientoStorage.cs` (nuevo) decide en un solo lugar si un movimiento está apareado (`ConciliacionPares`, `ConciliacionInternaPares`; cualquier sesión y estado). `ExigirSinPar` rechaza editar concepto y cuenta
+  final bajo el lock; `UpdateConceptos` saltea apareados en SQL; las reglas del perfil (baja, reapuntar, masiva, grupos) los saltean y los cuentan (`EnMovimientosApareados`, `HomologacionAdminService.AvisoNoModificados`).
+  Eliminar y marcar a mano ya los rechazaban/omitían. Las pantallas marcan la fila (`Apareado`, `ApareadoEn`, `MensajeApareado`, columna «Apareado en»), deshabilitan las celdas y muestran el mensaje.
+  Tres índices por movimiento en `SqlSchema.cs` (`IX_ConciliacionPares_IdMovimiento`, `IX_ConciliacionInternaPares_MovA` / `MovB`); se crean solos al arrancar, no hay migración manual.
+- Revisión de Codex: `docs/Revisiones/00162-review-1.md` (10 hallazgos: 8 corregidos, 2 aceptados con justificación). Salió de la revisión, y se corrigió, que «un movimiento conciliado no se edita» sólo lo aplicaba la pantalla
+  (ahora también el storage, `MovimientoConciliadoException`), que el marcado manual informaba éxito sobre movimientos archivados por una baja concurrente, y que los conteos de apareados se calculaban antes de la transacción
+  y no con lo que ella escribió. Queda una ronda disponible.
+- Pruebas: `Tools/AgrupadorWeb.Tests/BlindajeTests.cs` reescribe el bloque «Conciliar exige blindaje» y suma las pruebas de apareados contra LocalDB real (conciliar sin blindar en las tres vías, archivo dado de baja, apareado en sesión interna en proceso,
+  finalizada y externa, grilla, reglas automáticas, baja, reapuntar y carrera, masiva, eliminar, marcar a mano). Se quitó el rodeo de blindar y desblindar de `ConciliacionExternaTests`, `ConciliacionInternaTests` y
+  `Homologador.Tests/ConciliacionSeguraTests`. Total `AgrupadorWeb.Tests`: 90 correctas, 0 con error.
+- Release: `output/publish-winforms/` y `output/publish-winforms.rar` (shell WinForms en Release, sin `secrets.config`).
+
+**No probado:** las pantallas en pantalla (escritorio y web), sólo compilan; el escritorio no tiene el aviso «todos los visibles están apareados» (ver la guía). `Tools/Homologador.Tests` falla en `ProbarVentana`
+(esperaba 7 filas y obtiene 6) **también en `main`**: es previo y no se tocó; el resto de ese proyecto pasa. `FechasBancarias.Tests` pasa. Con una base de producción real no se corrió.

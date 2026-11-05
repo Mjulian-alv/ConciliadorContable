@@ -22,5 +22,14 @@ namespace AgrupadorConceptos.Models
         // Fecha: 23/10/2026 - TAREA: 00125 - Linea: 1 - Mismo nombre que la columna para que "mov.*" lo mapee; la fecha es NULL mientras no esté conciliado
         public bool Conciliado { get; set; }
         public DateTime? ConciliadoFecha { get; set; }
+        // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Sólo para mostrar: no son columnas de la tabla (Dapper las ignora al leer con mov.*)
+        // Se completan al cargar el archivo (ParesMovimientoStorage.Marcar) con una consulta por carga, no una por fila. La regla la sigue
+        // aplicando el storage dentro de la transacción: esto sólo evita dejar entrar en edición lo que se va a rechazar.
+        /// <summary>El movimiento figura en un par de conciliación interna o externa, de cualquier sesión.</summary>
+        public bool Apareado { get; set; }
+        /// <summary>Dónde está apareado, para la grilla: «Conciliación interna «X» · en proceso». Null si está libre.</summary>
+        public string ApareadoEn { get; set; }
+        /// <summary>El mensaje de bloqueo ya armado (el mismo que da el storage al rechazar), para que las pantallas no repitan el texto. Null si está libre.</summary>
+        public string MensajeApareado { get; set; }
     }
 }
