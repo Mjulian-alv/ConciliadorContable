@@ -172,8 +172,12 @@ public partial class Procesador
         string anterior = m.ConceptoFinal; string nuevo = e.Value?.ToString() ?? "";
         // Fecha: 23/10/2026 - TAREA: 00125 - Linea: 4 - Un movimiento conciliado no se edita (como en el escritorio).
         if (m.Conciliado) { error = "Este movimiento ya está marcado como conciliado y no se puede editar."; StateHasChanged(); return; }
+        // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Un movimiento apareado en una conciliación no se edita, aunque la sesión no esté cerrada
+        if (m.Apareado) { error = m.MensajeApareado; StateHasChanged(); return; }
         // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 2 - El historial guarda quién editó
         try { string usuario = await Access.RequireUser("AgrProcesador"); using var aud = AuditoriaContexto.Usar(usuario: usuario); m.ConceptoFinal = nuevo; await Task.Run(() => MovimientoStorage.ActualizarConceptoFinal(m.Id, nuevo)); }
+        // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Si otra sesión apareó el movimiento después de cargar la grilla, el storage lo rechaza: se revierte el valor y se marca la fila
+        catch (MovimientoApareadoException ex) { m.ConceptoFinal = anterior; m.Apareado = true; m.ApareadoEn = ex.Par.Detalle; m.MensajeApareado = ex.Message; error = ex.Message; }
         catch (Exception ex) { m.ConceptoFinal = anterior; error = ex is UnauthorizedAccessException ? ex.Message : "No se pudo guardar el concepto final: " + ex.Message; }
     }
     async Task CambioCuentaFinal(MovimientoProcesado m, ChangeEventArgs e)
@@ -181,18 +185,16 @@ public partial class Procesador
         string anterior = m.CuentaFinal; string nuevo = e.Value?.ToString() ?? "";
         // Fecha: 23/10/2026 - TAREA: 00125 - Linea: 4 - Un movimiento conciliado no se edita (como en el escritorio).
         if (m.Conciliado) { error = "Este movimiento ya está marcado como conciliado y no se puede editar."; StateHasChanged(); return; }
+        // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Un movimiento apareado en una conciliación no se edita, aunque la sesión no esté cerrada
+        if (m.Apareado) { error = m.MensajeApareado; StateHasChanged(); return; }
         try
         {
             string usuario = await Access.RequireUser("AgrProcesador"); using var aud = AuditoriaContexto.Usar(usuario: usuario);
-            // Una cuenta conciliada en una sesión interna en proceso se fija sola al cerrarla: editarla a mano se perdería.
-            string? sesion = await Task.Run(() => ConciliacionInternaService.ObtenerSesionEnProcesoDelMovimiento(m.Id));
-            if (sesion != null)
-            {
-                error = $"Este movimiento está conciliado en la sesión interna «{sesion}», todavía en proceso. La cuenta final se va a fijar sola cuando esa conciliación se cierre, así que no se puede editar a mano ahora.";
-                m.CuentaFinal = anterior; StateHasChanged(); return;
-            }
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Se quita el chequeo que sólo miraba sesiones internas en proceso: ahora lo decide el storage para cualquier par y sesión
             m.CuentaFinal = nuevo; await Task.Run(() => MovimientoStorage.ActualizarCuentaFinal(m.Id, nuevo));
         }
+        // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Si otra sesión apareó el movimiento después de cargar la grilla, el storage lo rechaza: se revierte el valor y se marca la fila
+        catch (MovimientoApareadoException ex) { m.CuentaFinal = anterior; m.Apareado = true; m.ApareadoEn = ex.Par.Detalle; m.MensajeApareado = ex.Message; error = ex.Message; }
         catch (Exception ex) { m.CuentaFinal = anterior; error = ex is UnauthorizedAccessException ? ex.Message : "No se pudo guardar la cuenta final: " + ex.Message; }
     }
 
@@ -202,6 +204,8 @@ public partial class Procesador
         aviso = error = null;
         if (Perfil == null || Movs == null) { error = "Primero cargue la sesión de un archivo."; return; }
         if (actual == null) { error = "Seleccioná un movimiento de la grilla que quieras homologar."; return; }
+        // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Homologar una fila es una acción sobre ese movimiento: si está apareado se rechaza (las reglas del perfil lo saltean)
+        if (actual.Apareado) { error = actual.MensajeApareado; return; }
         yaHomologado = !EsPendiente(actual);
         dialogo = yaHomologado ? Dialogo.ConfirmarRehomologar : Dialogo.Homologar;
     }
@@ -360,8 +364,9 @@ public partial class Procesador
                 aviso += $" No se marcaron {r.Omitidos.Count.ToString("N0", ar)}: " + string.Join("; ", r.Omitidos.GroupBy(o => o.Motivo).Select(g => $"{g.Count()} {g.Key}")) + ".";
             dialogo = Dialogo.Ninguno;
         }
-        // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Conciliar con el archivo sin blindar se rechaza con su propio título
-        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { tituloBloqueo = "No se puede conciliar"; notaBloqueo = "Todos los archivos que intervienen en una conciliación tienen que estar blindados."; mensajeBloqueo = ex.Message; dialogo = Dialogo.Bloqueo; }
+        // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Conciliar con un archivo que no se puede usar se rechaza con su propio título
+        // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - Ya no se rechaza por archivo sin blindar: la nota deja de hablar del blindaje (el motivo real va en el mensaje)
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { tituloBloqueo = "No se puede conciliar"; notaBloqueo = "Actualizá la pantalla y volvé a intentar."; mensajeBloqueo = ex.Message; dialogo = Dialogo.Bloqueo; }
         catch (UnauthorizedAccessException ex) { error = ex.Message; dialogo = Dialogo.Ninguno; }
         catch (Exception ex) { error = "No se pudo marcar como conciliados: " + ex.Message; dialogo = Dialogo.Ninguno; }
         finally { ocupado = false; }
@@ -380,7 +385,7 @@ public partial class Procesador
             // Sin clave maestra nadie podría desblindar después. Se define en Administración de usuarios (escritorio): el servicio lo avisa.
             bool cambio = await Task.Run(() => BlindajeService.Blindar(archivo.Id, usuario));
             await CargarArchivos(archivo.Id);
-            aviso = cambio ? $"Archivo blindado: «{archivo.NombreArchivo}». Ya se puede conciliar; la homologación quedó cerrada." : "El archivo ya estaba blindado.";
+            aviso = cambio ? $"Archivo blindado: «{archivo.NombreArchivo}». La homologación quedó cerrada." : "El archivo ya estaba blindado."; // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - Conciliar no necesita blindar
         }
         catch (Exception ex) when (ex is InvalidOperationException or UnauthorizedAccessException) { error = ex.Message; }
         catch (Exception ex) { error = "No se pudo blindar el archivo: " + ex.Message; }
@@ -391,7 +396,7 @@ public partial class Procesador
         dialogo = Dialogo.Ninguno;
         if (!desblindado) return;
         await CargarArchivos(Work.ArchivoId);
-        aviso = "Archivo desblindado. Ya se puede homologar y editar; para conciliar hay que blindarlo de nuevo.";
+        aviso = "Archivo desblindado. Ya se puede homologar y editar."; // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - Conciliar no necesita volver a blindar
     }
 
 }

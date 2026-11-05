@@ -62,10 +62,14 @@ else
             <span class="grow"></span><input class="search" placeholder="Filtrar movimientos…" aria-label="Filtrar movimientos" @bind="filtro" @bind:event="oninput" @bind:after="Recalcular" />
             <label class="check"><input type="checkbox" @bind="soloPendientes" @bind:after="Recalcular" /> Sólo pendientes</label>
             @* Fecha: 23/10/2026 - TAREA: 00125 - Linea: 4 - Marcar como conciliados lo seleccionado o, sin selección, todo lo visible (equivale a ProcesadorForm). *@
-            @* Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Conciliar exige el archivo blindado; con el archivo blindado no se eliminan movimientos. *@
-            <button @onclick="PedirMarcarConciliados" disabled="@(ocupado||!Blindado||IdsParaConciliar().Count==0)" title="@(Blindado?null:"Para conciliar, blindá primero el archivo")">Marcar conciliados (@IdsParaConciliar().Count)</button>
+            @* Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Con el archivo blindado no se eliminan movimientos. *@
+            @* Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - Conciliar ya no exige el archivo blindado. *@
+            <button @onclick="PedirMarcarConciliados" disabled="@(ocupado||IdsParaConciliar().Count==0)">Marcar conciliados (@IdsParaConciliar().Count)</button>
             <button @onclick="PedirEliminarSeleccion" disabled="@(ocupado||Blindado||SeleccionVisible().Count==0)">Eliminar seleccionados (@SeleccionVisible().Count)</button></div>
-        @if(ArchivoEnTrabajo!=null){<div class="notice" role="status">@(Blindado?"Archivo blindado: se permite conciliar, consultar y exportar. La homologación y la edición están bloqueadas hasta desblindarlo.":"Para conciliar, blindá primero el archivo. Homologar y editar movimientos siguen habilitados.")</div>}
+        @* Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - Sin blindar ya no hay aviso: conciliar no lo necesita. Con blindaje, la homologación y la edición siguen bloqueadas. *@
+        @if(ArchivoEnTrabajo!=null&&Blindado){<div class="notice" role="status">Archivo blindado: la homologación y la edición están bloqueadas hasta desblindarlo. Conciliar, consultar y exportar siguen disponibles.</div>}
+        @* Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Aviso de lo apareado: no se puede modificar aunque la conciliación no esté cerrada. *@
+        @if(Movs.Any(m=>m.Apareado)){<div class="notice" role="status">@Movs.Count(m=>m.Apareado).ToString("N0",ar) movimiento(s) están apareados en una conciliación y no se pueden modificar. Deshacé el par en esa conciliación si hay que cambiarlos.</div>}
         @if(vista.Count==0){<div class="empty"><p class="muted">Ningún movimiento coincide con el filtro.</p></div>}
         else
         {
@@ -74,19 +78,21 @@ else
                     <th><button class="th-sort" @onclick='()=>Ordenar("fecha")'>Fecha@(Flecha("fecha"))</button></th><th><button class="th-sort" @onclick='()=>Ordenar("concepto")'>Concepto original@(Flecha("concepto"))</button></th>
                     <th><button class="th-sort" @onclick='()=>Ordenar("descripcion")'>Descripción@(Flecha("descripcion"))</button></th><th><button class="th-sort" @onclick='()=>Ordenar("estandar")'>Concepto estándar@(Flecha("estandar"))</button></th>
                     <th class="numeric"><button class="th-sort" @onclick='()=>Ordenar("debitos")'>Débitos@(Flecha("debitos"))</button></th><th class="numeric"><button class="th-sort" @onclick='()=>Ordenar("creditos")'>Créditos@(Flecha("creditos"))</button></th>
-                    <th>Concepto final</th><th>Cuenta final</th><th>Conciliado</th></tr></thead>
+                    <th>Concepto final</th><th>Cuenta final</th><th>Conciliado</th><th>Apareado en</th></tr></thead>
                 <tbody><Virtualize Items="vista" Context="m" ItemSize="48">
                     <tr class="@ClaseFila(m)" @onclick="()=>actual=m" @ondblclick="AbrirHomologar">
                         <td><input type="checkbox" aria-label="Marcar movimiento" checked="@seleccion.Contains(m.Id)" @onchange="e=>Marcar(m.Id,(bool)e.Value!)" @onclick:stopPropagation="true" /></td>
                         <td>@m.Fecha.ToString("dd/MM/yyyy")</td><td>@m.ConceptoOriginal</td><td>@m.DescripcionOriginal</td>
                         <td>@if(EsPendiente(m)){<span class="badge warn">Pendiente de homologar</span>}else{@m.ConceptoEstandar}</td>
                         <td class="numeric @(FormatoImporte.EsCero(m.Debitos)?"cero":"")">@FormatoImporte.Absoluto(m.Debitos)</td><td class="numeric @(FormatoImporte.EsCero(m.Creditos)?"cero":"")">@FormatoImporte.Absoluto(m.Creditos)</td>
-                        <td><input class="celda" aria-label="Concepto final" value="@m.ConceptoFinal" disabled="@(m.Conciliado||Blindado)" @onchange="e=>CambioConceptoFinal(m,e)" @onclick:stopPropagation="true" @ondblclick:stopPropagation="true" /></td>
-                        <td><input class="celda corta" aria-label="Cuenta final" value="@m.CuentaFinal" disabled="@(m.Conciliado||Blindado)" @onchange="e=>CambioCuentaFinal(m,e)" @onclick:stopPropagation="true" @ondblclick:stopPropagation="true" /></td>
-                        <td>@if(m.Conciliado){<span class="badge ok">Conciliado@(m.ConciliadoFecha.HasValue?" "+m.ConciliadoFecha.Value.ToString("dd/MM/yyyy"):"")</span>}</td></tr>
+                        <td><input class="celda" aria-label="Concepto final" value="@m.ConceptoFinal" disabled="@(m.Conciliado||Blindado||m.Apareado)" @onchange="e=>CambioConceptoFinal(m,e)" @onclick:stopPropagation="true" @ondblclick:stopPropagation="true" /></td>
+                        <td><input class="celda corta" aria-label="Cuenta final" value="@m.CuentaFinal" disabled="@(m.Conciliado||Blindado||m.Apareado)" @onchange="e=>CambioCuentaFinal(m,e)" @onclick:stopPropagation="true" @ondblclick:stopPropagation="true" /></td>
+                        <td>@if(m.Conciliado){<span class="badge ok">Conciliado@(m.ConciliadoFecha.HasValue?" "+m.ConciliadoFecha.Value.ToString("dd/MM/yyyy"):"")</span>}</td>
+                        @* Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Dónde está apareado el movimiento (interna o externa, sesión y estado); el detalle del bloqueo va en el título. *@
+                        <td>@if(m.Apareado){<span class="badge" title="@m.MensajeApareado">@m.ApareadoEn</span>}</td></tr>
                 </Virtualize></tbody>
             </table></div>
-            <p class="note">@vista.Count.ToString("N0",ar) de @Movs.Count.ToString("N0",ar) filas. «Concepto final» y «Cuenta final» se editan en el lugar y se guardan al salir de la celda. Doble clic en una fila para homologarla. Un movimiento conciliado no se edita.</p>
+            <p class="note">@vista.Count.ToString("N0",ar) de @Movs.Count.ToString("N0",ar) filas. «Concepto final» y «Cuenta final» se editan en el lugar y se guardan al salir de la celda. Doble clic en una fila para homologarla. Un movimiento conciliado, o apareado en una conciliación, no se edita.</p>
         }
     </section>
 }

@@ -103,11 +103,12 @@
             string usuario=await Access.RequireUser("AgrHomologaciones");using var aud=AuditoriaContexto.Usar(usuario:usuario);
             // La cuenta se guarda aunque el concepto no cambie: si sólo se corrigió la cuenta, no hay movimientos que arrastrar.
             bool cambio=!string.Equals(r.Concepto,fila.ConceptoEstandar,StringComparison.OrdinalIgnoreCase);
-            int saltados=0;
-            int idConcepto=await Task.Run(()=>{if(!cambio)return fila.IdConceptoEstandar;int id=HomologacionAdminService.Reapuntar(fila,perfil,r.Concepto,out int s);saltados=s;return id;});
+            int saltados=0,apareados=0; // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - También se cuentan los apareados en una conciliación que la regla no arrastra
+            int idConcepto=await Task.Run(()=>{if(!cambio)return fila.IdConceptoEstandar;int id=HomologacionAdminService.Reapuntar(fila,perfil,r.Concepto,out int s,out int a);saltados=s;apareados=a;return id;});
             await Task.Run(()=>HomologacionStorage.ActualizarCuentaConcepto(idConcepto,r.IdCuentaContable));
             aviso=$"Homologación actualizada: «{fila.ValorOriginal}» → «{r.Concepto}».";
-            if(saltados>0)aviso+=$" {saltados.ToString("N0")} movimiento(s) de archivos blindados no se modificaron.";
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Un solo texto para blindados y apareados (el mismo del escritorio)
+            if(HomologacionAdminService.AvisoNoModificados(saltados,apareados) is string noModificados)aviso+=" "+noModificados;
         }
         catch(UnauthorizedAccessException ex){error=ex.Message;}
         catch(Exception ex){error="Error al editar la homologación: "+ex.Message;}
@@ -145,7 +146,8 @@
             string usuario=await Access.RequireUser("AgrHomologaciones");using var aud=AuditoriaContexto.Usar(usuario:usuario);
             await Task.Run(()=>HomologacionAdminService.AplicarBaja(fila,imp,destino));
             aviso=$"Homologación eliminada: «{fila.ValorOriginal}».";
-            if(imp.EnArchivosBlindados>0)aviso+=$" {imp.EnArchivosBlindados.ToString("N0")} movimiento(s) de archivos blindados no se modificaron.";
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Un solo texto para blindados y apareados (el mismo del escritorio)
+            if(HomologacionAdminService.AvisoNoModificados(imp.EnArchivosBlindados,imp.EnMovimientosApareados) is string noModificados)aviso+=" "+noModificados;
         }
         catch(UnauthorizedAccessException ex){error=ex.Message;}
         catch(Exception ex){error="Error al eliminar la homologación: "+ex.Message;}
