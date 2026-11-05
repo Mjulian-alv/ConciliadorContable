@@ -40,8 +40,8 @@ namespace AgrupadorConceptos.Data
             ConciliacionMutationStorage.Bloquear(cn, tx);
             int presentes = cn.ExecuteScalar<int>("SELECT COUNT(*) FROM bancos.ArchivosImportados WHERE Id IN @Ids", new { Ids = idsArchivos }, tx);
             if (presentes != idsArchivos.Count) throw new InvalidOperationException("Uno de los archivos seleccionados ya no existe. Actualizá la lista.");
-            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Conciliar exige que todos los archivos de la sesión estén blindados
-            BlindajeStorage.ExigirBlindados(cn, tx, idsArchivos);
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - Conciliar ya no exige archivos blindados: sólo que ninguno esté dado de baja
+            BlindajeStorage.ExigirActivos(cn, tx, idsArchivos);
             int id = cn.QuerySingle<int>(@"INSERT INTO bancos.ConciliacionSesiones
                 (Nombre, FechaCreacion, IdArchivoImportado, ArchivosJson, ConceptosJson, Estado)
                 OUTPUT INSERTED.Id VALUES (@Nombre, @Fecha, @PrimerArchivo, @Archivos, @Conceptos, 'EnProceso')",
@@ -81,8 +81,8 @@ namespace AgrupadorConceptos.Data
             int cambios = cn.Execute("UPDATE bancos.ConciliacionSesiones SET Estado = 'Finalizada', FinalizacionFecha = CAST(GETDATE() AS date) WHERE Id = @Id AND Estado = 'EnProceso'",
                 new { Id = idSesion }, tx);
             if (cambios != 1) throw new InvalidOperationException("La sesión ya no está en proceso. Actualizá la pantalla.");
-            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Los archivos con movimientos en el cierre tienen que seguir blindados (alguien pudo desblindar mientras la sesión estaba abierta)
-            BlindajeStorage.ExigirBlindadosPorMovimientos(cn, tx,
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - El cierre ya no exige archivos blindados: sólo que los de los pares sigan activos
+            BlindajeStorage.ExigirActivosPorMovimientos(cn, tx,
                 cn.Query<int>("SELECT DISTINCT IdMovimientoProcesado FROM bancos.ConciliacionPares WHERE IdSesion = @Id", new { Id = idSesion }, tx).ToList());
             // Fecha: 23/10/2026 - TAREA: 00125 - Linea: 2 - Los movimientos con par quedan marcados como conciliados
             // A diferencia de la interna no se toca CuentaFinal: la externa no asigna cuenta ni la exige. Los movimientos
@@ -119,8 +119,8 @@ namespace AgrupadorConceptos.Data
                 "SELECT * FROM bancos.MovimientosArchivo WHERE Id IN @Ids", new { Ids = idsMovimientos }, tx).ToList();
             if (movimientos.Count != idsMovimientos.Count || movimientos.Any(m => !archivos.Contains(m.IdArchivo)))
                 throw new InvalidOperationException("Hay movimientos que ya no pertenecen a los archivos de la sesión.");
-            // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Conciliar exige archivos blindados
-            BlindajeStorage.ExigirBlindados(cn, tx, movimientos.Select(m => m.IdArchivo).Distinct().ToList());
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - Conciliar ya no exige archivos blindados
+            BlindajeStorage.ExigirActivos(cn, tx, movimientos.Select(m => m.IdArchivo).Distinct().ToList());
             // Fecha: 23/10/2026 - TAREA: 00125 - Linea: 3 - Un movimiento marcado como conciliado (a mano o por otra sesión finalizada) no se concilia de nuevo
             if (movimientos.Any(m => m.Conciliado))
                 throw new InvalidOperationException("Hay movimientos que ya figuran como conciliados. Actualizá la pantalla.");

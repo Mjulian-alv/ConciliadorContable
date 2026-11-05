@@ -218,6 +218,16 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_ConciliacionInternaPa
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_ConciliacionInternaPares_MovimientoB')
     CREATE UNIQUE INDEX UX_ConciliacionInternaPares_MovimientoB ON bancos.ConciliacionInternaPares(IdSesion, IdMovimientoB);
 
+-- Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Índices por movimiento para saber si está apareado
+-- Los índices que ya había en los pares son por sesión (IdSesion, IdMovimiento): sirven para buscar dentro de una sesión,
+-- no para preguntar por un movimiento en todas. Sin estos, cada guardia de apareado recorre la tabla entera de pares.
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_ConciliacionPares_IdMovimiento')
+    CREATE INDEX IX_ConciliacionPares_IdMovimiento ON bancos.ConciliacionPares(IdMovimientoProcesado);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_ConciliacionInternaPares_MovA')
+    CREATE INDEX IX_ConciliacionInternaPares_MovA ON bancos.ConciliacionInternaPares(IdMovimientoA);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_ConciliacionInternaPares_MovB')
+    CREATE INDEX IX_ConciliacionInternaPares_MovB ON bancos.ConciliacionInternaPares(IdMovimientoB);
+
 -- Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Blindaje del archivo (cierre de homologación) y baja como archivo inactivo
 -- Blindado: con el archivo blindado sólo se puede conciliar; el resto exige desblindar con la clave maestra.
 -- Activo = 0 es la baja: la fila del archivo queda y sus movimientos se archivan comprimidos en MovimientosJson.
