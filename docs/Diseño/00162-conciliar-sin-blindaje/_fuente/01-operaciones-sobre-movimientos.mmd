@@ -1,0 +1,46 @@
+flowchart TB
+  S(["Disparador: acción del usuario sobre movimientos de un archivo"]) --> T{"Tipo de acción"}
+
+  T -->|"Lectura o exportación"| L["Permitir; no cambia nada"]
+
+  T -->|"Conciliar: marcado manual, interna o externa"| C1["Tomar el lock de mutaciones. Ya NO se exige archivo blindado"]
+  C1 --> C2{"¿Ya conciliado, o ya en un par de otra sesión?"}
+  C2 -->|"Sí"| C3["Omitir ese movimiento y devolver el motivo"]
+  C2 -->|"No"| C4["Conciliar: Conciliado = 1, o par en la sesión; queda en el historial"]
+  C3 --> C5["Informar conciliados y omitidos"]
+  C4 --> C5
+
+  T -->|"Editar Concepto final o Cuenta final"| E1{"¿El movimiento está conciliado?"}
+  E1 -->|"Sí"| X1["Rechazar: ya conciliado, no se edita"]
+  E1 -->|"No"| E2{"¿Está apareado en un par interno o externo, de cualquier sesión?"}
+  E2 -->|"Sí"| X2["Rechazar: apareado en la conciliación X; deshacé el par"]
+  E2 -->|"No"| E3{"¿El archivo está blindado?"}
+  E3 -->|"Sí"| X3["Rechazar: archivo blindado; desblindar con la clave maestra"]
+  E3 -->|"No"| E4["Tomar lock, escribir el valor y registrar Origen Manual en el historial"]
+
+  T -->|"Homologar una fila"| H1{"¿Apareado?"}
+  H1 -->|"Sí"| X2
+  H1 -->|"No"| H2{"¿Archivo blindado?"}
+  H2 -->|"Sí"| X3
+  H2 -->|"No"| H3["Escribir el concepto estándar; el final sólo si estaba vacío, pendiente o igual al estándar"]
+
+  T -->|"Eliminar movimientos"| D1{"¿Archivo blindado?"}
+  D1 -->|"Sí"| X3
+  D1 -->|"No"| D2{"¿Alguno está tomado por un par de conciliación?"}
+  D2 -->|"Sí"| X4["Rechazar toda la baja; no se elimina nada"]
+  D2 -->|"No"| D3["Eliminar los movimientos en una transacción"]
+
+  L --> Z(["Fin"])
+  C5 --> Z
+  E4 --> Z
+  H3 --> Z
+  D3 --> Z
+  X1 --> Z
+  X2 --> Z
+  X3 --> Z
+  X4 --> Z
+
+  classDef nuevo fill:#e3f4ef,stroke:#157b74,color:#0f4f4a
+  classDef rechazo fill:#fff1ef,stroke:#c4605a,color:#7a2f2b
+  class C1,E2,H1,X2 nuevo
+  class X1,X3,X4 rechazo

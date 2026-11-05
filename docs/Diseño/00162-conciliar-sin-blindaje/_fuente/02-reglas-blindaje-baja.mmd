@@ -1,0 +1,50 @@
+flowchart TB
+  S(["Disparador: regla del perfil, blindaje o baja de archivo"]) --> T{"Qué se ejecuta"}
+
+  T -->|"Regla del perfil: baja, reapuntar, masiva o re-homologación"| R1["Reunir los movimientos que la regla alcanza, de todos los archivos del perfil"]
+  R1 --> R2{"Para cada movimiento: ¿su archivo está blindado?"}
+  R2 -->|"Sí"| R3["Saltear y sumar a EnArchivosBlindados"]
+  R2 -->|"No"| R4{"¿El movimiento está apareado en un par interno o externo?"}
+  R4 -->|"Sí"| R5["Saltear y sumar a EnMovimientosApareados"]
+  R4 -->|"No"| R6["UPDATE condicional: el final sólo cambia si estaba vacío, pendiente o igual al estándar"]
+  R3 --> R7["Aviso: N movimientos de archivos blindados y M apareados no se modificaron"]
+  R5 --> R7
+  R6 --> R7
+
+  T -->|"Blindar un archivo"| B1{"¿Tiene permiso AgrProcesador?"}
+  B1 -->|"No"| BX["Rechazar por permisos"]
+  B1 -->|"Sí"| B2{"¿Hay clave maestra definida?"}
+  B2 -->|"No"| BX2["No se puede blindar; definirla en Administración de usuarios"]
+  B2 -->|"Sí"| B3["Marcar Blindado y registrar Blindar en BlindajeLog"]
+  B3 --> B4["El blindaje ya NO es requisito para conciliar: sólo cierra la homologación"]
+
+  T -->|"Desblindar un archivo"| U1{"¿El archivo está en una sesión de conciliación en proceso?"}
+  U1 -->|"Sí"| UX["Rechazar: cerrar o eliminar la sesión antes. Se mantiene"]
+  U1 -->|"No"| U2{"¿Bloqueo temporal vigente por intentos fallidos?"}
+  U2 -->|"Sí"| UX2["Rechazar hasta que pasen los 5 minutos"]
+  U2 -->|"No"| U3{"¿La clave maestra coincide?"}
+  U3 -->|"No"| UX3["Registrar DesblindoFallido y descontar intentos"]
+  U3 -->|"Sí"| U4["Desmarcar Blindado y registrar Desblindar con el motivo"]
+
+  T -->|"Baja de archivo"| A1{"¿El archivo está blindado?"}
+  A1 -->|"Sí"| AX["Rechazar: desblindar primero"]
+  A1 -->|"No"| A2{"¿Hay movimientos tomados por pares de conciliación?"}
+  A2 -->|"Sí"| AX2["Rechazar: liberar los pares y reintentar"]
+  A2 -->|"No"| A3["Avisar modificaciones, confirmar y archivar en una transacción"]
+
+  R7 --> Z(["Fin"])
+  B4 --> Z
+  BX --> Z
+  BX2 --> Z
+  UX --> Z
+  UX2 --> Z
+  UX3 --> Z
+  U4 --> Z
+  AX --> Z
+  AX2 --> Z
+  A3 --> Z
+
+  classDef nuevo fill:#e3f4ef,stroke:#157b74,color:#0f4f4a
+  classDef rechazo fill:#fff1ef,stroke:#c4605a,color:#7a2f2b
+  class R4,R5,B4 nuevo
+  class BX,BX2,UX,UX2,UX3,AX,AX2 rechazo
