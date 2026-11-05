@@ -194,6 +194,18 @@ static class BlindajeTests
                 Check(cn.QuerySingle<int>("SELECT COUNT(*) FROM bancos.MovimientosArchivo WHERE IdArchivo=@Id AND Conciliado=1", new { Id = idArchivoB }) == 1, "Quedó conciliado un movimiento de un archivo sin blindar");
                 Check(Historial(movsB[2].Id).Any(x => (string)x["Campo"]! == "Conciliado" && (string)x["Origen"]! == "Conciliación manual"), "Queda en el historial");
             });
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Revisión 1, hallazgos 1 y 2: lo conciliado no se edita (validado en el storage) y el marcado manual no cuenta lo que ya no existe
+            test("Un movimiento conciliado a mano no se edita aunque la pantalla tenga una copia vieja", () =>
+            {
+                Rechaza<MovimientoConciliadoException>(() => MovimientoStorage.ActualizarConceptoFinal(movsB[2].Id, "NO"), "editar el concepto final de un conciliado");
+                Rechaza<MovimientoConciliadoException>(() => MovimientoStorage.ActualizarCuentaFinal(movsB[2].Id, "123"), "editar la cuenta final de un conciliado");
+                Check(Final(movsB[2].Id) != "NO", "No se escribió nada");
+            });
+            test("Marcar a mano un movimiento que ya no existe lo informa como omitido y no como marcado", () =>
+            {
+                var (marcados, omitidos) = MovimientoStorage.MarcarConciliados(new[] { 987654321 });
+                Check(marcados == 0 && omitidos.Count == 1 && omitidos[0].Motivo.Contains("ya no existe"), $"{marcados}/{omitidos.Count}");
+            });
             test("Sesión externa: se crea con un archivo blindado y otro sin blindar; en proceso, no deja desblindar", () =>
             {
                 var items = new List<ConciliacionItemExterno> { new() { Fecha = d1, Importe = 1000m, Detalle = "Cobranza" } };
@@ -241,7 +253,7 @@ static class BlindajeTests
             int idG = movsG[0].IdArchivo;
             var g0 = movsG.Single(m => m.ConceptoOriginal == "COBRO 1"); var g1 = movsG.Single(m => m.ConceptoOriginal == "COBRO 2"); var g2 = movsG.Single(m => m.ConceptoOriginal == "OTRO 3");
             var sesionInternaG = ConciliacionInternaService.CrearSesion("Apareados", d1, new DateTime(2026, 10, 31), new[] { "COBRANZAS", ConceptosBancarios.PendienteHomologar });
-            int sesionExternaGId = 0;
+            int sesionExternaGId = 0, sesionCarreraId = 0, idK = 0;
 
             test("Apareado en una sesión interna en proceso: no se edita concepto ni cuenta; uno libre del mismo archivo sí", () =>
             {
@@ -293,14 +305,37 @@ static class BlindajeTests
                 var ex = Rechaza<MovimientoApareadoException>(() => MovimientoStorage.ActualizarConceptoFinal(g2.Id, "NO"), "editar un apareado en una sesión externa");
                 Check(ex.Message.Contains("conciliación externa") && ex.Message.Contains("Externa apareados"), ex.Message);
             });
-            test("Reglas del perfil: la baja y reapuntar saltean los apareados y los cuentan aparte", () =>
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Revisión 1, hallazgos 4 y 6: la prueba ahora ejecuta la baja, y comprueba que lo apareado después de calcular el impacto también se cuenta
+            test("Reglas del perfil: la baja y reapuntar saltean los apareados y los cuentan aparte, también si se aparean después de calcular el impacto", () =>
             {
                 var regla = HomologacionStorage.ObtenerListado(perfilYId).Single(r => r.ValorOriginal == "COBRO");
-                var impacto = HomologacionAdminService.CalcularImpactoBaja(regla, perfilY);
-                Check(impacto.EnMovimientosApareados == 2 && impacto.Total == 0, $"Dos apareados y ninguno a tocar: {impacto.EnMovimientosApareados}/{impacto.Total}");
+                var impacto0 = HomologacionAdminService.CalcularImpactoBaja(regla, perfilY);
+                Check(impacto0.EnMovimientosApareados == 2 && impacto0.Total == 0, $"Dos apareados y ninguno a tocar: {impacto0.EnMovimientosApareados}/{impacto0.Total}");
                 int reapuntado = HomologacionAdminService.Reapuntar(regla, perfilY, "REAPUNTADO Y", out int porBlindaje, out int porPares);
                 Check(reapuntado > 0 && porBlindaje == 0 && porPares == 2, $"Saltó dos apareados: {porBlindaje}/{porPares}");
                 Check(Estandar(g0.Id) == "COBRANZAS" && Estandar(g1.Id) == "COBRANZAS", "Los apareados no se arrastran");
+
+                // Un archivo nuevo con dos movimientos libres de la misma regla.
+                var movsK = ImportacionService.ImportarArchivo(Extracto((d1, "COBRO 1", 100m), (d2, "COBRO 2", 200m)), "k.xlsx", perfilY);
+                idK = movsK[0].IdArchivo;
+                var regla2 = HomologacionStorage.ObtenerListado(perfilYId).Single(r => r.ValorOriginal == "COBRO");
+                var impacto = HomologacionAdminService.CalcularImpactoBaja(regla2, perfilY);
+                Check(impacto.EnMovimientosApareados == 2 && impacto.Afectados.Count == 2, $"Dos apareados y dos libres: {impacto.EnMovimientosApareados}/{impacto.Afectados.Count}");
+                // Otra sesión aparea los dos libres mientras el diálogo de la baja está abierto.
+                var carrera = ConciliacionInternaService.CrearSesion("Carrera", d1, new DateTime(2026, 10, 31), new[] { "REAPUNTADO Y" });
+                sesionCarreraId = carrera.Id;
+                Check(ConciliacionInternaMutationStorage.ConciliarPar(carrera.Id, movsK[0].Id, movsK[1].Id, TipoMatch.Manual) == null, "Se aparearon");
+                HomologacionAdminService.AplicarBaja(regla2, impacto, null);
+                Check(impacto.EnMovimientosApareados == 4, "La baja suma los que la base salteó: " + impacto.EnMovimientosApareados);
+                Check(Estandar(movsK[0].Id) == "REAPUNTADO Y" && Estandar(movsK[1].Id) == "REAPUNTADO Y", "No se despegaron");
+                Check(HomologacionStorage.ObtenerListado(perfilYId).All(r => r.ValorOriginal != "COBRO"), "La regla se dio de baja");
+            });
+            test("Homologación masiva y reaplicación: los apareados se saltean y se cuentan", () =>
+            {
+                var copia = MovimientoStorage.ObtenerPorArchivo(idG).Where(m => m.Id == g0.Id || m.Id == g2.Id).ToList();
+                var cambiados = SesionMovimientosService.ReaplicarHomologacion(copia, perfilY, out int noModificados);
+                Check(cambiados.Count > 0 && noModificados == cambiados.Count, $"Los dos están apareados: todo lo que había que escribir se salteó y se contó ({noModificados}/{cambiados.Count})");
+                Check(Estandar(g0.Id) == "COBRANZAS", "El apareado no cambia");
             });
             test("El aviso de movimientos no modificados junta blindados y apareados", () =>
             {
@@ -313,9 +348,10 @@ static class BlindajeTests
             {
                 cn.Execute(@"DELETE FROM bancos.ConciliacionInternaPares WHERE IdSesion=@I; DELETE FROM bancos.ConciliacionInternaSesiones WHERE Id=@I;
                     DELETE FROM bancos.ConciliacionPares WHERE IdSesion=@E; DELETE FROM bancos.ConciliacionItemsExternos WHERE IdSesion=@E; DELETE FROM bancos.ConciliacionSesiones WHERE Id=@E;
-                    DELETE FROM bancos.MovimientosArchivo WHERE IdArchivo=@G; DELETE FROM bancos.ArchivosImportados WHERE Id=@G;
+                    DELETE FROM bancos.ConciliacionInternaPares WHERE IdSesion=@C; DELETE FROM bancos.ConciliacionInternaSesiones WHERE Id=@C;
+                    DELETE FROM bancos.MovimientosArchivo WHERE IdArchivo IN (@G, @K); DELETE FROM bancos.ArchivosImportados WHERE Id IN (@G, @K);
                     DELETE FROM bancos.HomologacionConceptos WHERE IdPerfilBanco=@Y; DELETE FROM bancos.PerfilesBanco WHERE Id=@Y;",
-                    new { I = sesionInternaG.Id, E = sesionExternaGId, G = idG, Y = perfilYId });
+                    new { I = sesionInternaG.Id, E = sesionExternaGId, C = sesionCarreraId, G = idG, K = idK, Y = perfilYId });
                 Check(cn.QuerySingle<int>("SELECT COUNT(*) FROM bancos.ConciliacionInternaSesiones") == 0 && cn.QuerySingle<int>("SELECT COUNT(*) FROM bancos.ConciliacionSesiones") == 0, "No quedaron sesiones");
             });
 

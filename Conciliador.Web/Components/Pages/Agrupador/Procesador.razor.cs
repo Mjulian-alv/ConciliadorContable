@@ -178,6 +178,8 @@ public partial class Procesador
         try { string usuario = await Access.RequireUser("AgrProcesador"); using var aud = AuditoriaContexto.Usar(usuario: usuario); m.ConceptoFinal = nuevo; await Task.Run(() => MovimientoStorage.ActualizarConceptoFinal(m.Id, nuevo)); }
         // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Si otra sesión apareó el movimiento después de cargar la grilla, el storage lo rechaza: se revierte el valor y se marca la fila
         catch (MovimientoApareadoException ex) { m.ConceptoFinal = anterior; m.Apareado = true; m.ApareadoEn = ex.Par.Detalle; m.MensajeApareado = ex.Message; error = ex.Message; }
+        // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Revisión 1, hallazgo 1: lo que otra sesión marcó como conciliado después de cargar la grilla también se rechaza
+        catch (MovimientoConciliadoException ex) { m.ConceptoFinal = anterior; m.Conciliado = true; error = ex.Message; }
         catch (Exception ex) { m.ConceptoFinal = anterior; error = ex is UnauthorizedAccessException ? ex.Message : "No se pudo guardar el concepto final: " + ex.Message; }
     }
     async Task CambioCuentaFinal(MovimientoProcesado m, ChangeEventArgs e)
@@ -195,6 +197,8 @@ public partial class Procesador
         }
         // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Si otra sesión apareó el movimiento después de cargar la grilla, el storage lo rechaza: se revierte el valor y se marca la fila
         catch (MovimientoApareadoException ex) { m.CuentaFinal = anterior; m.Apareado = true; m.ApareadoEn = ex.Par.Detalle; m.MensajeApareado = ex.Message; error = ex.Message; }
+        // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Revisión 1, hallazgo 1: lo que otra sesión marcó como conciliado después de cargar la grilla también se rechaza
+        catch (MovimientoConciliadoException ex) { m.CuentaFinal = anterior; m.Conciliado = true; error = ex.Message; }
         catch (Exception ex) { m.CuentaFinal = anterior; error = ex is UnauthorizedAccessException ? ex.Message : "No se pudo guardar la cuenta final: " + ex.Message; }
     }
 
@@ -220,13 +224,17 @@ public partial class Procesador
             var perfil = Perfil; var movs = Movs; bool rehomologa = yaHomologado;
             // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 2 - El historial guarda quién homologó
             string usuario = await Access.RequireUser("AgrProcesador"); using var aud = AuditoriaContexto.Usar(usuario: usuario);
+            int noModificados = 0; // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Revisión 1, hallazgos 3 y 5: apareados que la base salteó
             await Task.Run(() =>
             {
+                int a = 0;
                 // Sólo en la re-homologación (que el usuario confirmó) se re-resuelven los de la misma regla; en el alta sobre un pendiente alcanza con el barrido de pendientes.
-                if (rehomologa) SesionMovimientosService.ReaplicarHomologacion(SesionMovimientosService.MovimientosDeLaMismaRegla(movs, perfil, r.Valor), perfil);
-                SesionMovimientosService.RehomologarEnMemoria(movs, perfil);
+                if (rehomologa) SesionMovimientosService.ReaplicarHomologacion(SesionMovimientosService.MovimientosDeLaMismaRegla(movs, perfil, r.Valor), perfil, out a);
+                SesionMovimientosService.RehomologarEnMemoria(movs, perfil, out int b);
+                noModificados = a + b;
             });
             aviso = $"Homologación guardada: «{r.Valor}» → «{r.Concepto}».";
+            if (HomologacionAdminService.AvisoNoModificados(0, noModificados) is string noMod) aviso += " " + noMod;
             Recalcular();
         }
         catch (Exception ex) { error = "No se pudo aplicar la homologación: " + ex.Message; }
@@ -250,7 +258,7 @@ public partial class Procesador
         dialogo = Dialogo.Pendientes;
         if (!r.Exitosa || Perfil == null || Movs == null) return;
         var perfil = Perfil; var movs = Movs;
-        try { string usuario = await Access.RequireUser("AgrProcesador"); using var aud = AuditoriaContexto.Usar(usuario: usuario); await Task.Run(() => SesionMovimientosService.RehomologarEnMemoria(movs, perfil)); Recalcular(); aviso = $"Homologación guardada: «{r.Valor}» → «{r.Concepto}»."; }
+        try { string usuario = await Access.RequireUser("AgrProcesador"); using var aud = AuditoriaContexto.Usar(usuario: usuario); int noModificados = 0; await Task.Run(() => SesionMovimientosService.RehomologarEnMemoria(movs, perfil, out noModificados)); Recalcular(); aviso = $"Homologación guardada: «{r.Valor}» → «{r.Concepto}»."; /* Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Revisión 1, hallazgo 5: la homologación masiva avisa los apareados que no se modificaron */ if (HomologacionAdminService.AvisoNoModificados(0, noModificados) is string noMod) aviso += " " + noMod; }
         catch (Exception ex) { error = "No se pudo aplicar la homologación: " + ex.Message; dialogo = Dialogo.Ninguno; }
     }
 

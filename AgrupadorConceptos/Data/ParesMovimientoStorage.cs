@@ -45,6 +45,14 @@ namespace AgrupadorConceptos.Data
             => Par = par;
     }
 
+    // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Revisión 1, hallazgo 1: «un movimiento conciliado no se edita» sólo lo hacía la pantalla con su copia en memoria
+    /// <summary>Se intentó modificar un movimiento ya marcado como conciliado (a mano o por una sesión cerrada).</summary>
+    public class MovimientoConciliadoException : InvalidOperationException
+    {
+        public MovimientoConciliadoException()
+            : base("Este movimiento ya está marcado como conciliado y no se puede editar.") { }
+    }
+
     /// <summary>
     /// Un solo lugar decide si un movimiento está apareado: figura en <c>bancos.ConciliacionPares</c> (externa) o en
     /// <c>bancos.ConciliacionInternaPares</c> (interna), sin importar el estado de la sesión ni que la sesión siga existiendo
@@ -72,6 +80,17 @@ namespace AgrupadorConceptos.Data
         {
             var par = Consultar(cn, tx, idsMovimientos).FirstOrDefault();
             if (par != null) throw new MovimientoApareadoException(par);
+        }
+
+        // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Revisión 1, hallazgo 1: el marcado manual no deja par, así que una copia vieja de la grilla podía editar un movimiento recién conciliado
+        /// <summary>Rechaza si alguno de los movimientos ya está marcado como conciliado. Se llama bajo el lock, con el estado de la base y no el de la pantalla.</summary>
+        public static void ExigirNoConciliado(IDbConnection cn, IDbTransaction tx, IReadOnlyCollection<int> idsMovimientos)
+        {
+            if (idsMovimientos == null || idsMovimientos.Count == 0) return;
+            if (cn.ExecuteScalar<int>(@"SELECT COUNT(*) FROM bancos.MovimientosArchivo
+                    WHERE Conciliado = 1 AND Id IN (SELECT CAST([value] AS int) FROM OPENJSON(@Ids))",
+                new { Ids = JsonSerializer.Serialize(idsMovimientos.Distinct().ToList()) }, tx) != 0)
+                throw new MovimientoConciliadoException();
         }
 
         /// <summary>Dónde está apareado cada uno de los movimientos que lo estén (el primero hallado si figura en más de un par).</summary>

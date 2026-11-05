@@ -109,6 +109,7 @@ else
     bool ocupado,cargandoCandidatos;
     // alta
     string nombre="",sugerido=""; DateTime desde=DateTime.Today.AddMonths(-1),hasta=DateTime.Today; bool mostrarTodos;
+    // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - Se quitan EstaBlindado, CandidatosBlindados y SinBlindar: se ofrecen todos los extractos y el blindaje es sólo un dato por fila (c.Blindado)
     // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - El blindaje de cada extracto se muestra al elegirlo
     string NombreArchivo(int id)=>todosArchivos.Find(a=>a.Id==id)?.NombreArchivo??$"archivo {id}";
     List<ExtractoCandidato> candidatos=new(); HashSet<int> archivosElegidos=new(); List<ArchivoImportado> todosArchivos=new();

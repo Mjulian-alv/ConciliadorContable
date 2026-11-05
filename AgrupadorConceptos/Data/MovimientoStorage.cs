@@ -131,6 +131,19 @@ namespace AgrupadorConceptos.Data
                 else if (enPares.TryGetValue(id, out var donde)) omitidos.Add((id, $"está en una {donde}"));
                 else libres.Add(id);
             }
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - Revisión 1, hallazgo 2: si una baja concurrente archivó el archivo, sus movimientos ya no están en la tabla viva
+            // La guardia de archivos activos mira desde los movimientos, así que no veía nada y el UPDATE afectaba cero filas mientras se informaba éxito.
+            // Lo que ya no existe se informa como omitido en vez de contarse como marcado.
+            if (libres.Count > 0)
+            {
+                var existentes = cn.Query<int>(@"SELECT Id FROM bancos.MovimientosArchivo WHERE Id IN (SELECT CAST([value] AS int) FROM OPENJSON(@Ids))",
+                    new { Ids = System.Text.Json.JsonSerializer.Serialize(libres) }, tx).ToHashSet();
+                foreach (int id in libres.Where(i => !existentes.Contains(i)).ToList())
+                {
+                    omitidos.Add((id, "ya no existe (el archivo se dio de baja)"));
+                    libres.Remove(id);
+                }
+            }
             // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - Conciliar ya no exige archivos blindados: sólo que ninguno esté dado de baja
             BlindajeStorage.ExigirActivosPorMovimientos(cn, tx, libres);
             if (libres.Count > 0)
@@ -271,6 +284,8 @@ namespace AgrupadorConceptos.Data
             ConciliacionMutationStorage.Bloquear(cn, tx);
             // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Apareado en una conciliación: no se edita, aunque la sesión no esté cerrada
             ParesMovimientoStorage.ExigirSinPar(cn, tx, new[] { id });
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Revisión 1, hallazgo 1: lo conciliado tampoco se edita, validado acá y no sólo en la pantalla
+            ParesMovimientoStorage.ExigirNoConciliado(cn, tx, new[] { id });
             // Fecha: 26/10/2026 - TAREA: 00135 - Linea: 3 - Con el archivo blindado la homologación está cerrada
             BlindajeStorage.ExigirNoBlindadoPorMovimientos(cn, tx, new[] { id });
             cn.Execute("UPDATE bancos.MovimientosArchivo SET ConceptoFinal = @ConceptoFinal WHERE Id = @Id",
@@ -289,6 +304,8 @@ namespace AgrupadorConceptos.Data
             // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Apareado en una conciliación (de cualquier sesión): no se edita
             // Reemplaza el chequeo que hacían los hosts sólo para sesiones internas en proceso; la regla vive acá, con el lock tomado.
             ParesMovimientoStorage.ExigirSinPar(cn, tx, new[] { id });
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Revisión 1, hallazgo 1: lo conciliado tampoco se edita, validado acá y no sólo en la pantalla
+            ParesMovimientoStorage.ExigirNoConciliado(cn, tx, new[] { id });
             BlindajeStorage.ExigirNoBlindadoPorMovimientos(cn, tx, new[] { id });
             cn.Execute("UPDATE bancos.MovimientosArchivo SET CuentaFinal = @CuentaFinal WHERE Id = @Id",
                 new { CuentaFinal = cuentaFinal, Id = id }, tx);

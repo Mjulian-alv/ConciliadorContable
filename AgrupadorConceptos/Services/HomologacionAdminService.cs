@@ -160,7 +160,10 @@ namespace AgrupadorConceptos.Services
             foreach (var item in impacto.CubiertosPorOtraRegla)
                 if (AplicarConcepto(item.Movimiento, item.ConceptoSinLaRegla, cuentasPorConcepto)) cambiados.Add(item.Movimiento);
 
-            HomologacionStorage.EliminarYActualizarMovimientos(regla.Id, cambiados);
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Revisión 1, hallazgo 4: si otra sesión apareó un movimiento después de calcular el impacto, la base lo salteó
+            // y el conteo del impacto (calculado antes) no lo sabía: lo que la transacción no escribió se suma a los apareados.
+            int escritos = HomologacionStorage.EliminarYActualizarMovimientos(regla.Id, cambiados);
+            impacto.EnMovimientosApareados += cambiados.Count - escritos;
         }
 
         // Fecha: 05/09/2026 - TAREA: 00021 - Linea: 3 - Devuelve el Id para que el llamador persista la cuenta
@@ -209,7 +212,10 @@ namespace AgrupadorConceptos.Services
                 if (AplicarConcepto(mov, nombreConcepto, cuentasPorConcepto)) cambiados.Add(mov);
             }
 
-            return HomologacionStorage.ReapuntarYActualizarMovimientos(regla.Id, nombreConcepto, cambiados);
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Revisión 1, hallazgo 4: se suma lo que la transacción no escribió (apareado después de reunir los movimientos)
+            int idConcepto = HomologacionStorage.ReapuntarYActualizarMovimientos(regla.Id, nombreConcepto, cambiados, out int escritos);
+            saltadosApareados += cambiados.Count - escritos;
+            return idConcepto;
         }
 
         // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Un solo texto para escritorio y web: cuántos movimientos no se tocaron y por qué

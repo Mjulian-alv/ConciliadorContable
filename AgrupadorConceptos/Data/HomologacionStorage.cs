@@ -69,7 +69,9 @@ namespace AgrupadorConceptos.Data
         /// </summary>
         /// <param name="movimientos">Ya vienen con ConceptoEstandar/ConceptoFinal decididos
         /// por HomologacionAdminService. Puede venir vacío: la regla se borra igual.</param>
-        public static void EliminarYActualizarMovimientos(
+        // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Revisión 1, hallazgo 4: devuelve cuántos movimientos escribió la transacción, para contar los que la base salteó por estar apareados
+        /// <returns>Cuántos movimientos se escribieron; los que no, estaban apareados en una conciliación o en un archivo blindado.</returns>
+        public static int EliminarYActualizarMovimientos(
             int idHomologacion, IReadOnlyCollection<MovimientoProcesado> movimientos)
         {
             using var cn = DatabaseHelper.Open();
@@ -80,9 +82,10 @@ namespace AgrupadorConceptos.Data
             cn.Execute("DELETE FROM bancos.HomologacionConceptos WHERE Id = @Id",
                 new { Id = idHomologacion }, tx);
 
-            MovimientoStorage.ActualizarConceptos(movimientos, cn, tx);
+            int escritos = MovimientoStorage.ActualizarConceptos(movimientos, cn, tx);
 
             tx.Commit();
+            return escritos;
         }
 
         // Fecha: 28/08/2026 - TAREA: 00003 - Linea: 2 - Edicion: reapuntar la regla y arrastrar
@@ -93,7 +96,12 @@ namespace AgrupadorConceptos.Data
         /// </summary>
         /// <returns>Id del concepto estándar al que quedó apuntando.</returns>
         public static int ReapuntarYActualizarMovimientos(
-            int idHomologacion, string nombreConcepto, IReadOnlyCollection<MovimientoProcesado> movimientos)
+            int idHomologacion, string nombreConcepto, IReadOnlyCollection<MovimientoProcesado> movimientos) =>
+            ReapuntarYActualizarMovimientos(idHomologacion, nombreConcepto, movimientos, out _);
+
+        // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Revisión 1, hallazgo 4: también informa cuántos movimientos escribió la transacción
+        public static int ReapuntarYActualizarMovimientos(
+            int idHomologacion, string nombreConcepto, IReadOnlyCollection<MovimientoProcesado> movimientos, out int escritos)
         {
             using var cn = DatabaseHelper.Open();
             using var tx = cn.BeginTransaction();
@@ -108,7 +116,7 @@ namespace AgrupadorConceptos.Data
                 WHERE Id = @Id",
                 new { IdConcepto = idConcepto, Id = idHomologacion }, tx);
 
-            MovimientoStorage.ActualizarConceptos(movimientos, cn, tx);
+            escritos = MovimientoStorage.ActualizarConceptos(movimientos, cn, tx);
 
             tx.Commit();
             return idConcepto;

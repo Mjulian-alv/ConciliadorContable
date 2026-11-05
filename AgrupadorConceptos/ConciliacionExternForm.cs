@@ -17,6 +17,7 @@ namespace AgrupadorConceptos
     public partial class ConciliacionExternForm : Form
     {
         private ConciliacionSesion _sesionActiva;
+        // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - Se quita el contador de extractos ocultos por no estar blindados (_sinBlindarOcultos): ya no se oculta ninguno
         // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 4 - La selección persiste aunque el rango oculte un archivo.
         private readonly HashSet<int> _idsArchivosSeleccionados = new();
         private List<ConciliacionItemExterno> _itemsExternosLeidos;

@@ -269,15 +269,18 @@ namespace AgrupadorConceptos
         /// y refresca en el lugar. No relee de la base ni rebindea: la grilla sigue mostrando
         /// el archivo que se esta trabajando y el cursor no se mueve.
         /// </summary>
-        private void AplicarHomologacionesEnGrilla()
+        // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Revisión 1, hallazgos 3 y 5: se avisa cuántos movimientos apareados no se modificaron (los reaplicados antes se suman)
+        private void AplicarHomologacionesEnGrilla(int noModificadosPrevios = 0)
         {
             if (_perfilEnGrilla == null) return;
             if (dgvDatos.DataSource is not List<MovimientoProcesado> movs) return;
 
-            SesionMovimientosService.RehomologarEnMemoria(movs, _perfilEnGrilla);
+            SesionMovimientosService.RehomologarEnMemoria(movs, _perfilEnGrilla, out int noModificados);
 
             RefrescarGrillaConservandoPosicion();
             ActualizarResumen(movs);
+            if (HomologacionAdminService.AvisoNoModificados(0, noModificados + noModificadosPrevios) is string aviso)
+                MessageBox.Show(aviso, "Movimientos no modificados", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void btnBorrarSesion_Click(object sender, EventArgs e)
@@ -538,9 +541,10 @@ namespace AgrupadorConceptos
                 else if (e.Column.Name == "CuentaFinal")
                     MovimientoStorage.ActualizarCuentaFinal(mov.Id, mov.CuentaFinal);
             }
-            catch (MovimientoApareadoException ex)
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Revisión 1, hallazgo 1: también se rechaza lo que otra sesión marcó como conciliado después de cargar la grilla
+            catch (Exception ex) when (ex is MovimientoApareadoException or MovimientoConciliadoException)
             {
-                MessageBox.Show(ex.Message, "Movimiento apareado", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(ex.Message, ex is MovimientoApareadoException ? "Movimiento apareado" : "Movimiento conciliado", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 RefrescarSesionDesdeBase();
             }
         }
@@ -596,7 +600,10 @@ namespace AgrupadorConceptos
             int total = movs.Count;
             int homologados = movs.Count(m => m.ConceptoEstandar != ConceptosBancarios.PendienteHomologar);
             int pendientes = total - homologados;
-            lblTotalRegistros.Text = $"Registros leídos: {total}   |   Homologados: {homologados}   |   Pendientes: {pendientes}";
+            // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Revisión 1, hallazgo 8: el resumen dice cuántos movimientos están apareados (y por lo tanto no se pueden modificar)
+            int apareados = movs.Count(m => m.Apareado);
+            lblTotalRegistros.Text = $"Registros leídos: {total}   |   Homologados: {homologados}   |   Pendientes: {pendientes}"
+                + (apareados > 0 ? $"   |   Apareados: {apareados}" : "");
         }
 
         private void btnExportarConsolidado_Click(object sender, EventArgs e)
@@ -807,15 +814,16 @@ namespace AgrupadorConceptos
             // El alcance sigue siendo el archivo abierto: la regla rige para las importaciones
             // futuras, y lo que haya que corregir en archivos viejos va por la gestion de
             // homologaciones, que muestra el impacto antes de aplicarlo.
+            int noReaplicados = 0; // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Apareados que la reaplicación no pudo escribir
             if (yaEstabaHomologado && dgvDatos.DataSource is List<MovimientoProcesado> movsEnGrilla)
             {
                 var aReaplicar = SesionMovimientosService.MovimientosDeLaMismaRegla(
                     movsEnGrilla, _perfilEnGrilla, frmHomologar.sValorOriginal);
 
-                SesionMovimientosService.ReaplicarHomologacion(aReaplicar, _perfilEnGrilla);
+                SesionMovimientosService.ReaplicarHomologacion(aReaplicar, _perfilEnGrilla, out noReaplicados);
             }
 
-            AplicarHomologacionesEnGrilla();
+            AplicarHomologacionesEnGrilla(noReaplicados);
         }
 
         private void AvanzarStep(int stepIndex)

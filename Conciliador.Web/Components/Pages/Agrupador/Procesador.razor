@@ -69,7 +69,9 @@ else
         @* Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - Sin blindar ya no hay aviso: conciliar no lo necesita. Con blindaje, la homologación y la edición siguen bloqueadas. *@
         @if(ArchivoEnTrabajo!=null&&Blindado){<div class="notice" role="status">Archivo blindado: la homologación y la edición están bloqueadas hasta desblindarlo. Conciliar, consultar y exportar siguen disponibles.</div>}
         @* Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Aviso de lo apareado: no se puede modificar aunque la conciliación no esté cerrada. *@
-        @if(Movs.Any(m=>m.Apareado)){<div class="notice" role="status">@Movs.Count(m=>m.Apareado).ToString("N0",ar) movimiento(s) están apareados en una conciliación y no se pueden modificar. Deshacé el par en esa conciliación si hay que cambiarlos.</div>}
+        @if(Movs.Any(m=>m.Apareado)){<div class="notice" role="status">@Movs.Count(m=>m.Apareado).ToString("N0",ar) movimiento(s) del archivo están apareados en una conciliación y no se pueden modificar. Deshacé el par en esa conciliación si hay que cambiarlos.</div>}
+        @* Fecha: 05/11/2026 - TAREA: 00162 - Linea: 2 - Revisión 1, hallazgo 8: estado previsto cuando todo lo que se ve está apareado (maqueta 01-procesador-apareado-vacio) *@
+        @if(vista.Count>0&&vista.All(m=>m.Apareado)){<div class="notice" role="status">Todos los movimientos visibles están apareados en una conciliación: no hay nada para editar acá. Quitá el filtro para ver los movimientos libres.</div>}
         @if(vista.Count==0){<div class="empty"><p class="muted">Ningún movimiento coincide con el filtro.</p></div>}
         else
         {

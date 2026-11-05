@@ -101,6 +101,7 @@ internal static class ConciliacionSeguraTests
         ConciliacionExternService.EliminarSesion(grupo.Id);
     }
 
+    // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - Se quita el atajo Blindaje(archivo, bool): ya no hace falta blindar para conciliar
     // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 3, 4 - El archivo importado en otra fecha se elige por sus movimientos reales.
     public static void SelectorYLectura()
     {

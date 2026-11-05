@@ -67,10 +67,13 @@ consulta por carga; no se persisten. La grilla del escritorio oculta `ApareadoEn
 
 ### Ítem 1 — conciliar sin blindar
 
-- Desaparecen `BlindajeStorage.ExigirBlindados` y `ExigirBlindadosPorMovimientos`, y con ellas la excepción
-  `ArchivoSinBlindarException` y el mensaje «Para conciliar, blindá primero el archivo: …». Se eliminan sus seis
-  llamadas: `MovimientoStorage.MarcarConciliados`, `ConciliacionExternStorage` (alta de sesión, finalizar, conciliar
-  par) y `ConciliacionInternaMutationStorage` (conciliar par, finalizar).
+- Desaparece la exigencia de blindar: `BlindajeStorage.ExigirBlindados` / `ExigirBlindadosPorMovimientos`, la excepción
+  `ArchivoSinBlindarException` y el mensaje «Para conciliar, blindá primero el archivo: …». **Se reemplazan por
+  `ExigirActivos` / `ExigirActivosPorMovimientos` (excepción `ArchivoInactivoException`)**, porque la guardia vieja
+  también rechazaba archivos dados de baja (`Activo = 0`, cuya fila sigue en `ArchivosImportados`) y esa protección no
+  tiene nada que ver con el blindaje. Se cambian las mismas seis llamadas: `MovimientoStorage.MarcarConciliados`,
+  `ConciliacionExternStorage` (alta de sesión, finalizar, conciliar par) y `ConciliacionInternaMutationStorage`
+  (conciliar par, finalizar).
 - La elección de extractos de la conciliación externa vuelve a ofrecer **todos** los candidatos del rango
   (escritorio y web). Se saca el conteo «N sin blindar no se ofrecen» y la validación previa al armar la sesión.
   El estado de blindaje se sigue mostrando por extracto, como dato.
@@ -118,8 +121,10 @@ consulta por carga; no se persisten. La grilla del escritorio oculta `ApareadoEn
   > Deshacé el par en esa conciliación si hay que cambiarlo.
 
   En el escritorio, `DgvDatos_CellBeginEdit` cancela la edición; en la web, `CambioConceptoFinal` /
-  `CambioCuentaFinal` revierten el valor y muestran el error. La condición se mira sobre los datos cargados (una
-  consulta por carga de archivo, no una por celda); el storage la vuelve a exigir en la transacción.
+  `CambioCuentaFinal` revierten el valor y muestran el error. **La marca cargada (`Apareado`) se usa para pintar la fila
+  y deshabilitar las celdas; el escritorio, además, consulta en vivo al entrar a editar una celda** (una consulta
+  indexada por movimiento, la misma que ya hacía para la cuenta final), porque la marca puede estar vieja si otra sesión
+  apareó el movimiento. El storage lo vuelve a exigir en la transacción, que es lo que cuenta.
 - El tilde `Conciliado` y el blindaje siguen bloqueando lo que ya bloqueaban: la regla nueva se suma, no reemplaza.
 
 ## Orden de implementación
@@ -153,6 +158,21 @@ consulta por carga; no se persisten. La grilla del escritorio oculta `ApareadoEn
 | D2 | Cómo se ve «apareado» en la grilla | Columna nueva de sólo lectura en el escritorio y una marca en la columna «Conciliado» de la web, con el detalle (interna/externa y sesión) en el mensaje de bloqueo. Lo fija la maqueta `01-procesador-apareado`. |
 | D3 | Las operaciones de reglas del perfil (baja, reapuntar, masiva) ante un apareado | **Saltean y cuentan**, como con los archivos blindados, en vez de cortar toda la operación. Una regla alcanza varios archivos y abortarla por un movimiento dejaría el resto sin homologar. |
 | D4 | Movimientos apareados que hoy tienen el concepto final editado | No se corrige nada retroactivo: la regla es de acá en adelante. El historial de la 00135 ya deja rastro de quién editó qué. |
+
+## Cambios surgidos de la construcción y de la revisión 1
+
+Lo que se agregó o se resolvió distinto de lo planeado arriba (detalle en `docs/Revisiones/00162-review-1.md`):
+
+- **Lo conciliado tampoco se edita en el storage.** «Un movimiento conciliado no se edita» sólo lo aplicaba la pantalla con su copia en memoria; el marcado manual no deja par, así que una copia vieja podía editar un
+  movimiento recién conciliado. `ParesMovimientoStorage.ExigirNoConciliado` (con `MovimientoConciliadoException`) lo exige bajo el lock en las dos ediciones puntuales.
+- **El marcado manual ya no cuenta lo que no existe.** Si una baja concurrente archivó el archivo, los movimientos vuelven como omitidos («ya no existe») y no como marcados.
+- **Los apareados que se saltean se cuentan con lo que escribió la transacción**, no con una consulta previa: `ActualizarConceptos` devuelve las filas escritas y `AplicarBaja`, `Reapuntar`, `RehomologarEnMemoria` y
+  `ReaplicarHomologacion` informan `cambiados − escritos`. Alcanza también a la homologación masiva y a los grupos de pendientes, que antes saltaban sin avisar.
+- **Escritorio:** no hay un panel de avisos donde mostrar «todos los movimientos visibles están apareados» sin tocar el diseñador; el resumen de la grilla suma «Apareados: N» y las filas apareadas se ven atenuadas, con su columna
+  «Apareado en». La web sí muestra el texto de la maqueta `01-procesador-apareado-vacio`.
+- **Homologar una fila apareada:** se rechaza con el mensaje antes de abrir el diálogo, con la marca cargada. Si otra sesión lo aparea con el diálogo ya abierto, la regla se guarda (es del perfil), el movimiento no se escribe
+  (lo impide el `UPDATE`) y la pantalla lo avisa con el conteo de no modificados.
+- **Desvío del reparto:** el flujograma y las maquetas los hizo Claude y no Codex, porque Codex no pudo escribir en este entorno. La revisión sí fue de Codex.
 
 ## Flujograma
 
