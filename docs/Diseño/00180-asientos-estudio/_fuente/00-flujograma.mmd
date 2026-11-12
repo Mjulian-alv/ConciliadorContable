@@ -1,0 +1,62 @@
+flowchart TD
+    A(["Usuario abre<br/>Asientos para el estudio"]) --> B["1 · Arrastra o elige el .xlsx"]
+    B --> C{"¿Es .xlsx, entra en el<br/>tamaño máximo y no tiene<br/>macros ni contraseña?"}
+    C -- No --> C1["Rechazo con dónde,<br/>causa y arreglo"]
+    C1 --> B
+    C -- Sí --> D["Lee el libro: valores calculados<br/>guardados, hojas en orden"]
+    D --> E{"¿Alguna celda de importe tiene<br/>fórmula sin valor guardado<br/>o con error? (A11)"}
+    E -- Sí --> E1["Bloqueante con la celda exacta:<br/>abrir en Excel, recalcular,<br/>guardar y volver a cargar"]
+    E1 --> B
+    E -- No --> F["Detecta el tipo de planilla:<br/>Bancos · Devengamientos · Varios"]
+    F --> G{"¿El tipo detectado<br/>es el correcto?"}
+    G -- No --> G1["El usuario elige<br/>el tipo a mano"]
+    G1 --> H
+    G -- Sí --> H["Parser del tipo arma el libro leído:<br/>hoja → mes → asiento → línea"]
+    H --> I["Lista los meses encontrados"]
+    I --> J{"¿Hay meses fuera del<br/>rango habitual? (A9)"}
+    J -- Sí --> J1["Aviso informativo:<br/>el usuario incluye o excluye"]
+    J1 --> K
+    J -- No --> K["2 · Rango de meses elegido"]
+    K --> L{"¿Hay asientos registrables<br/>en el rango?"}
+    L -- No --> L1["Vista previa vacía:<br/>informativos, vacíos y de<br/>ejercicio anterior listados"]
+    L1 --> I
+    L -- Sí --> M["Validador: A1 a A13 y A15<br/>sobre cada asiento"]
+    M --> N["Vista previa: árbol mes → hoja → asiento<br/>con estado, Debe, Haber y diferencia"]
+    N --> O["3 · Panel de alertas<br/>Las advertencias se listan y no bloquean<br/>(p. ej. A1: línea sin código de cuenta)"]
+    O --> P{"¿Quedan alertas<br/>bloqueantes abiertas?"}
+    P -- Sí --> Q{"¿Qué alerta?"}
+    Q -- "A6 descuadre de origen" --> Q2{"Salida elegida"}
+    Q2 -- "a · corregir el Excel" --> B
+    Q2 -- "b · ajustar el centavo<br/>en la línea elegida" --> Q3["Se registra la decisión"]
+    Q2 -- "c · aceptar la alerta" --> Q4["Se registra quién la aceptó"]
+    Q -- "A2 · A4 · A11 · otras" --> Q5["Corregir el Excel y recargar,<br/>o aceptar explícitamente<br/>si la alerta lo permite"]
+    Q5 --> B
+    R["Se vuelve a validar"]
+    Q3 --> R
+    Q4 --> R
+    R --> P
+    P -- No --> S["4 · Resumen: asientos, líneas, totales<br/>y cuántas líneas salen sin cuenta"]
+    S --> T{"¿Pasan las validaciones globales?<br/>Debe = Haber · 11 columnas ·<br/>fechas válidas · numeración sin huecos"}
+    T -- No --> T1["Se bloquea y se muestra<br/>cuál falló"]
+    T1 --> N
+    T -- Sí --> U{"¿Este Excel con estos<br/>parámetros ya se generó? (A16)"}
+    U -- Sí --> U1{"¿Genera de nuevo?"}
+    U1 -- No --> Z1(["Cancela"])
+    U1 -- Sí --> V
+    U -- No --> V{"¿Ya existe el archivo<br/>en la carpeta de destino?"}
+    V -- Sí --> V1{"Pisar · guardar con otro<br/>nombre · cancelar"}
+    V1 -- Cancelar --> Z1
+    V1 -- "Pisar u otro nombre" --> W
+    V -- No --> W["Numera sin huecos, redondea half-up,<br/>arma las 11 columnas con TAB<br/>y escribe el TXT (cp1252 · CRLF)"]
+    W --> X{"¿Se pudo escribir en<br/>la carpeta?"}
+    X -- No --> X1["Error con la ruta y la causa:<br/>revisar Configuración"]
+    X1 --> S
+    X -- Sí --> Y["Calcula el hash del TXT y registra la generación<br/>y sus alertas en el historial"]
+    Y --> Z(["Archivo guardado y descargable,<br/>listo para enviar al estudio"])
+
+    classDef inicio fill:#e6f2f0,stroke:#007e79,color:#153445;
+    classDef bloqueo fill:#fde7e3,stroke:#a2392a,color:#5c2118;
+    classDef aviso fill:#fff1d7,stroke:#9c6920,color:#4d3410;
+    class A,Z inicio;
+    class C1,E1,T1,X1 bloqueo;
+    class J1,Q3,Q4 aviso;
