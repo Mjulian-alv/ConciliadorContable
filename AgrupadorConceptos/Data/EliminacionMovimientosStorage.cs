@@ -1,3 +1,4 @@
+// Fecha: 12/11/2026 - TAREA: 00181 - Linea: 1 - La baja de movimientos sólo se frena por pares de conciliación, no por sesiones abiertas.
 // Fecha: 13/10/2026 - TAREA: 00096 - Linea: 1, 3 - La baja ya no arma listas de IDs: SQL Server admite 2100 parámetros y un archivo real tiene miles de movimientos.
 // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 1 - Una baja sólo se confirma si todos los movimientos siguen libres bajo el bloqueo compartido.
 using System;
@@ -35,7 +36,12 @@ namespace AgrupadorConceptos.Data
                 new { Ids = idsJson, Archivo = idArchivo }, tx);
             if (cuentas.Existentes != ids.Count || cuentas.EnElArchivo != ids.Count)
                 throw new InvalidOperationException("La selección cambió o contiene movimientos de otro archivo. Actualizá la grilla.");
-            ValidarLibres(cn, tx, idArchivo, FiltroSeleccion, new { Ids = idsJson, Archivo = idArchivo });
+            // Fecha: 12/11/2026 - TAREA: 00181 - Linea: 1 - Una sesión de conciliación abierta ya no frena la baja de movimientos
+            // Antes se exigía además que ninguna sesión (externa o interna, en proceso o finalizada) usara el archivo o alcanzara el
+            // movimiento, y eso dejaba sin poder corregir un archivo mientras hubiera una conciliación abierta. Lo único que una sesión
+            // toma de un movimiento es el par: si el movimiento está en un par (externo o interno, de cualquier sesión, finalizada o no)
+            // se rechaza toda la baja; si no, se elimina. La baja de un ARCHIVO entero sigue usando ValidarLibres, con las sesiones.
+            ValidarSinPares(cn, tx, FiltroSeleccion, new { Ids = idsJson, Archivo = idArchivo });
             int borrados = cn.Execute(@"DELETE FROM bancos.MovimientosArchivo
                 WHERE Id IN (SELECT CAST([value] AS int) FROM OPENJSON(@Ids)) AND IdArchivo = @Archivo",
                 new { Ids = idsJson, Archivo = idArchivo }, tx);
@@ -112,18 +118,25 @@ namespace AgrupadorConceptos.Data
             return salida.ToArray();
         }
 
-        // Fecha: 13/10/2026 - TAREA: 00096 - Linea: 1, 3 - Los movimientos a dar de baja se describen con un filtro SQL (todo el archivo, o una selección dentro de él).
-        // El filtro es una constante de este archivo y usa sólo parámetros: no se interpola texto del usuario.
-        private static void ValidarLibres(System.Data.IDbConnection cn, System.Data.IDbTransaction tx,
-            int idArchivo, string filtro, object parametros)
+        // Fecha: 12/11/2026 - TAREA: 00181 - Linea: 1 - Rechaza la baja si algún movimiento alcanzado por el filtro está en un par de conciliación
+        // Mira las tres tablas de pares (externo, interno lado A, interno lado B) sin mirar el estado de la sesión: un par protege al movimiento
+        // aunque la conciliación no esté finalizada, y aun cuando falte la sesión que lo originó. Debe llamarse con el lock de mutaciones tomado.
+        private static void ValidarSinPares(System.Data.IDbConnection cn, System.Data.IDbTransaction tx, string filtro, object parametros)
         {
-            // Los pares históricos protegen aun cuando falte la sesión que los originó.
             bool hayPares = cn.ExecuteScalar<int>($@"SELECT CASE WHEN
                 EXISTS (SELECT 1 FROM bancos.ConciliacionPares p JOIN bancos.MovimientosArchivo m ON m.Id = p.IdMovimientoProcesado WHERE {filtro})
                 OR EXISTS (SELECT 1 FROM bancos.ConciliacionInternaPares p JOIN bancos.MovimientosArchivo m ON m.Id = p.IdMovimientoA WHERE {filtro})
                 OR EXISTS (SELECT 1 FROM bancos.ConciliacionInternaPares p JOIN bancos.MovimientosArchivo m ON m.Id = p.IdMovimientoB WHERE {filtro})
                 THEN 1 ELSE 0 END", parametros, tx) != 0;
             if (hayPares) throw new InvalidOperationException("Hay movimientos tomados por pares de conciliación. No se eliminó nada.");
+        }
+
+        // Fecha: 13/10/2026 - TAREA: 00096 - Linea: 1, 3 - Los movimientos a dar de baja se describen con un filtro SQL (todo el archivo, o una selección dentro de él).
+        // El filtro es una constante de este archivo y usa sólo parámetros: no se interpola texto del usuario.
+        private static void ValidarLibres(System.Data.IDbConnection cn, System.Data.IDbTransaction tx,
+            int idArchivo, string filtro, object parametros)
+        {
+            ValidarSinPares(cn, tx, filtro, parametros); // Fecha: 12/11/2026 - TAREA: 00181 - Linea: 1 - El control de pares es el mismo; se extrajo para que la baja de movimientos lo use sola
 
             var externas = cn.Query<ConciliacionSesion>(@"SELECT * FROM bancos.ConciliacionSesiones
                 WHERE Estado IN (N'EnProceso', N'Finalizada')", transaction: tx).ToList();

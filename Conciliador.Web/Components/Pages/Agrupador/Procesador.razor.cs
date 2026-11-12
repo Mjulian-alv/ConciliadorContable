@@ -45,6 +45,8 @@ public partial class Procesador
     bool Blindado => ArchivoEnTrabajo?.Blindado == true;
     ModificacionesArchivo modBaja = new();
     string tituloBloqueo = "No se puede borrar"; string? notaBloqueo;
+    // Fecha: 12/11/2026 - TAREA: 00181 - Linea: 1 - Eliminar movimientos sólo se frena por pares; las sesiones abiertas no cuentan
+    const string NotaBajaMovimientos = "El motivo posible: movimientos tomados por pares de conciliación, de una conciliación en proceso o finalizada. Un error de base de datos se informa aparte, con su mensaje.";
     const string NotaBaja = "Los motivos posibles: movimientos tomados por pares de conciliación, o una sesión externa o interna en proceso o finalizada que alcanza el archivo. Un error de base de datos se informa aparte, con su mensaje.";
     static bool EsPendiente(MovimientoProcesado m) => m.ConceptoEstandar == ConceptosBancarios.PendienteHomologar;
 
@@ -349,7 +351,8 @@ public partial class Procesador
             aviso = $"{ids.Count.ToString("N0", ar)} movimiento(s) eliminado(s).";
             dialogo = Dialogo.Ninguno;
         }
-        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { tituloBloqueo = "No se pueden eliminar"; notaBloqueo = NotaBaja; mensajeBloqueo = ex.Message; dialogo = Dialogo.Bloqueo; }
+        // Fecha: 12/11/2026 - TAREA: 00181 - Linea: 1 - La nota de la baja de movimientos habla sólo de pares
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { tituloBloqueo = "No se pueden eliminar"; notaBloqueo = NotaBajaMovimientos; mensajeBloqueo = ex.Message; dialogo = Dialogo.Bloqueo; }
         catch (UnauthorizedAccessException ex) { error = ex.Message; dialogo = Dialogo.Ninguno; }
         catch (Exception ex) { error = "No se pudo eliminar: " + ex.Message; dialogo = Dialogo.Ninguno; }
         finally { ocupado = false; }
