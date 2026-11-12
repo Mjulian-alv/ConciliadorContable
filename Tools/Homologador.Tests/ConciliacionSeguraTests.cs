@@ -74,12 +74,19 @@ internal static class ConciliacionSeguraTests
         // Fecha: 05/11/2026 - TAREA: 00162 - Linea: 1 - Conciliar ya no exige el archivo blindado: se quita el rodeo de blindar y desblindar para poder crear la sesión
         var sesion = ConciliacionExternService.CrearSesion("Prueba de protección", new List<int> { archivo },
             new[] { "A" }, new[] { new ConciliacionItemExterno { Fecha = new DateTime(2026, 9, 2), Importe = 100m, Detalle = "Grupo" } });
+        // Fecha: 12/11/2026 - TAREA: 00181 - Linea: 1 - Una sesión abierta ya no frena la baja de movimientos: sólo la frena un par
+        // El lote mixto se rechaza porque `protegido` está en un par; sin ese par, con la sesión todavía abierta, `libre` se puede eliminar.
+        int itemSesion = ConciliacionExternService.ObtenerTodosItemsExternos(sesion.Id).Single().Id;
+        cn.Execute(@"INSERT bancos.ConciliacionPares(IdSesion, IdItemExterno, IdMovimientoProcesado, TipoMatch, FechaConciliacion)
+            VALUES (@Sesion, @Item, @Mov, N'Manual', SYSDATETIME())", new { Sesion = sesion.Id, Item = itemSesion, Mov = protegido });
         Rechazar(() => EliminacionMovimientosService.EliminarSeleccion(archivo, new[] { libre, protegido }));
         Igual(cn.QuerySingle<int>("SELECT COUNT(*) FROM bancos.MovimientosArchivo WHERE Id IN @Ids", new { Ids = new[] { libre, protegido } }), 2, "Lote mixto no atómico");
+        cn.Execute("DELETE FROM bancos.ConciliacionPares WHERE IdSesion = @Sesion", new { Sesion = sesion.Id });
+        EliminacionMovimientosService.EliminarSeleccion(archivo, new[] { libre });
+        Igual(cn.QuerySingle<int>("SELECT COUNT(*) FROM bancos.MovimientosArchivo WHERE Id = @Id", new { Id = libre }), 0, "Movimiento libre no eliminado con la sesión abierta");
+        // La baja del archivo entero conserva el control por sesiones.
         Rechazar(() => EliminacionMovimientosService.EliminarArchivo(archivo));
         ConciliacionExternService.EliminarSesion(sesion.Id);
-        EliminacionMovimientosService.EliminarSeleccion(archivo, new[] { libre });
-        Igual(cn.QuerySingle<int>("SELECT COUNT(*) FROM bancos.MovimientosArchivo WHERE Id = @Id", new { Id = libre }), 0, "Movimiento libre no eliminado");
 
         var nuevo = cn.QuerySingle<int>("SELECT TOP 1 Id FROM bancos.MovimientosArchivo WHERE IdArchivo = @Id ORDER BY Id", new { Id = archivo });
         var segundo = cn.QuerySingle<int>("SELECT TOP 1 Id FROM bancos.MovimientosArchivo WHERE IdArchivo = @Id AND Id <> @Otro ORDER BY Id", new { Id = archivo, Otro = nuevo });
@@ -215,10 +222,32 @@ internal static class ConciliacionSeguraTests
             WHERE ConceptoFinal = 'A' AND Fecha = @Fecha", new {Fecha=new DateTime(2026,9,2)});
         var sesion = ConciliacionInternaService.CrearSesion("Interna protegida", new DateTime(2026, 9, 1),
             new DateTime(2026, 9, 30), new[] { "A" });
-        Rechazar(() => EliminacionMovimientosService.EliminarSeleccion(candidato.IdArchivo, new[] { candidato.Id }));
+        // Fecha: 12/11/2026 - TAREA: 00181 - Linea: 1 - La sesión interna, en proceso o finalizada, ya no frena la baja: la frena un par
+        // Se usa un movimiento descartable dentro del alcance de la sesión, para no perder el del resto de las pruebas.
+        int Descartable() => cn.QuerySingle<int>(@"INSERT bancos.MovimientosArchivo(IdArchivo, Fecha, ConceptoOriginal, DescripcionOriginal, Debitos, Creditos, ConceptoEstandar, ConceptoFinal, CuentaFinal)
+            OUTPUT INSERTED.Id VALUES (@Archivo, @Fecha, N'A', N'Descartable', 0, 0, N'A', N'A', N'00123')", new { Archivo = candidato.IdArchivo, Fecha = new DateTime(2026, 9, 2) });
+        int Existe(int id) => cn.QuerySingle<int>("SELECT COUNT(*) FROM bancos.MovimientosArchivo WHERE Id = @Id", new { Id = id });
+        void Aparear(int id) => cn.Execute(@"INSERT bancos.ConciliacionInternaPares(IdSesion, IdMovimientoA, IdMovimientoB, TipoMatch, FechaConciliacion)
+            VALUES (@Sesion, @Mov, @Otro, N'Manual', SYSDATETIME())", new { Sesion = sesion.Id, Mov = id, Otro = id + 1_000_000 });
+        void Desaparear() => cn.Execute("DELETE FROM bancos.ConciliacionInternaPares WHERE IdSesion = @Sesion", new { Sesion = sesion.Id });
+
+        int enProceso = Descartable();
+        Aparear(enProceso);
+        Rechazar(() => EliminacionMovimientosService.EliminarSeleccion(candidato.IdArchivo, new[] { enProceso }));
+        Igual(Existe(enProceso), 1, "El par de una sesión en proceso no protegió al movimiento");
+        Desaparear();
+        EliminacionMovimientosService.EliminarSeleccion(candidato.IdArchivo, new[] { enProceso });
+        Igual(Existe(enProceso), 0, "Con la sesión interna en proceso y sin pares, el movimiento no se pudo eliminar");
+
         var cierre = ConciliacionInternaService.Finalizar(sesion.Id);
         if (!cierre.Exito) throw new Exception("No se pudo cerrar una sesión interna sin pares.");
-        Rechazar(() => EliminacionMovimientosService.EliminarSeleccion(candidato.IdArchivo, new[] { candidato.Id }));
+        int finalizada = Descartable();
+        Aparear(finalizada);
+        Rechazar(() => EliminacionMovimientosService.EliminarSeleccion(candidato.IdArchivo, new[] { finalizada }));
+        Igual(Existe(finalizada), 1, "El par de una sesión finalizada no protegió al movimiento");
+        Desaparear();
+        EliminacionMovimientosService.EliminarSeleccion(candidato.IdArchivo, new[] { finalizada });
+        Igual(Existe(finalizada), 0, "Con la sesión interna finalizada y sin pares, el movimiento no se pudo eliminar");
         ConciliacionInternaService.EliminarSesion(sesion.Id);
         Rechazar(() => EliminacionMovimientosService.EliminarSeleccion(candidato.IdArchivo, new[] { -1 }));
         Igual(cn.QuerySingle<int>("SELECT COUNT(*) FROM bancos.MovimientosArchivo WHERE Id = @Id", new { candidato.Id }), 1,
@@ -303,12 +332,15 @@ internal static class ConciliacionSeguraTests
     }
 
     // Fecha: 08/10/2026 - TAREA: 00076 - Linea: 1 - Dos conexiones coordinadas prueban la relectura tras esperar el bloqueo.
+    // Fecha: 12/11/2026 - TAREA: 00181 - Linea: 1 - Lo que la baja revalida tras esperar es el par, ya no la creación de una sesión
     public static void CarreraCreacionBaja()
     {
         using var cn1 = SqlDb.GetConnection();
         cn1.Open();
         int archivo = cn1.QuerySingle<int>("SELECT TOP 1 Id FROM bancos.ArchivosImportados ORDER BY Id");
         int movimiento = cn1.QuerySingle<int>("SELECT TOP 1 Id FROM bancos.MovimientosArchivo WHERE IdArchivo = @Id", new { Id = archivo });
+        // La sesión se crea antes de tomar el bloqueo: crearla lo toma por dentro y se trabaría con el de esta prueba.
+        var sesionCarrera = ConciliacionInternaService.CrearSesion("Carrera", new DateTime(2020, 1, 1), new DateTime(2020, 1, 31), new[] { "NoExiste" });
         using var tx1 = cn1.BeginTransaction();
         int bloqueo = cn1.ExecuteScalar<int>(@"DECLARE @resultado int; EXEC @resultado = sys.sp_getapplock
             @Resource=N'bancos.Conciliacion.Mutacion', @LockMode=N'Exclusive', @LockOwner=N'Transaction', @LockTimeout=15000;
@@ -323,16 +355,15 @@ internal static class ConciliacionSeguraTests
         });
         if (!iniciada.Wait(TimeSpan.FromSeconds(5))) throw new Exception("La baja no comenzó.");
         if (baja.Wait(TimeSpan.FromMilliseconds(200))) throw new Exception("La baja no esperó el bloqueo común.");
-        int sesion = cn1.QuerySingle<int>(@"INSERT INTO bancos.ConciliacionSesiones
-            (Nombre, FechaCreacion, IdArchivoImportado, ArchivosJson, ConceptosJson, Estado)
-            OUTPUT INSERTED.Id VALUES ('Carrera', @Fecha, @Archivo, NULL, '[]', 'EnProceso')",
-            new { Fecha = DateTime.Now, Archivo = archivo }, tx1);
+        cn1.Execute(@"INSERT bancos.ConciliacionInternaPares(IdSesion, IdMovimientoA, IdMovimientoB, TipoMatch, FechaConciliacion)
+            VALUES (@Sesion, @Mov, @Otro, N'Manual', SYSDATETIME())", new { Sesion = sesionCarrera.Id, Mov = movimiento, Otro = movimiento + 1_000_000 }, tx1);
         tx1.Commit();
         if (!baja.Wait(TimeSpan.FromSeconds(20)) || baja.Result != "bloqueado")
-            throw new Exception("La baja no revalidó la sesión creada mientras esperaba.");
+            throw new Exception("La baja no revalidó el par creado mientras esperaba.");
         Igual(cn1.QuerySingle<int>("SELECT COUNT(*) FROM bancos.MovimientosArchivo WHERE Id = @Id", new { Id = movimiento }), 1,
-            "Carrera dejó movimiento borrado en sesión");
-        ConciliacionExternService.EliminarSesion(sesion);
+            "Carrera dejó borrado un movimiento apareado");
+        cn1.Execute("DELETE FROM bancos.ConciliacionInternaPares WHERE IdSesion = @Sesion", new { Sesion = sesionCarrera.Id });
+        ConciliacionInternaService.EliminarSesion(sesionCarrera.Id);
     }
 
     private static void Rechazar(Action accion)

@@ -1559,3 +1559,30 @@ Decisiones acordadas: el blindaje sigue igual salvo el requisito de conciliar; s
 
 **No probado:** las pantallas en pantalla (escritorio y web), sólo compilan; el escritorio no tiene el aviso «todos los visibles están apareados» (ver la guía). `Tools/Homologador.Tests` falla en `ProbarVentana`
 (esperaba 7 filas y obtiene 6) **también en `main`**: es previo y no se tocó; el resto de ese proyecto pasa. `FechasBancarias.Tests` pasa. Con una base de producción real no se corrió.
+
+---
+
+## TAREA 00181 — 12/11/2026 — Eliminar movimientos: sólo lo frenan los pares
+
+### Lo que se pidió
+
+> Arreglo rápido: cuando se vaya a eliminar un movimiento que ahora está bloqueando porque el archivo está en una conciliación abierta, que controle solamente que no esté en un par
+> conciliado, sin importar si está finalizado o no.
+
+Un solo ítem (línea 1). Sin diseño previo: es un cambio de regla de un circuito existente, sin pantallas nuevas ni flujo nuevo.
+Se hizo en la rama `hotfix/00181-baja-movimientos-solo-pares` (worktree aparte, desde `main`) con acuerdo explícito del usuario, porque la 00180 sigue abierta en otra rama.
+
+### Lo que se ejecutó
+
+- `AgrupadorConceptos/Data/EliminacionMovimientosStorage.cs`: el control de pares (externo, interno lado A, interno lado B) se extrae a `ValidarSinPares`. `EliminarMovimientos` llama sólo a ése,
+  con el lock de mutaciones ya tomado y dentro de la transacción; ya no la frena una sesión externa o interna, en proceso o finalizada. `EliminarArchivo` sigue usando `ValidarLibres`
+  (pares + sesiones): **la baja de un archivo entero no cambió.**
+- Web: `Procesador.razor.cs` y `Procesador.razor` — el aviso del diálogo y la nota del bloqueo al eliminar movimientos hablan sólo de pares (`NotaBajaMovimientos`). El escritorio muestra el mensaje del storage tal cual.
+- Pruebas (`Tools/Homologador.Tests/ConciliacionSeguraTests.cs`): `BajasYGrupos`, `PendientesInternos` y `CarreraCreacionBaja` esperaban el bloqueo por sesión; ahora prueban que un par protege (sesión en proceso y finalizada)
+  y que sin par, con la sesión abierta, el movimiento se elimina; la carrera revalida el par insertado mientras la baja esperaba el lock. `EliminarArchivo` sigue probado como rechazado con sesión abierta.
+- Revisión de Codex: ronda 1, sin hallazgos (`docs/Revisiones/00181-review-1.md`).
+
+### Verificación
+
+`Tools/Homologador.Tests` con `CONCILIACION_SEGURA_ONLY=1`: 15 pruebas correctas. `Tools/AgrupadorWeb.Tests`: 90 correctas, 0 con error. `Conciliador.Web` compila.
+**No probado:** las pantallas a mano, ni contra una base de producción. El escritorio no se compiló por separado (no se tocó su código).
