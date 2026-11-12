@@ -4,6 +4,9 @@
   <Project Path="ArcaCliente.Core/ArcaCliente.Core.csproj" />
   <Project Path="AgrupadorConceptos.Core/AgrupadorConceptos.Core.csproj" />
   <Project Path="Conciliador.Comun/Conciliador.Comun.csproj" />
+  <!-- Fecha: 12/11/2026 - TAREA: 00180 - Linea: 1 - Núcleo de «Asientos para el estudio contable» y sus pruebas. -->
+  <Project Path="AsientosEstudio.Core/AsientosEstudio.Core.csproj" />
+  <Project Path="Tools/AsientosEstudio.Tests/AsientosEstudio.Tests.csproj" />
   <Project Path="Tools/ArcaWeb.Tests/ArcaWeb.Tests.csproj" />
   <Project Path="Tools/AgrupadorWeb.Tests/AgrupadorWeb.Tests.csproj" />
 </Solution>

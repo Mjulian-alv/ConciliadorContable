@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Fecha: 12/11/2026 - TAREA: 00180 - Linea: 1 - Núcleo sin UI de «Asientos para el estudio contable»: lector de Excel, parsers,
+       validador y generador del TXT para Holistor. Lo usa Conciliador.Web; un anfitrión de escritorio se podría sumar sin tocarlo. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>AsientosEstudio.Core</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.105.0" />
+  </ItemGroup>
+</Project>
