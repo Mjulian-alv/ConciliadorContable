@@ -18,6 +18,7 @@ TextoTests.Run(Test);
 LectorLibroTests.Run(Test);
 ParserBancosTests.Run(Test);
 ParserDevengamientosTests.Run(Test); // Fecha: 12/11/2026 - TAREA: 00180 - Linea: 2
+ParserVariosTests.Run(Test); // Fecha: 12/11/2026 - TAREA: 00180 - Linea: 3
 MuestrasTests.Run(Test);
 Console.WriteLine($"{passed} pruebas correctas, {failed} con error, {skipped} saltadas.");
 return failed == 0 ? 0 : 1;
