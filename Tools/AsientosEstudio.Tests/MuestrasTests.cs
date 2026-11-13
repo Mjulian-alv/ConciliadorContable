@@ -14,8 +14,47 @@ static class MuestrasTests
         return new LibroLeido { Tipo = TipoPlanilla.Bancos, Nombre = crudo.Nombre, HashExcel = crudo.HashExcel, Hojas = new ParserBancos().Leer(crudo) };
     }
 
+    static LibroLeido Devengamientos()
+    {
+        var crudo = LectorLibro.Leer(Path.Combine(Carpeta(), "ASIENTO DEVENGAMIENTOS.xlsx"));
+        return new LibroLeido { Tipo = TipoPlanilla.Devengamientos, Nombre = crudo.Nombre, HashExcel = crudo.HashExcel, Hojas = new ParserDevengamientos().Leer(crudo) };
+    }
+
     public static void Run(Action<string, Action> test)
     {
+        // Fecha: 12/11/2026 - TAREA: 00180 - Linea: 2 - DEVENGAMIENTOS real (§7): 44 asientos, 156 líneas, 1 omitido por vacío, 4 descuadres de 0,01.
+        test("DEVENGAMIENTOS real: 4 hojas (05 a 08/2026), 44 asientos registrables, 156 líneas y 1 omitido por vacío (A8)", () =>
+        {
+            var l = Devengamientos();
+            Afirmar.Igual("05-2026,06-2026,07-2026,08-2026", string.Join(",", l.Hojas.Select(h => h.Nombre)));
+            var reg = l.Asientos.Where(a => a.Estado == EstadoAsiento.Registrable).ToList();
+            Afirmar.Igual(44, reg.Count, "registrables");
+            Afirmar.Igual(156, reg.Sum(a => a.Lineas.Count), "líneas");
+            var vacios = l.Asientos.Where(a => a.Estado == EstadoAsiento.VacioOmitido).ToList();
+            Afirmar.Igual(1, vacios.Count, "omitidos");
+            Afirmar.Igual("Ret. de 3eros. - 1era quincena - SUSS", vacios[0].Concepto); Afirmar.Igual("05-2026", vacios[0].Hoja);
+            Afirmar.Igual(0, l.Asientos.Count(a => a.Mes is null), "asientos sin mes");
+        });
+        test("DEVENGAMIENTOS real: el concepto es el encabezado y el orden es el de aparición", () =>
+        {
+            var l = Devengamientos();
+            var primero = l.Hojas[0].Asientos[0];
+            Afirmar.Igual("IVA - Asiento principal", primero.Concepto); Afirmar.Igual(3, primero.FilaEncabezado);
+            Afirmar.Igual("2.01.04.004", primero.Lineas[0].Codigo); Afirmar.Igual(965356929.73m, primero.Lineas[0].Debe);
+            Afirmar.Igual("IVA - CF no computable", l.Hojas[0].Asientos[1].Concepto);
+            Afirmar.Verdad(l.Asientos.Any(a => a.Concepto == "IVA - Origen Plan de Pago IVA 08/2026"), "el asiento propio de agosto");
+        });
+        test("DEVENGAMIENTOS real: 4 asientos descuadrados 0,01 en el origen (IVA principal 05 y 08, IVA CF no computable 05 y 06) y sin resolución Debe 6.936.847.173,80 vs Haber 6.936.847.173,78", () =>
+        {
+            var reg = Devengamientos().Asientos.Where(a => a.Estado == EstadoAsiento.Registrable).ToList();
+            var desc = reg.Where(a => a.TotalDebe != a.TotalHaber).ToList();
+            Afirmar.Igual(4, desc.Count, "descuadrados");
+            Afirmar.Verdad(desc.All(a => Math.Abs(a.TotalDebe - a.TotalHaber) == 0.01m), "todos por 0,01");
+            Afirmar.Igual("05-2026:IVA - Asiento principal|05-2026:IVA - CF no computable|06-2026:IVA - CF no computable|08-2026:IVA - Asiento principal",
+                string.Join("|", desc.Select(a => a.Hoja + ":" + a.Concepto).OrderBy(x => x, StringComparer.Ordinal)));
+            Afirmar.Igual(6936847173.80m, reg.Sum(a => a.TotalDebe), "Debe");
+            Afirmar.Igual(6936847173.78m, reg.Sum(a => a.TotalHaber), "Haber");
+        });
         test("BANCOS real: 14 hojas, 140 asientos registrables, 38 informativos excluidos y 965 líneas", () =>
         {
             var l = Bancos();
