@@ -16,6 +16,10 @@ internal static class Filas
         return a.StartsWith("CODIGO", StringComparison.Ordinal) && (b.StartsWith("CUENTA", StringComparison.Ordinal) || b.StartsWith("NOMBRE", StringComparison.Ordinal));
     }
 
+    // Fecha: 13/11/2026 - TAREA: 00180 - Linea: 5 - Una línea con sus importes y con el motivo por el que alguno no se pudo leer (A11).
+    public static LineaLeida Linea(HojaCruda h, int fila, string codigo, string nombre) =>
+        new(fila, codigo, nombre, h.Importe(fila, 3), h.Importe(fila, 4), h.Problema(fila, 3), h.Problema(fila, 4));
+
     /// <summary>La fila siguiente que tenga algo escrito, o 0 si no hay más.</summary>
     public static int SiguienteConContenido(HojaCruda h, int fila)
     {

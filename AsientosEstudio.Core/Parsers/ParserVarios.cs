@@ -92,7 +92,7 @@ public sealed class ParserVarios : IAsientoParser
             // Una nota pegada al asiento: texto en A, sin nombre ni importes.
             if (soloTextoEnA && !Texto.PareceCodigo(a)) continue;
 
-            actual.Lineas.Add(new LineaLeida(fila, a, b, h.Importe(fila, 3), h.Importe(fila, 4)));
+            actual.Lineas.Add(Filas.Linea(h, fila, a, b));
         }
 
         Cerrar();

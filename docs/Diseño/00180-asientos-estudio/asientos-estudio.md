@@ -39,6 +39,20 @@ Después de ver las maquetas se ajustó el alcance. **Estos puntos pisan al prom
    tarea.** El código se toma tal cual del Excel; A2 sólo normaliza el formato (`4,01,05,050` → `4.01.05.050`) y, si
    después de normalizar no tiene forma de código (dígitos separados por puntos), es bloqueante.
 
+### Precisiones que salieron al implementar (13/11/2026)
+
+Al comparar contra los tres Excel reales y los TXT que ya se habían generado a mano, el prompt resultó impreciso en tres puntos. Se resolvieron
+así, y los tests de aceptación los fijan:
+
+4. **El ajuste de centavo de A5 se hace del lado del Debe.** El prompt dice «la línea cuyo residuo de redondeo sea el mayor en la dirección
+   correcta», sin decir el lado. En los cuatro casos reales el estudio ajustó siempre una línea del Debe (RICARDO +0,01 ×2, IMP A LOS DEB Y CRED COMP
+   −0,01 y DEUDORES POR VENTAS +0,01). Elegir la mejor línea de cualquiera de los dos lados da otra línea en VENTAS 07/2026 y mueve el total
+   del archivo un centavo (71.914.422.835,05 pasaría a ,04), que ya no coincidiría con lo importado. El Haber queda solo de respaldo.
+5. **A2: son 1 línea y no 3.** El prompt habla de 3 líneas con `4,01,05,050`; en el Excel hay una sola con coma (COMPRAS mayo, fila 70). Las
+   otras dos líneas de la cuenta ASSAL (julio y agosto) ya traen puntos.
+6. **Se agrega «M1» (asiento sin mes), bloqueante.** El bloque del ejercicio anterior queda antes del primer marcador de mes y no tiene mes, pero no
+   se registra. Un asiento a registrar sin mes no tiene fecha para el TXT, así que bloquea.
+
 Consecuencia en los criterios de aceptación de §7: la versión anterior del Excel de BANCOS sigue dando **15 alertas A1**,
 ahora de severidad *Advertencia*, y el TXT se genera igual con esas 15 líneas sin cuenta. Los códigos que figuran en §7
 para COMAFI BURSATIL, SANTANDER VALORES, etc. eran los que el contador agregó al Excel; la herramienta no los asigna.

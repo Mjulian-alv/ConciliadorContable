@@ -37,7 +37,10 @@ public readonly record struct Mes(int Anio, int Numero) : IComparable<Mes>
 }
 
 /// <summary>Una fila de cuenta de un asiento. <see cref="Fila"/> es el número de fila del Excel, para poder señalarla en las alertas.</summary>
-public sealed record LineaLeida(int Fila, string Codigo, string Nombre, decimal Debe, decimal Haber)
+// Fecha: 13/11/2026 - TAREA: 00180 - Linea: 5 - La línea lleva por qué un importe no se pudo leer (fórmula sin valor, error de Excel, texto): A11 lo necesita y
+// el validador no tiene la grilla cruda. Los parámetros nuevos tienen valor por defecto: los parsers que no los pasan siguen compilando.
+public sealed record LineaLeida(int Fila, string Codigo, string Nombre, decimal Debe, decimal Haber,
+    ProblemaImporte ProblemaDebe = ProblemaImporte.Ninguno, ProblemaImporte ProblemaHaber = ProblemaImporte.Ninguno)
 {
     public bool SinCodigo => Codigo.Length == 0;
 

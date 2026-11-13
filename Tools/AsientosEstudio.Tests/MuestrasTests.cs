@@ -28,8 +28,108 @@ static class MuestrasTests
 
     static decimal Redondeado(decimal v) => Math.Round(v, 2, MidpointRounding.AwayFromZero);
 
+    // Fecha: 13/11/2026 - TAREA: 00180 - Linea: 4,5 - Validación y detección con los Excel reales (§7).
+    static LibroCrudo Crudo(string archivo) => LectorLibro.Leer(Path.Combine(Carpeta(), archivo));
+
+    static AsientoLeido Origen(LibroLeido l, Alerta a) => l.Asientos.First(x => x.Hoja == a.Hoja && x.FilaEncabezado == a.Asiento!.Value.FilaEncabezado);
+
+    static (decimal Debe, decimal Haber, int Asientos, int Lineas) Totales(ResultadoValidacion r)
+    {
+        var reg = r.Asientos.Where(a => a.Registra).ToList();
+        return (reg.Sum(a => a.TotalDebe), reg.Sum(a => a.TotalHaber), reg.Count, reg.Sum(a => a.Lineas.Count));
+    }
+
+    static void ProbarEtapa4(Action<string, Action> test)
+    {
+        test("Detector real: BANCOS, DEVENGAMIENTOS y VARIOS se reconocen solos", () =>
+        {
+            Afirmar.Igual(TipoPlanilla.Bancos, DetectorTipo.Detectar(Crudo("BANCOS FCE 2027.xlsx")).Tipo!.Value);
+            Afirmar.Igual(TipoPlanilla.Devengamientos, DetectorTipo.Detectar(Crudo("ASIENTO DEVENGAMIENTOS.xlsx")).Tipo!.Value);
+            Afirmar.Igual(TipoPlanilla.Varios, DetectorTipo.Detectar(Crudo("ASIENTOS VARIOS 05-2026 a 08-2026.xlsx")).Tipo!.Value);
+        });
+        test("BANCOS real: 3 ajustes de centavo (A5), 1 fila de totales suelta (A3), 38 informativos (A7) y nada que bloquee; Debe = Haber = 44.074.058.175,97", () =>
+        {
+            var l = Bancos(); var r = Validador.Validar(l);
+            Afirmar.Verdad(!r.HayBloqueantes, "no debería bloquear");
+            var a5 = r.De("A5").Select(a => $"{a.Hoja}|{a.Mes!.Value.Texto}|{Origen(l, a).NumeroOrigen}|{a.Detalle}").OrderBy(x => x, StringComparer.Ordinal).ToList();
+            Afirmar.Igual("BNA CA|07/2026|1|IMP A LOS DEB Y CRED COMP −0,01;MACRO 663|07/2026|1|RICARDO +0,01;MACRO 663|08/2026|1|RICARDO +0,01",
+                string.Join(";", a5));
+            var a3 = r.De("A3").Single(); Afirmar.Igual("SANTANDER", a3.Hoja!); Afirmar.Igual("05/2026", a3.Mes!.Value.Texto); Afirmar.Igual("1", Origen(l, a3).NumeroOrigen); Afirmar.Igual(20, a3.Fila!.Value);
+            Afirmar.Igual(38, r.De("A7").Count()); Afirmar.Igual(0, r.De("A1").Count(), "A1"); Afirmar.Igual(0, r.De("A6").Count(), "A6"); Afirmar.Igual(0, r.De("A2").Count(), "A2");
+            var t = Totales(r);
+            Afirmar.Igual(140, t.Asientos, "asientos"); Afirmar.Igual(965, t.Lineas, "líneas");
+            Afirmar.Igual(44074058175.97m, t.Debe, "Debe"); Afirmar.Igual(44074058175.97m, t.Haber, "Haber");
+            Afirmar.Verdad(r.Asientos.Where(a => a.Registra).All(a => a.Diferencia == 0m), "todos los asientos cuadran");
+        });
+        test("BANCOS real: la versión anterior (sin los códigos de COMAFI BURSATIL, MACRO SECURITIES, SANTANDER VALORES, PRESTAMO NBSF y MULTAS) da 15 advertencias A1 y no bloquea", () =>
+        {
+            var crudo = Crudo("BANCOS FCE 2027.xlsx");
+            var sinCodigo = new HashSet<string> { "COMAFI BURSATIL", "MACRO SECURITIES", "SANTANDER VALORES", "PRESTAMO NBSF", "A PRESTAMO NBSF", "MULTAS" };
+            foreach (var h in crudo.Hojas)
+                for (var f = 1; f <= h.UltimaFila; f++)
+                    if (sinCodigo.Contains(Texto.Normalizar(h.Texto(f, 2))) && Texto.PareceCodigo(h.Texto(f, 1))) h.Poner(f, 1, "");
+            var r = Validador.Validar(Parsers.Leer(crudo, TipoPlanilla.Bancos));
+            var a1 = r.De("A1").ToList();
+            Afirmar.Igual(15, a1.Count, "A1"); Afirmar.Verdad(a1.All(a => a.Severidad == Severidad.Advertencia), "advertencias");
+            Afirmar.Verdad(!r.HayBloqueantes, "no bloquea: se genera igual con la cuenta vacía");
+            Afirmar.Igual("COMAFI BURSATIL,MACRO SECURITIES,MULTAS,PRESTAMO NBSF,SANTANDER VALORES", string.Join(",", a1.Select(a => Texto.Normalizar(a.Cuenta!).Replace("A PRESTAMO", "PRESTAMO")).Distinct().OrderBy(x => x, StringComparer.Ordinal)));
+            Afirmar.Igual(15, r.Asientos.SelectMany(a => a.Lineas).Count(x => x.Codigo.Length == 0), "líneas que salen con la cuenta vacía");
+            Afirmar.Igual(44074058175.97m, Totales(r).Debe, "los importes no cambian");
+        });
+        test("DEVENGAMIENTOS real: 4 A6 bloqueantes (descuadre de 0,01), 1 asiento vacío (A8) y Debe 6.936.847.173,80 contra Haber 6.936.847.173,78 sin resolver", () =>
+        {
+            var l = Devengamientos(); var r = Validador.Validar(l);
+            Afirmar.Verdad(r.HayBloqueantes, "bloquea"); var a6 = r.De("A6").ToList();
+            Afirmar.Igual(4, a6.Count, "A6"); Afirmar.Verdad(a6.All(a => a.Severidad == Severidad.Bloqueante && Math.Abs(a.Diferencia!.Value) == 0.01m), "bloqueantes de 0,01");
+            Afirmar.Igual(0, r.De("A5").Count(), "A5: no se ajusta nada en silencio"); Afirmar.Igual(1, r.De("A8").Count(), "A8");
+            var t = Totales(r); Afirmar.Igual(44, t.Asientos, "asientos"); Afirmar.Igual(156, t.Lineas, "líneas");
+            Afirmar.Igual(6936847173.80m, t.Debe, "Debe"); Afirmar.Igual(6936847173.78m, t.Haber, "Haber");
+        });
+        test("DEVENGAMIENTOS real: ajustando el centavo en una línea por asiento (salida b) deja de bloquear y Debe = Haber", () =>
+        {
+            var l = Devengamientos(); var r0 = Validador.Validar(l);
+            // «A SALDO IVA A PAGAR» es la sugerida del asiento principal; para los demás se elige la última línea.
+            var ajustes = r0.De("A6").Select(a =>
+            {
+                var cal = r0.Asientos.Single(x => x.Clave == a.Asiento!.Value);
+                var linea = cal.Lineas.FirstOrDefault(x => x.Origen.Nombre == "A SALDO IVA A PAGAR") ?? cal.Lineas[^1];
+                return new DecisionAjuste(a.Asiento!.Value, linea.Origen.Fila, "M. Julián");
+            }).ToList();
+            var r = Validador.Validar(l, new OpcionesValidacion { Ajustes = ajustes });
+            Afirmar.Verdad(!r.HayBloqueantes, "ya no bloquea"); Afirmar.Verdad(r.De("A6").All(a => a.Resolucion == ResolucionAlerta.Ajustada && a.ResueltaPor == "M. Julián"), "ajustadas por el usuario");
+            var t = Totales(r); Afirmar.Igual(t.Debe, t.Haber, "Debe = Haber"); Afirmar.Verdad(r.Asientos.Where(a => a.Registra).All(a => a.Diferencia == 0m), "todos cuadran");
+        });
+        test("VARIOS real: 1 ajuste de centavo en VENTAS 07/2026 (DEUDORES POR VENTAS +0,01), 1 código con comas normalizado, 9 vacíos, 1 bloque anterior y nada que bloquee", () =>
+        {
+            var l = Varios(); var r = Validador.Validar(l);
+            Afirmar.Verdad(!r.HayBloqueantes, "no debería bloquear");
+            var a5 = r.De("A5").Single();
+            Afirmar.Igual("VENTAS", a5.Hoja!); Afirmar.Igual("07/2026", a5.Mes!.Value.Texto); Afirmar.Igual("1", Origen(l, a5).NumeroOrigen); Afirmar.Igual("DEUDORES POR VENTAS +0,01", a5.Detalle!);
+            var a2 = r.De("A2").Single(); Afirmar.Igual("COMPRAS", a2.Hoja!); Afirmar.Igual("4,01,05,050 → 4.01.05.050", a2.Detalle!); Afirmar.Igual(70, a2.Fila!.Value);
+            Afirmar.Igual(9, r.De("A8").Count(), "A8"); Afirmar.Igual(1, r.De("A10").Count(), "A10");
+            Afirmar.Verdad(r.De("A12").Any(a => a.Hoja == "VENTAS"), "VENTAS trae importes con más de 2 decimales (A12)");
+            Afirmar.Verdad(r.De("A15").Any(a => a.Cuenta == "2.01.04.005") || r.De("A15").Any(), "hay códigos repetidos con nombres distintos (A15)");
+        });
+        test("VARIOS real: Debe = Haber = 71.914.422.835,05 en 05–08/2026 (93 asientos, 581 líneas) y 74.568.487.094,93 en 05–09 (98, 600)", () =>
+        {
+            var l = Varios();
+            var rango = RangoHabitual.DesdeNombre("ASIENTOS VARIOS 05-2026 a 08-2026.xlsx")!.Value;
+            var hasta08 = Validador.Validar(l, new OpcionesValidacion { Meses = SeleccionMeses.Rango(l, rango.Desde, rango.Hasta), RangoHabitual = rango });
+            var t8 = Totales(hasta08);
+            Afirmar.Igual(93, t8.Asientos, "asientos 05–08"); Afirmar.Igual(581, t8.Lineas, "líneas 05–08");
+            Afirmar.Igual(71914422835.05m, t8.Debe, "Debe 05–08"); Afirmar.Igual(71914422835.05m, t8.Haber, "Haber 05–08");
+
+            var todo = Validador.Validar(l, new OpcionesValidacion { RangoHabitual = rango });
+            var t9 = Totales(todo);
+            Afirmar.Igual(98, t9.Asientos, "asientos 05–09"); Afirmar.Igual(600, t9.Lineas, "líneas 05–09");
+            Afirmar.Igual(74568487094.93m, t9.Debe, "Debe 05–09"); Afirmar.Igual(74568487094.93m, t9.Haber, "Haber 05–09");
+            var a9 = todo.De("A9").Single(); Afirmar.Igual("09/2026", a9.Mes!.Value.Texto); Afirmar.Verdad(a9.Causa.Contains("2 hojas") && a9.Causa.Contains("5 asientos"), a9.Causa);
+        });
+    }
+
     public static void Run(Action<string, Action> test)
     {
+        ProbarEtapa4(test); // Fecha: 13/11/2026 - TAREA: 00180 - Linea: 4,5
         // Fecha: 12/11/2026 - TAREA: 00180 - Linea: 3 - VARIOS real (§7): 05–08: 93 asientos / 581 líneas; 05–09: 98 / 600; por hoja 12-17-19-11-19-20;
         // 9 asientos en cero omitidos (A8) y 1 bloque del ejercicio anterior excluido (A10).
         test("VARIOS real: 6 hojas por circuito y, en 05–09/2026, 98 asientos registrables y 600 líneas", () =>

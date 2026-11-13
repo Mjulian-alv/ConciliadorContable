@@ -71,7 +71,7 @@ public sealed class ParserBancos : IAsientoParser
             if (a.Length > 0 && !Texto.PareceCodigo(a) && b.Length == 0 && !hayImporte) continue;
 
             // Una línea. Sin código es A1; sin código y sin nombre es la fila de totales suelta (A3): se conserva para avisarla.
-            actual.Lineas.Add(new LineaLeida(fila, a, b, h.Importe(fila, 3), h.Importe(fila, 4)));
+            actual.Lineas.Add(Filas.Linea(h, fila, a, b));
         }
 
         Cerrar();
