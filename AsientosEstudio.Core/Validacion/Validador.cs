@@ -1,6 +1,6 @@
 // Fecha: 13/11/2026 - TAREA: 00180 - Linea: 5 - Validador (§6): recorre el libro leído y arma las alertas A1–A13 y A15 (más M1), y calcula cada asiento tal
-// como va al TXT (importes redondeados, ajuste de centavo). No escribe nada ni decide por el usuario: las decisiones (ajustar una línea, aceptar una
-// alerta) entran como parámetro y quedan marcadas en la alerta con quién las tomó. Sin plan de cuentas: A14 queda fuera (ver Alertas.cs).
+// como va al TXT (importes redondeados half-up). No escribe nada ni decide por el usuario: aceptar una alerta bloqueante entra como parámetro y queda
+// marcado en la alerta con quién la aceptó. Los centavos NO se arreglan nunca: se informan (A5, A6) y el importe sale como quedó al redondear. Sin plan de cuentas: A14 queda fuera (ver Alertas.cs).
 // Fecha: 13/11/2026 - TAREA: 00180 - Linea: 4 - La selección de meses (OpcionesValidacion.Meses) y el rango habitual (A9) entran por acá.
 using System.Globalization;
 using System.Text.RegularExpressions;
@@ -15,7 +15,6 @@ public sealed record OpcionesValidacion
     /// <summary>El rango que se esperaba (p. ej. el que dice el nombre del archivo). Un mes fuera de él da A9. null = no se compara.</summary>
     public (Mes Desde, Mes Hasta)? RangoHabitual { get; init; }
 
-    public IReadOnlyList<DecisionAjuste> Ajustes { get; init; } = Array.Empty<DecisionAjuste>();
     public IReadOnlyList<DecisionAceptar> Aceptaciones { get; init; } = Array.Empty<DecisionAceptar>();
 }
 
@@ -151,43 +150,33 @@ public static class Validador
             }
         }
 
-        // Importes: redondeo por línea y regla del centavo.
+        // Importes: redondeo half-up por línea. Si el asiento queda descuadrado se INFORMA; no se ajusta ningún centavo.
         var debe = efectivas.Select(l => l.Debe).ToList();
         var haber = efectivas.Select(l => l.Haber).ToList();
         var rd = debe.Select(Centavo.Redondear).ToArray();
         var rh = haber.Select(Centavo.Redondear).ToArray();
-        var ajuste = new decimal[efectivas.Count];
 
         if (!hayErrorDeLectura && efectivas.Count > 0)
         {
             var r = Centavo.Evaluar(debe, haber);
+            var detalle = $"Debe {Importe(rd.Sum())} · Haber {Importe(rh.Sum())} · diferencia {Centavo.TextoConSigno(r.Diferencia)}";
             switch (r.Veredicto)
             {
-                case Centavo.Veredicto.AjustePorRedondeo when r.IndiceAjuste is { } idx:
-                    Aplicar(idx, r.Ajuste, r.AjustaDebe, rd, rh, ajuste);
+                case Centavo.Veredicto.DescuadrePorRedondeo:
+                    // La suma sin redondear cuadra; al pasar a 2 decimales queda 0,01. Se informa y el TXT sale con los importes redondeados.
                     locales.Add(Nueva("A5", Severidad.Advertencia, "Descuadre por redondeo",
-                        $"La suma sin redondear cuadra y, al pasar a 2 decimales, queda {Importe(Math.Abs(r.Diferencia))} de diferencia.",
-                        "Se ajustó el centavo en la línea con mayor residuo de redondeo en la dirección correcta.", a, efectivas[idx], resolucion: ResolucionAlerta.Ajustada,
-                        detalle: $"{NombreLinea(efectivas[idx])} {Centavo.TextoDelta(r.Ajuste)}"));
+                        "La suma sin redondear cuadra y, al pasar a 2 decimales, el asiento queda con 0,01 de diferencia.",
+                        "No se ajusta: el archivo sale con los importes redondeados línea por línea. Corregilo en el origen si hace falta.", a, detalle: detalle) with { Diferencia = r.Diferencia });
                     break;
 
                 case Centavo.Veredicto.DescuadreDeOrigen:
-                    var pideDecision = Math.Abs(r.Diferencia) == Centavo.Paso;
-                    var alerta = Nueva("A6", Severidad.Bloqueante, "Asiento descuadrado en el origen",
+                    // 0,01 es un centavo: se informa y no bloquea. Más que eso es un error de verdad y sí bloquea.
+                    var soloUnCentavo = Math.Abs(r.Diferencia) == Centavo.Paso;
+                    locales.Add(Nueva("A6", soloUnCentavo ? Severidad.Advertencia : Severidad.Bloqueante, "Asiento descuadrado en el origen",
                         $"El asiento no cuadra: Debe {Importe(rd.Sum())} y Haber {Importe(rh.Sum())} (diferencia {Importe(Math.Abs(r.Diferencia))}, {(r.Diferencia > 0 ? "sobra Debe" : "sobra Haber")}).",
-                        pideDecision
-                            ? "No se ajusta en silencio. Corregí el Excel y recargá, ajustá el centavo en una línea que elijas, o aceptá generar igual."
-                            : "La diferencia es mayor a 0,01: corregí el Excel y recargá.", a) with { Diferencia = r.Diferencia };
-
-                    // Decisión del usuario: ajustar el centavo en la línea que eligió.
-                    var d = op.Ajustes.FirstOrDefault(x => x.Asiento == clave);
-                    if (d is not null && efectivas.FindIndex(l => l.Fila == d.FilaLinea) is var j and >= 0
-                        && Centavo.AjusteManual(r.Diferencia, debe[j], haber[j]) is { } man)
-                    {
-                        Aplicar(j, man.Delta, man.EnDebe, rd, rh, ajuste);
-                        alerta = alerta with { Resolucion = ResolucionAlerta.Ajustada, ResueltaPor = d.Usuario, Detalle = $"{NombreLinea(efectivas[j])} {Centavo.TextoDelta(man.Delta)}" };
-                    }
-                    locales.Add(alerta);
+                        soloUnCentavo
+                            ? "Es un centavo: se informa y no se ajusta. Corregilo en el Excel para que el asiento cuadre."
+                            : "La diferencia es mayor a 0,01: corregí el Excel y recargá, o aceptá generar igual.", a, detalle: detalle) with { Diferencia = r.Diferencia });
                     break;
             }
         }
@@ -198,19 +187,12 @@ public static class Validador
                 locales[k] = locales[k] with { Resolucion = ResolucionAlerta.Aceptada, ResueltaPor = ac.Usuario };
 
         var lineas = new List<LineaCalculada>(efectivas.Count);
-        for (var i = 0; i < efectivas.Count; i++) lineas.Add(new LineaCalculada(efectivas[i], codigos[i], rd[i], rh[i], ajuste[i]));
+        for (var i = 0; i < efectivas.Count; i++) lineas.Add(new LineaCalculada(efectivas[i], codigos[i], rd[i], rh[i]));
 
         var estado = locales.Any(x => x.BloqueaGeneracion) ? EstadoVista.Error
             : locales.Any(x => x.Severidad != Severidad.Informativa) ? EstadoVista.Advertencia
             : EstadoVista.Ok;
         return (new AsientoCalculado { Origen = a, Estado = estado, Lineas = lineas }, locales);
-    }
-
-    /// <summary>El ajuste se aplica sobre el lado donde la línea tiene importe: sube o baja 0,01 el importe ya redondeado.</summary>
-    private static void Aplicar(int idx, decimal delta, bool enDebe, decimal[] rd, decimal[] rh, decimal[] ajuste)
-    {
-        if (enDebe) rd[idx] += delta; else rh[idx] += delta;
-        ajuste[idx] = delta;
     }
 
     // ------------------------------------------------------------------ códigos (A1, A2)

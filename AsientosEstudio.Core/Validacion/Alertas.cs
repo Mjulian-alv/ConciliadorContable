@@ -5,15 +5,13 @@ namespace AsientosEstudio.Core;
 
 public enum Severidad { Bloqueante, Advertencia, Informativa }
 
-/// <summary>Cómo terminó una alerta. Las bloqueantes impiden generar hasta quedar <see cref="Ajustada"/> o <see cref="Aceptada"/>.</summary>
+/// <summary>Cómo terminó una alerta. Las bloqueantes impiden generar hasta quedar <see cref="Aceptada"/>.</summary>
 public enum ResolucionAlerta
 {
     /// <summary>Abierta: nadie la resolvió.</summary>
     Ninguna,
     /// <summary>El código se normalizó solo («4,01,05,050» → «4.01.05.050»).</summary>
     Normalizada,
-    /// <summary>Se ajustó un centavo en una línea (solo, por la regla A5, o a pedido del usuario en A6).</summary>
-    Ajustada,
     /// <summary>La fila no es un movimiento y se ignoró (A3).</summary>
     Ignorada,
     /// <summary>El usuario aceptó generar igual. Queda registrado quién.</summary>
@@ -54,11 +52,8 @@ public sealed record Alerta
 
 public enum EstadoVista { Ok, Advertencia, Error, Omitido }
 
-/// <summary>Una línea tal como va al TXT: código normalizado e importes ya redondeados a 2 decimales (y ajustados, si hubo ajuste de centavo).</summary>
-public sealed record LineaCalculada(LineaLeida Origen, string Codigo, decimal Debe, decimal Haber, decimal Ajuste)
-{
-    public bool Ajustada => Ajuste != 0m;
-}
+/// <summary>Una línea tal como va al TXT: código normalizado e importes redondeados a 2 decimales, half-up. Nunca se ajustan centavos.</summary>
+public sealed record LineaCalculada(LineaLeida Origen, string Codigo, decimal Debe, decimal Haber);
 
 public sealed class AsientoCalculado
 {
@@ -85,9 +80,6 @@ public sealed class ResultadoValidacion
     public bool HayBloqueantes => Alertas.Any(a => a.BloqueaGeneracion);
     public IEnumerable<Alerta> De(string codigo) => Alertas.Where(a => a.Codigo == codigo);
 }
-
-/// <summary>El usuario decide ajustar el centavo de un asiento descuadrado en el origen (A6, salida b) en la línea que elige.</summary>
-public sealed record DecisionAjuste(ClaveAsiento Asiento, int FilaLinea, string Usuario);
 
 /// <summary>El usuario acepta generar igual con una alerta bloqueante (A6 salida c, o cualquier otra que lo permita). Queda registrado quién.</summary>
 public sealed record DecisionAceptar(string Codigo, ClaveAsiento Asiento, string Usuario);

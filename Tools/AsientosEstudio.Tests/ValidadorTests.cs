@@ -68,48 +68,36 @@ static class ValidadorTests
             var r = V(Libro(A("H", 2, May, L(4, "1.1", "X", d: 100m, h: 100m), L(5, "1.2", "Y", h: 0m))));
             Afirmar.Igual(Severidad.Bloqueante, r.De("A4").Single().Severidad); Afirmar.Verdad(r.HayBloqueantes, "bloquea"); Afirmar.Igual(EstadoVista.Error, r.Asientos.Single().Estado);
         });
-        test("A5: un descuadre de 0,01 por redondeo se ajusta solo, en la línea del mayor residuo, y se muestra cuál", () =>
+        test("A5: un descuadre de 0,01 por redondeo se INFORMA y no se ajusta: los importes salen redondeados tal cual", () =>
         {
             var r = V(Libro(A("MACRO 663", 2, May,
                 L(4, "2.01.01.017", "RICARDO", d: 100.0049m), L(5, "2.01.01.003", "PROVEEDORES", d: 200.0044m),
                 L(6, "1.01.02.007", "MACRO 663", h: 150.0054m), L(7, "4.01.05.012", "INTERESES", h: 150.0039m))));
             var a = r.De("A5").Single();
-            Afirmar.Igual(Severidad.Advertencia, a.Severidad); Afirmar.Igual(ResolucionAlerta.Ajustada, a.Resolucion); Afirmar.Igual("RICARDO +0,01", a.Detalle!); Afirmar.Igual(4, a.Fila!.Value);
-            var c = r.Asientos.Single(); Afirmar.Igual(300.01m, c.TotalDebe); Afirmar.Igual(300.01m, c.TotalHaber);
-            Afirmar.Igual(100.01m, c.Lineas[0].Debe); Afirmar.Igual(0.01m, c.Lineas[0].Ajuste); Afirmar.Verdad(c.Lineas[0].Ajustada && !c.Lineas[1].Ajustada, "solo una línea ajustada");
-            Afirmar.Verdad(!r.HayBloqueantes, "no bloquea");
+            Afirmar.Igual(Severidad.Advertencia, a.Severidad); Afirmar.Igual(ResolucionAlerta.Ninguna, a.Resolucion); Afirmar.Igual(-0.01m, a.Diferencia!.Value);
+            Afirmar.Igual("Debe 300,00 · Haber 300,01 · diferencia −0,01", a.Detalle!); Afirmar.Verdad(a.Accion.Contains("No se ajusta"), "dice que no se ajusta");
+            var c = r.Asientos.Single(); Afirmar.Igual(300.00m, c.TotalDebe); Afirmar.Igual(300.01m, c.TotalHaber); // sin tocar
+            Afirmar.Igual(100.00m, c.Lineas[0].Debe); Afirmar.Igual(150.01m, c.Lineas[2].Haber);
+            Afirmar.Verdad(!r.HayBloqueantes, "no bloquea"); Afirmar.Igual(EstadoVista.Advertencia, c.Estado);
         });
-        test("A6: un asiento descuadrado en el origen BLOQUEA y no se ajusta en silencio", () =>
+        test("A6 de un centavo: un asiento descuadrado 0,01 en el origen se informa, no bloquea y no se toca", () =>
         {
             var r = V(Libro(A("05-2026", 3, May, L(5, "2.01.04.004", "IVA 21", d: 1169596185.03m), L(6, "2.01.04.003", "A SALDO IVA A PAGAR", h: 1169596185.04m))));
             var a = r.De("A6").Single();
-            Afirmar.Igual(Severidad.Bloqueante, a.Severidad); Afirmar.Igual(-0.01m, a.Diferencia!.Value); Afirmar.Verdad(r.HayBloqueantes, "bloquea");
+            Afirmar.Igual(Severidad.Advertencia, a.Severidad); Afirmar.Igual(-0.01m, a.Diferencia!.Value); Afirmar.Verdad(!r.HayBloqueantes, "no bloquea");
+            Afirmar.Verdad(a.Causa.Contains("sobra Haber") && a.Accion.Contains("no se ajusta"), a.Causa + " / " + a.Accion);
             Afirmar.Igual(1169596185.03m, r.Asientos.Single().TotalDebe); Afirmar.Igual(1169596185.04m, r.Asientos.Single().TotalHaber); // sin tocar
-            Afirmar.Igual(EstadoVista.Error, r.Asientos.Single().Estado);
+            Afirmar.Igual(EstadoVista.Advertencia, r.Asientos.Single().Estado);
         });
-        test("A6 (b): el usuario elige la línea y el centavo se ajusta ahí, con su nombre en la alerta", () =>
-        {
-            var l = Libro(A("05-2026", 3, May, L(5, "2.01.04.004", "IVA 21", d: 1169596185.03m), L(6, "2.01.04.003", "A SALDO IVA A PAGAR", h: 1169596185.04m)));
-            var r = V(l, new OpcionesValidacion { Ajustes = new[] { new DecisionAjuste(new ClaveAsiento("05-2026", 3), 6, "M. Julián") } });
-            var a = r.De("A6").Single();
-            Afirmar.Igual(ResolucionAlerta.Ajustada, a.Resolucion); Afirmar.Igual("M. Julián", a.ResueltaPor!); Afirmar.Igual("A SALDO IVA A PAGAR −0,01", a.Detalle!);
-            var c = r.Asientos.Single(); Afirmar.Igual(c.TotalDebe, c.TotalHaber); Afirmar.Igual(1169596185.03m, c.TotalHaber); Afirmar.Verdad(!r.HayBloqueantes, "ya no bloquea");
-            // El mismo ajuste en la línea del otro lado también cuadra: sube el Debe.
-            var r2 = V(l, new OpcionesValidacion { Ajustes = new[] { new DecisionAjuste(new ClaveAsiento("05-2026", 3), 5, "M. Julián") } });
-            Afirmar.Igual(1169596185.04m, r2.Asientos.Single().TotalDebe); Afirmar.Igual(r2.Asientos.Single().TotalDebe, r2.Asientos.Single().TotalHaber);
-        });
-        test("A6 (c): aceptar la alerta la deja resuelta pero el asiento sigue descuadrado y avisa quién la aceptó", () =>
-        {
-            var l = Libro(A("05-2026", 3, May, L(5, "2.01.04.004", "IVA 21", d: 100.03m), L(6, "2.01.04.003", "X", h: 100.04m)));
-            var r = V(l, new OpcionesValidacion { Aceptaciones = new[] { new DecisionAceptar("A6", new ClaveAsiento("05-2026", 3), "M. Julián") } });
-            Afirmar.Igual(ResolucionAlerta.Aceptada, r.De("A6").Single().Resolucion); Afirmar.Verdad(!r.HayBloqueantes, "no bloquea"); Afirmar.Igual(-0.01m, r.Asientos.Single().Diferencia);
-        });
-        test("A6: una diferencia mayor a 0,01 es siempre bloqueante y el ajuste manual no se aplica", () =>
+        test("A6: una diferencia mayor a 0,01 BLOQUEA, se puede aceptar y queda registrado quién la aceptó", () =>
         {
             var l = Libro(A("H", 2, May, L(4, "1.1", "X", d: 100m), L(5, "1.2", "Y", h: 99.5m)));
-            var r = V(l, new OpcionesValidacion { Ajustes = new[] { new DecisionAjuste(new ClaveAsiento("H", 2), 5, "M. Julián") } });
-            Afirmar.Verdad(r.HayBloqueantes && r.De("A6").Single().Resolucion == ResolucionAlerta.Ninguna, "sigue bloqueando");
+            var r = V(l);
+            Afirmar.Verdad(r.HayBloqueantes, "bloquea"); Afirmar.Igual(Severidad.Bloqueante, r.De("A6").Single().Severidad); Afirmar.Igual(EstadoVista.Error, r.Asientos.Single().Estado);
             Afirmar.Verdad(r.De("A6").Single().Accion.Contains("mayor a 0,01"), "dice por qué");
+            var ac = V(l, new OpcionesValidacion { Aceptaciones = new[] { new DecisionAceptar("A6", new ClaveAsiento("H", 2), "M. Julián") } });
+            Afirmar.Verdad(!ac.HayBloqueantes, "aceptada"); Afirmar.Igual(ResolucionAlerta.Aceptada, ac.De("A6").Single().Resolucion); Afirmar.Igual("M. Julián", ac.De("A6").Single().ResueltaPor!);
+            Afirmar.Igual(0.5m, ac.Asientos.Single().Diferencia); // el asiento sale descuadrado, como vino
         });
         test("A7, A8 y A10: informativos, vacíos y bloques «no se registra» se listan, no se validan y no tienen líneas", () =>
         {
