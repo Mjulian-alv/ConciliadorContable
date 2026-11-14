@@ -25,17 +25,15 @@ flowchart TD
     L1 --> I
     L -- Sí --> M["Validador: A1 a A13 y A15<br/>sobre cada asiento"]
     M --> N["Vista previa: árbol mes → hoja → asiento<br/>con estado, Debe, Haber y diferencia"]
-    N --> O["3 · Panel de alertas<br/>Las advertencias se listan y no bloquean<br/>(p. ej. A1: línea sin código de cuenta)"]
+    N --> O["3 · Panel de alertas<br/>Las advertencias se listan y no bloquean<br/>(A1 línea sin cuenta · un centavo de diferencia, A5 y A6)"]
     O --> P{"¿Quedan alertas<br/>bloqueantes abiertas?"}
     P -- Sí --> Q{"¿Qué alerta?"}
-    Q -- "A6 descuadre de origen" --> Q2{"Salida elegida"}
+    Q -- "A6 mayor a 0,01" --> Q2{"Salida elegida"}
     Q2 -- "a · corregir el Excel" --> B
-    Q2 -- "b · ajustar el centavo<br/>en la línea elegida" --> Q3["Se registra la decisión"]
-    Q2 -- "c · aceptar la alerta" --> Q4["Se registra quién la aceptó"]
+    Q2 -- "b · aceptar la alerta" --> Q4["Se registra quién la aceptó"]
     Q -- "A2 · A4 · A11 · otras" --> Q5["Corregir el Excel y recargar,<br/>o aceptar explícitamente<br/>si la alerta lo permite"]
     Q5 --> B
     R["Se vuelve a validar"]
-    Q3 --> R
     Q4 --> R
     R --> P
     P -- No --> S["4 · Resumen: asientos, líneas, totales<br/>y cuántas líneas salen sin cuenta"]
@@ -62,7 +60,7 @@ flowchart TD
     classDef aviso fill:#fff1d7,stroke:#9c6920,color:#4d3410;
     class A,Z inicio;
     class C1,E1,T1,X1 bloqueo;
-    class J1,Q3,Q4 aviso;
+    class J1,Q4 aviso;
 
 </pre></div>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>

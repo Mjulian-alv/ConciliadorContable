@@ -58,6 +58,7 @@ tr.adv td{background:#fffaf0} tr.bloq td{background:#fff6f4} tr.inf td{backgroun
 .checks{list-style:none;margin:0;padding:0;display:grid;gap:9px;font-size:13px}
 .checks li::before{content:"✓";color:#24764f;font-weight:700;margin-right:9px}
 .checks li.no::before{content:"✕";color:#a2392a}
+.checks li.w::before{content:"⚠";color:#9c6920}
 .kv{display:grid;grid-template-columns:200px 1fr;gap:9px 14px;font-size:13px;align-items:baseline}
 .kv dt{color:var(--muted)} .kv dd{margin:0;font-weight:600}
 .txt{background:#16222a;color:#d6e4ea;border-radius:7px;padding:14px 16px;font-family:Consolas,"Courier New",monospace;font-size:12px;line-height:1.75;white-space:pre;overflow:hidden}
@@ -248,14 +249,14 @@ def arbol():
 
 def m02_vp():
     filas = [
-        ["1", "07-2026-MACRO 663", "4", "20.753.350,01", "20.753.350,01", "0,00", '<span class="est a">⚠ Advertencia · ajuste de centavo</span>', "<b>0085</b>"],
+        ["1", "07-2026-MACRO 663", "4", "20.753.350,00", "20.753.350,01", "−0,01", '<span class="est a">⚠ Advertencia · diferencia de 0,01 (A5)</span>', "<b>0085</b>"],
         ["2", "07-2026-MACRO 663", "3", "1.480.220,55", "1.480.220,55", "0,00", '<span class="est a">⚠ Advertencia · 1 línea sin cuenta (A1)</span>', "<b>0086</b>"],
         ["3", "07-2026-MACRO 663", "2", "3.250.000,00", "0,00", "—", '<span class="est o">Omitido · informativo (A7)</span>', "—"],
         ["4", "07-2026-MACRO 663", "3", "612.904,18", "612.904,18", "0,00", '<span class="est ok">✓ OK</span>', "<b>0087</b>"],
     ]
     clases = ["adv", "adv", "inf", ""]
     cuerpo = (cab(SUB) + pasos(1)
-        + kpis([("Asientos a registrar", "140"), ("Informativos excluidos", "38"), ("Líneas", "965"), ("Total Debe", TOTAL_B), ("Total Haber", TOTAL_B), ("Diferencia", "0,00")])
+        + kpis([("Asientos a registrar", "140"), ("Informativos excluidos", "38"), ("Líneas", "965"), ("Total Debe", "44.074.058.175,96"), ("Total Haber", TOTAL_B), ("Diferencia", "−0,01")])
         + '<div class="toolbar"><div class="chips"><span class="chip on">Todos<i>178</i></span><span class="chip">OK<i>127</i></span><span class="chip">Advertencia<i>13</i></span>'
           '<span class="chip">Error<i>0</i></span><span class="chip">Omitido<i>38</i></span></div>'
           f'<span class="actions">{boton("Ver alertas (11)")}{boton("Continuar →", True)}</span></div>'
@@ -270,23 +271,23 @@ def m02_vp():
 
 def m02_detalle():
     filas = [
-        ["214", "2.01.01.017", "RICARDO", "8.452.100,0049", "", "8.452.100,01", "", '<span class="adj">+0,01 · ajuste de centavo</span>'],
+        ["214", "2.01.01.017", "RICARDO", "8.452.100,0049", "", "8.452.100,00", "", ""],
         ["215", "2.01.01.003", "PROVEEDORES VARIOS", "12.301.250,0044", "", "12.301.250,00", "", ""],
         ["216", "1.01.02.007", "MACRO 663", "", "10.376.675,0050", "", "10.376.675,01", ""],
         ["217", "4.01.05.012", "INTERESES GANADOS", "", "10.376.675,0043", "", "10.376.675,00", ""],
     ]
-    filas.append(["", "", "<b>Totales</b>", "<b>20.753.350,0093</b>", "<b>20.753.350,0093</b>", "<b>20.753.350,01</b>", "<b>20.753.350,01</b>", '<span class="est ok">✓ cuadra</span>'])
-    txt = ("31/07/2026<i>⇥</i>0085<i>⇥</i>2.01.01.017<i>⇥</i>8452100,01<i>⇥</i>0,00<i>⇥</i>07-2026-MACRO 663<i>⇥⇥⇥⇥⇥</i>\n"
+    filas.append(["", "", "<b>Totales</b>", "<b>20.753.350,0093</b>", "<b>20.753.350,0093</b>", "<b>20.753.350,00</b>", "<b>20.753.350,01</b>", '<span class="est a">⚠ −0,01</span>'])
+    txt = ("31/07/2026<i>⇥</i>0085<i>⇥</i>2.01.01.017<i>⇥</i>8452100,00<i>⇥</i>0,00<i>⇥</i>07-2026-MACRO 663<i>⇥⇥⇥⇥⇥</i>\n"
            "31/07/2026<i>⇥</i>0085<i>⇥</i>2.01.01.003<i>⇥</i>12301250,00<i>⇥</i>0,00<i>⇥</i>07-2026-MACRO 663<i>⇥⇥⇥⇥⇥</i>\n"
            "31/07/2026<i>⇥</i>0085<i>⇥</i>1.01.02.007<i>⇥</i>0,00<i>⇥</i>10376675,01<i>⇥</i>07-2026-MACRO 663<i>⇥⇥⇥⇥⇥</i>\n"
            "31/07/2026<i>⇥</i>0085<i>⇥</i>4.01.05.012<i>⇥</i>0,00<i>⇥</i>10376675,00<i>⇥</i>07-2026-MACRO 663<i>⇥⇥⇥⇥⇥</i>")
     cuerpo = (cab(SUB) + pasos(1)
         + '<div class="crumbs"><a href="#">Vista previa</a> › 07/2026 › MACRO 663 › <b>ASIENTO 1</b></div>'
         + panel(kpis([("Nº en el TXT", "0085"), ("Fecha", "31/07/2026"), ("Concepto", "07-2026-MACRO 663"), ("Líneas", "4"), ("Estado", "⚠ Advertencia (A5)")])
-                + tabla(["Fila del Excel", "Código", "Cuenta", "Debe (origen)", "Haber (origen)", "Debe (TXT)", "Haber (TXT)", "Nota"], filas, numericas=(3, 4, 5, 6)),
-                "Líneas del asiento", "Importes de origen con 4 decimales: al redondear a 2 queda 0,01 de diferencia.")
-        + aviso("<b>A5 · Descuadre por redondeo.</b> La suma sin redondear cuadra (20.753.350,0093 en cada lado) y tras redondear la diferencia es exactamente 0,01. "
-                "Se ajustó <b>+0,01 en RICARDO</b>, la línea con mayor residuo de redondeo en la dirección correcta. Si preferís otra línea, se cambia desde el panel de alertas.")
+                + tabla(["Fila del Excel", "Código", "Cuenta", "Debe (origen)", "Haber (origen)", "Debe (TXT)", "Haber (TXT)", "Diferencia"], filas, numericas=(3, 4, 5, 6)),
+                "Líneas del asiento", "Importes de origen con 4 decimales: cada línea se redondea a 2 decimales, mitad hacia arriba.")
+        + '<div class="notice warn"><b>A5 · Descuadre por redondeo.</b> La suma sin redondear cuadra (20.753.350,0093 en cada lado) y al redondear cada línea queda '
+          '<b>Debe 20.753.350,00 y Haber 20.753.350,01</b>: 0,01 de diferencia. <b>No se ajusta:</b> el archivo sale con los importes redondeados. Se informa para que, si hace falta, se corrija en el origen.</div>'
         + panel('<div class="txt">' + txt + '</div><p class="note">Así sale en el archivo: 11 columnas separadas por TAB (⇥), coma decimal, sin separador de miles; Leyenda, Tipo, Centro de Costo, Fecha alternat. y Unidad vacíos.</p>',
                 "Líneas tal como se escriben en el TXT")
         + f'<div class="sum"><span></span><span class="actions">{boton("← Volver a la vista previa")}{boton("Ver alerta A5")}</span></div>')
@@ -339,16 +340,16 @@ def m03_alertas():
                   '<span class="est a">Sin cuenta</span>', "<a href='#'>Ver líneas</a>"])
     f += [
         [sev("A"), "A3", "Fila de totales suelta", "SANTANDER", "05/2026", "1", "14", "Fila sin código ni nombre con Debe y Haber cargados a mano (488.708.350,94) dentro del rango de la suma. Se ignora.", '<span class="est ok">Ignorada</span>', "<a href='#'>Ver asiento</a>"],
-        [sev("A"), "A5", "Descuadre por redondeo", "MACRO 663", "07/2026", "1", "214", "Diferencia de 0,01 tras redondear. Ajuste <span class='adj'>RICARDO +0,01</span>", '<span class="est ok">Ajustada</span>', "<a href='#'>Ver asiento</a>"],
-        [sev("A"), "A5", "Descuadre por redondeo", "MACRO 663", "08/2026", "1", "203", "Diferencia de 0,01 tras redondear. Ajuste <span class='adj'>RICARDO +0,01</span>", '<span class="est ok">Ajustada</span>', "<a href='#'>Ver asiento</a>"],
-        [sev("A"), "A5", "Descuadre por redondeo", "BNA CA", "07/2026", "1", "96", "Diferencia de 0,01 tras redondear. Ajuste <span class='adj'>IMP A LOS DEB Y CRED COMP −0,01</span>", '<span class="est ok">Ajustada</span>', "<a href='#'>Ver asiento</a>"],
+        [sev("A"), "A5", "Descuadre por redondeo", "MACRO 663", "07/2026", "1", "214", "Debe − Haber = −0,01 tras redondear. No se ajusta: el archivo sale redondeado.", '<span class="est a">Informada</span>', "<a href='#'>Ver asiento</a>"],
+        [sev("A"), "A5", "Descuadre por redondeo", "MACRO 663", "08/2026", "1", "203", "Debe − Haber = −0,01 tras redondear. No se ajusta: el archivo sale redondeado.", '<span class="est a">Informada</span>', "<a href='#'>Ver asiento</a>"],
+        [sev("A"), "A5", "Descuadre por redondeo", "BNA CA", "07/2026", "1", "96", "Debe − Haber = +0,01 tras redondear. No se ajusta: el archivo sale redondeado.", '<span class="est a">Informada</span>', "<a href='#'>Ver asiento</a>"],
         [sev("I"), "A7", "Asientos informativos excluidos", "14 hojas", "05–08/2026", "38", "—", "«INFORMATIVO — NO SE REGISTRA». No se valida su balance: algunos solo tienen Debe.", '<span class="est o">Excluidos</span>', "<a href='#'>Ver lista</a>"],
         [sev("I"), "A15", "Código repetido con nombres distintos", "—", "—", "—", "—", "2.01.04.005 se usa para 3 nombres de IVA crédito fiscal. Es normal; solo se muestra en el detalle.", '<span class="est o">Sin acción</span>', ""],
     ]
     cl = ["adv"] * 9 + ["inf"] * 2
     cuerpo = (cab(SUB) + pasos(2)
         + '<div class="banner warn"><span><b>0 alertas bloqueantes: podés generar el TXT.</b> Hay 15 líneas sin código de cuenta: van a salir con la cuenta vacía. '
-          'Las otras 4 advertencias se resolvieron solas y quedan registradas en el historial.</span>' + boton("Continuar al resumen →", True) + '</div>'
+          'Las otras 4 son tres diferencias de un centavo y una fila ignorada: se informan y no se tocan.</span>' + boton("Continuar al resumen →", True) + '</div>'
         + alertas_filtros(0, 19, 2, "Todas")
         + panel(tabla(COLS_AL, f, clases=cl), "Alertas de BANCOS FCE 2027.xlsx", "Cada alerta dice dónde está (hoja, mes, asiento y fila del Excel), por qué y qué hacer. Se exportan para que el contador corrija el origen."))
     return P("Alertas", "generar", cuerpo, crumb="Asientos para el estudio / Alertas")
@@ -370,15 +371,18 @@ assert sum(r[2] for r in A1_ROWS) == 15
 
 def cuerpo_03c_fondo():
     f = []
-    for n, mes, orden in [("IVA - Asiento principal", "05/2026", 1), ("IVA - Asiento principal", "08/2026", 1),
-                          ("IVA CF no computable", "05/2026", 2), ("IVA CF no computable", "06/2026", 2)]:
-        f.append([sev("B"), "A6", "Asiento descuadrado en el origen", mes.replace("/", "-"), mes, n, "—", "El Excel ya trae una diferencia de 0,01. No se ajusta en silencio.", '<span class="est a">Abierta</span>', boton("Resolver…")])
+    for n, hoja, dif, lado in [("IIBB - Devengamiento", "06-2026", "1.250,00", "sobra Debe"), ("DREI - Devengamiento", "07-2026", "48,30", "sobra Haber")]:
+        f.append([sev("B"), "A6", "Asiento descuadrado en el origen", hoja, hoja.replace("-", "/"), n, "—",
+                  f"El asiento no cuadra: diferencia {dif} ({lado}). Es mayor a 0,01: corregí el Excel y recargá, o aceptá generar igual.", '<span class="est a">Abierta</span>', boton("Resolver…")])
+    for n, hoja in [("IVA - Asiento principal", "05-2026"), ("IVA - Asiento principal", "08-2026"), ("IVA - CF no computable", "05-2026"), ("IVA - CF no computable", "06-2026")]:
+        f.append([sev("A"), "A6", "Asiento descuadrado en el origen", hoja, hoja.replace("-", "/"), n, "—",
+                  "El Excel ya trae 0,01 de diferencia. Es un centavo: se informa y no se ajusta.", '<span class="est a">Informada</span>', ""])
     f.append([sev("I"), "A8", "Asiento vacío omitido", "05-2026", "05/2026", "Ret. de 3eros. 1era quincena SUSS", "—", "Sin ninguna línea de cuenta. No consume número.", '<span class="est o">Omitido</span>', ""])
     return (cab(SUB) + pasos(2)
-        + '<div class="banner bad"><span><b>No se puede generar: 4 asientos descuadrados en el origen.</b> Sin resolver: Debe 6.936.847.173,80 vs Haber 6.936.847.173,78.</span>'
+        + '<div class="banner bad"><span><b>No se puede generar: 2 asientos descuadrados por más de 0,01.</b> Los 4 de un centavo solo se informan y no bloquean.</span>'
           f'{boton("Continuar al resumen →", False, True)}</div>'
-        + alertas_filtros(4, 0, 1, "Bloqueantes")
-        + panel(tabla(["Severidad", "Cód.", "Alerta", "Hoja", "Mes", "Asiento", "Fila", "Detalle y causa", "Estado", ""], f, clases=["bloq"] * 4 + ["inf"]),
+        + alertas_filtros(2, 4, 1, "Todas")
+        + panel(tabla(["Severidad", "Cód.", "Alerta", "Hoja", "Mes", "Asiento", "Fila", "Detalle y causa", "Estado", ""], f, clases=["bloq"] * 2 + ["adv"] * 4 + ["inf"]),
                 "Alertas de ASIENTO DEVENGAMIENTOS.xlsx"))
 
 
@@ -387,29 +391,26 @@ def m03_error():
 
 
 def m03c_descuadre():
-    lineas = [("2.01.04.001", "IVA DÉBITO FISCAL", "Haber", "812.446.903,27"), ("2.01.04.020", "A SALDO IVA A PAGAR", "Haber", "0,00 → +0,01"),
-              ("1.01.05.003", "IVA CRÉDITO FISCAL", "Debe", "812.446.903,28")]
-    cuerpo = ('<p class="note" style="margin-top:0"><b>IVA - Asiento principal · 05/2026</b> (hoja 05-2026, encabezado en la fila 7)</p>'
-              + kpis([("Debe", "812.446.903,28"), ("Haber", "812.446.903,27"), ("Diferencia", "0,01"), ("Falta en", "el Haber")])
-              + '<div class="opt"><label><input type="radio" name="o"> <span><b>a · Corregir en el Excel y recargar</b></span></label><small>La opción más limpia: el origen queda bien y no hay ajuste.</small></div>'
-              + '<div class="opt on"><label><input type="radio" name="o" checked> <span><b>b · Ajustar el centavo en una línea que elijo</b> (sugerida)</span></label>'
-                '<small>Se suma 0,01 al Haber de la línea elegida y queda registrada la decisión con tu usuario.</small>'
-                '<div style="margin:10px 0 0 26px;max-width:470px"><select><option>2.01.04.020 · A SALDO IVA A PAGAR (sugerida)</option><option>2.01.04.001 · IVA DÉBITO FISCAL</option></select></div></div>'
-              + '<div class="opt"><label><input type="radio" name="o"> <span><b>c · Generar igual, aceptando la alerta</b></span></label><small>El asiento sale descuadrado por 0,01 y el archivo no pasa «Debe = Haber». Queda registrado quién lo aceptó.</small></div>'
-              + '<p class="note">Una diferencia mayor a 0,01 es siempre bloqueante: en ese caso solo existe la opción a.</p>')
-    m = modal("Asiento descuadrado en el origen", "A6 · DEVENGAMIENTOS · 05/2026", cuerpo, boton("Cancelar") + boton("Aplicar decisión", True))
+    cuerpo = ('<p class="note" style="margin-top:0"><b>IIBB - Devengamiento · 06/2026</b> (hoja 06-2026, encabezado en la fila 30)</p>'
+              + kpis([("Debe", "282.208.729,68"), ("Haber", "282.207.479,68"), ("Diferencia", "1.250,00"), ("Sobra en", "el Debe")])
+              + '<div class="opt on"><label><input type="radio" name="o" checked> <span><b>a · Corregir en el Excel y recargar</b> (recomendada)</span></label>'
+                '<small>El origen queda bien. Una diferencia mayor a 0,01 es un error de carga, no un redondeo.</small></div>'
+              + '<div class="opt"><label><input type="radio" name="o"> <span><b>b · Generar igual, aceptando la alerta</b></span></label>'
+                '<small>El asiento sale descuadrado por 1.250,00, tal como viene. Queda registrado quién lo aceptó y cuándo.</small></div>'
+              + '<p class="note">Los descuadres de un centavo no llegan hasta acá: se informan en la lista y no se ajustan.</p>')
+    m = modal("Asiento descuadrado en el origen", "A6 · DEVENGAMIENTOS · 06/2026 · bloqueante", cuerpo, boton("Cancelar") + boton("Aplicar decisión", True))
     return P("Alertas", "generar", cuerpo_03c_fondo(), crumb="Asientos para el estudio / Alertas", modal_html=m)
 
 
 # ================================================================ 04 · RESUMEN
 def resumen_base(generado=False, error=False):
-    kp = kpis([("Asientos", "140"), ("Líneas", "965"), ("Total Debe", TOTAL_B), ("Total Haber", TOTAL_B), ("Diferencia", "0,00")])
+    kp = kpis([("Asientos", "140"), ("Líneas", "965"), ("Total Debe", "44.074.058.175,96"), ("Total Haber", TOTAL_B), ("Diferencia", "−0,01")])
     meses = tabla(["Mes", "Fecha de los asientos", "Asientos", "Líneas", "Numeración"],
                   [["05/2026", "31/05/2026", "34", "238", "0001 – 0034"], ["06/2026", "30/06/2026", "35", "241", "0035 – 0069"],
                    ["07/2026", "31/07/2026", "36", "245", "0070 – 0105"], ["08/2026", "31/08/2026", "35", "241", "0106 – 0140"]], numericas=(2, 3))
-    valid = ('<ul class="checks"><li>Total Debe = total Haber del archivo</li><li>965 líneas con 11 columnas (10 tabuladores)</li>'
+    valid = ('<ul class="checks"><li class="w">Debe y Haber difieren en 0,01: son los 3 asientos con un centavo de diferencia (A5), informados y sin ajustar</li><li>965 líneas con 11 columnas (10 tabuladores)</li>'
              '<li>Fechas válidas: último día real de cada mes (31/05, 30/06, 31/07, 31/08/2026)</li><li>Numeración correlativa 0001–0140, sin huecos ni repeticiones</li></ul>')
-    alert = ('<dl class="kv"><dt>Bloqueantes</dt><dd>0</dd><dt>Advertencias</dt><dd>19 · 15 líneas sin cuenta y 4 ajustadas o ignoradas</dd><dt>Informativas</dt><dd>2 · 38 informativos excluidos</dd></dl>'
+    alert = ('<dl class="kv"><dt>Bloqueantes</dt><dd>0</dd><dt>Advertencias</dt><dd>19 · 15 líneas sin cuenta, 3 con 0,01 de diferencia y 1 fila ignorada</dd><dt>Informativas</dt><dd>2 · 38 informativos excluidos</dd></dl>'
              '<p class="note"><a href="#">Ver el detalle</a> · todas quedan en el historial y se pueden exportar a CSV.</p>')
     dest = ('<div class="two"><label>Carpeta de destino<input value="D:\\DESARROLLOS CONTABLE\\HOMOLOGADOR\\ASIENTO CONTABLE ESTUDIO" readonly></label>'
             '<label>Nombre del archivo<input value="BANCOS FCE 2027 05-2026 a 08-2026.txt"' + (' class="err"' if error else '') + '></label></div>'
@@ -420,7 +421,7 @@ def resumen_base(generado=False, error=False):
 def m04_resumen():
     kp, meses, valid, alert, dest = resumen_base()
     cuerpo = (cab(SUB) + pasos(3) + kp
-        + '<div class="notice warn"><b>15 líneas van a salir con la cuenta vacía (A1)</b>, en 9 asientos. El estudio va a tener que completarlas. <a href="#">Ver las líneas</a></div>'
+        + '<div class="notice warn"><b>15 líneas van a salir con la cuenta vacía (A1)</b>, en 9 asientos. El estudio va a tener que completarlas. Además, 3 asientos quedan con 0,01 de diferencia (A5): se informa y no se ajusta. <a href="#">Ver las líneas</a></div>'
         + '<div class="two">' + panel(valid, "Validaciones globales", "Se corren antes de escribir el archivo.") + panel(alert, "Alertas de esta generación") + '</div>'
         + panel(meses, "Qué va a contener el TXT", "Origen: BANCOS FCE 2027.xlsx · SHA-256 <span class='hash'>9f3c1d…a71e</span>")
         + panel(dest, "Destino")
@@ -459,17 +460,17 @@ def m04_error():
 # ================================================================ 05 · HISTORIAL
 def m05_historial():
     f = [
-        ["12/11/2026 08:14", "M. Julián", "BANCOS FCE 2027.xlsx<br><span class='mini'>BANCOS · 05–08/2026</span>", "140", "965", TOTAL_B, "0 aceptadas<br><span class='mini'>15 sin cuenta · 4 ajustadas</span>", "<span class='hash'>7a41c9…3f52</span>", "<a href='#'>Descargar</a> · <a href='#'>Alertas</a>"],
-        ["10/11/2026 16:02", "M. Julián", "ASIENTOS VARIOS 05-2026 a 08-2026.xlsx<br><span class='mini'>VARIOS · 05–09/2026 (09 incluido a mano)</span>", "98", "600", "74.568.487.094,93", "0 aceptadas<br><span class='mini'>1 ajustada · A9 incluido</span>", "<span class='hash'>b20e6d…81c4</span>", "<a href='#'>Descargar</a> · <a href='#'>Alertas</a>"],
-        ["10/11/2026 15:40", "M. Julián", "ASIENTOS VARIOS 05-2026 a 08-2026.xlsx<br><span class='mini'>VARIOS · 05–08/2026</span>", "93", "581", "71.914.422.835,05", "0 aceptadas<br><span class='mini'>1 ajustada</span>", "<span class='hash'>d97f03…5a2b</span>", "<a href='#'>Descargar</a> · <a href='#'>Alertas</a>"],
-        ["06/11/2026 11:25", "M. Julián", "ASIENTO DEVENGAMIENTOS.xlsx<br><span class='mini'>DEVENGAMIENTOS · 05–08/2026</span>", "44", "156", "6.936.847.173,80", "0 aceptadas<br><span class='mini'>4 ajustadas (A6)</span>", "<span class='hash'>13aa58…e07d</span>", "<a href='#'>Descargar</a> · <a href='#'>Alertas</a>"],
+        ["12/11/2026 08:14", "M. Julián", "BANCOS FCE 2027.xlsx<br><span class='mini'>BANCOS · 05–08/2026</span>", "140", "965", "44.074.058.175,96<br>44.074.058.175,97", "0 aceptadas<br><span class='mini'>15 sin cuenta · 3 con 0,01 · 1 ignorada</span>", "<span class='hash'>7a41c9…3f52</span>", "<a href='#'>Descargar</a> · <a href='#'>Alertas</a>"],
+        ["10/11/2026 16:02", "M. Julián", "ASIENTOS VARIOS 05-2026 a 08-2026.xlsx<br><span class='mini'>VARIOS · 05–09/2026 (09 incluido a mano)</span>", "98", "600", "74.568.487.094,92<br>74.568.487.094,93", "0 aceptadas<br><span class='mini'>1 con 0,01 · A9 incluido</span>", "<span class='hash'>b20e6d…81c4</span>", "<a href='#'>Descargar</a> · <a href='#'>Alertas</a>"],
+        ["10/11/2026 15:40", "M. Julián", "ASIENTOS VARIOS 05-2026 a 08-2026.xlsx<br><span class='mini'>VARIOS · 05–08/2026</span>", "93", "581", "71.914.422.835,04<br>71.914.422.835,05", "0 aceptadas<br><span class='mini'>1 con 0,01</span>", "<span class='hash'>d97f03…5a2b</span>", "<a href='#'>Descargar</a> · <a href='#'>Alertas</a>"],
+        ["06/11/2026 11:25", "M. Julián", "ASIENTO DEVENGAMIENTOS.xlsx<br><span class='mini'>DEVENGAMIENTOS · 05–08/2026</span>", "44", "156", "6.936.847.173,80<br>6.936.847.173,78", "0 aceptadas<br><span class='mini'>4 con 0,01 (A6)</span>", "<span class='hash'>13aa58…e07d</span>", "<a href='#'>Descargar</a> · <a href='#'>Alertas</a>"],
     ]
     det = tabla(["Hoja", "Mes", "Nombre de la cuenta en el Excel", "Líneas sin cuenta"],
                 [[h, "05–08/2026", n, str(c)] for n, h, c in A1_ROWS], numericas=(3,))
     cuerpo = (cab("Cada generación queda registrada: quién, cuándo, de qué archivo, con qué parámetros y qué alertas tuvo.", "Historial de generaciones")
         + '<div class="toolbar"><div class="chips"><span class="chip on">Todas<i>4</i></span><span class="chip">BANCOS<i>1</i></span><span class="chip">DEVENGAMIENTOS<i>1</i></span><span class="chip">VARIOS<i>2</i></span><span class="chip">Con líneas sin cuenta<i>1</i></span></div>'
           '<span class="actions"><input placeholder="Buscar por archivo o usuario" style="width:260px"></span></div>'
-        + panel(tabla(["Fecha y hora", "Usuario", "Origen", "Asientos", "Líneas", "Total Debe = Haber", "Alertas", "TXT (SHA-256)", ""], f, numericas=(3, 4, 5), clases=["adv", "", "", ""])
+        + panel(tabla(["Fecha y hora", "Usuario", "Origen", "Asientos", "Líneas", "Debe / Haber", "Alertas", "TXT (SHA-256)", ""], f, numericas=(3, 4, 5), clases=["adv", "", "", ""])
                 + '<div class="crumbs" style="margin-top:18px"><b>Líneas sin cuenta · 12/11/2026 08:14 · BANCOS FCE 2027.xlsx</b></div>' + det
                 + '<p class="note">Las 15 líneas salieron con la cuenta vacía en el TXT. Queda registrado para saber qué se le mandó al estudio.</p>'))
     return P("Historial", "historial", cuerpo, crumb="Asientos para el estudio / Historial")
