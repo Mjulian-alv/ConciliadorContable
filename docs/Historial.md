@@ -1597,3 +1597,24 @@ Se hizo en la rama `hotfix/00181-baja-movimientos-solo-pares` (worktree aparte, 
 - Verificado: `AgrupadorConceptos` compila (0 errores).
 
 **No probado:** la pantalla de consulta de movimientos ni la exportación a Excel a mano.
+
+## TAREA 00192 — 16/11/2026 — Máscara del comprobante, sólo errores por defecto, color y filtro por directiva
+
+**Pedido (numerado, confirmado en el chat):**
+1. Considerar que la letra del comprobante puede estar en el mismo campo que el punto de venta; una máscara escrita a mano (p = dígito del punto de venta, l = letra, n = dígito del número) que se suma a las opciones existentes.
+2. Al tomar los archivos, que «Mostrar sólo errores» venga tildado por defecto para que la lista no sea interminable.
+3. Un campo para asignarle un color a las directivas, que se respete en pantalla y al exportar a Excel.
+4. (Surgió en el chat) Al elegir «Conciliados», mostrar las directivas y permitir filtrarlas en pantalla.
+
+**Sin diseño previo:** campos nuevos en pantallas existentes, sin flujo nuevo; la descripción del chat hizo de acuerdo.
+
+**Ejecutado (rama `tarea-00192-mascara-errores-colores-directivas`):**
+- Línea 1: `NumberMode.Mask` y `FileFormat.NumberMask`. `ProviderImporter.SplitMask` exige el largo de la máscara, dígitos en `p` y `n`, una letra en `l` y literales iguales; sin `p` se conserva el punto de venta de su columna. `ValidateMask` (al guardar el formato): `n` de 1 a 8, `p` hasta 5, una sola `l`, hasta 40 caracteres. La máscara es una opción más del editor del proveedor: los modos con separador y por posiciones, con su orden, siguen igual. El formato precargado del listado SAP pasa a `pppplnnnnnnnn`; un formato SAP guardado con la 00150 se reconoce como ya aplicado.
+- Línea 2: `PreviewTable` arranca con «sólo errores» tildado si el archivo tiene filas con error; si no tiene ninguno muestra todo.
+- Línea 3: `DirectivaConciliacion.Color` («#RRGGBB», opcional; el archivo es ANSI y se tocó por bytes). Selector en el perfil, validación y normalización a mayúsculas al guardar (`ConfigurationValidator`); `DirectiveColors` valida también al usar el valor. La grilla de resultados pinta las filas de la directiva con ese color (y ajusta el color del texto según el fondo) y `ResultExporter` hace lo mismo en el Excel; sin color vale el del estado. El formulario de escritorio no lo edita.
+- Línea 4: `ResultFilter` (nuevo). Con «Conciliado» o «Diferencia de importe» seleccionado se muestran botones «Todas» y una por directiva con su color y cantidad, de selección múltiple.
+- Pruebas (`Tools/ArcaWeb.Tests/ImportTests.cs`): 50 correctas (6 nuevas: máscara válida, inválida y validación, color, Excel con color y filtro por directiva). `ArcaCliente` y `Conciliador.Web` compilan.
+- Verificado en pantalla en modo demostración: selector de color en el perfil, filas conciliadas pintadas con el color elegido y barra de filtro «Directiva: Todas · 1 · Principal (4)».
+- Revisión de Codex: `docs/Revisiones/00192-review-1.md` (2 hallazgos, corregidos; revisó sólo una parte del diff). Queda 1 ronda disponible.
+
+**No probado:** «sólo errores» por defecto con un archivo con errores (no hay un caso en la demostración), el editor de la máscara en pantalla, el Excel abierto en Excel (sólo leído con ClosedXML) y el filtro con más de una directiva.

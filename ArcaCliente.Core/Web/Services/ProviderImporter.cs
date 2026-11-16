@@ -82,6 +82,7 @@ public static class ProviderImporter
     // Con NumberLetter no hay punto de venta en el campo: se conserva el de su propia columna.
     static (string Point,string Number,string Letter,string? Error) SplitNumber(FileFormat f,string pv,string num,string letter)
     {
+        // Fecha: 16/11/2026 - TAREA: 00192 - Linea: 1 - La máscara reemplaza al orden y a los dígitos de punto de venta: se resuelve antes de ellos.
         if(f.NumberMode==NumberMode.Mask) return SplitMask(f.NumberMask,pv,num,letter);
         var order=f.NumberOrder;string[] parts;int n=f.PointLength;
         if(f.NumberMode==NumberMode.Separated) {

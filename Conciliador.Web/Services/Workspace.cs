@@ -59,7 +59,9 @@ public sealed class Workspace(IWebConfigurationStore store,AccessGuard access,Ar
         if(Provider!=null&&files.Count!=1)throw new ImportException("El proveedor se importa desde un archivo por conciliación.");
         ExternalFiles=files;
         // Fecha: 30/10/2026 - TAREA: 00150 - Linea: 1 - Un listado SAP precarga el formato del proveedor y lo guarda: no se pisa si ya está aplicado, para respetar ajustes posteriores.
-        if(Provider!=null&&SapListReader.IsSapList(files[0].Name)&&!(Provider.Format.NumberMode==NumberMode.Mask&&Provider.Format.Number=="Referencia")){
+        // Fecha: 16/11/2026 - TAREA: 00192 - Linea: 1 - Un formato SAP guardado por la 00150 (por posiciones, punto · letra · número) también cuenta como aplicado: si no, la primera carga pisaría sus ajustes (Importe, Letra, Punto de venta).
+        bool sapApplied=Provider?.Format is {Number:"Referencia"} f&&(f.NumberMode==NumberMode.Mask||(f.NumberMode==NumberMode.Fixed&&f.NumberOrder==NumberOrder.PointLetterNumber));
+        if(Provider!=null&&SapListReader.IsSapList(files[0].Name)&&!sapApplied){
             SapListReader.Apply(files[0],Provider.Format);await SaveProviderFormat();Saved="Se aplicó el formato del listado SAP";
         } else Refresh();
     }
@@ -102,5 +104,6 @@ public sealed class Workspace(IWebConfigurationStore store,AccessGuard access,Ar
         if(External==null||System==null)throw new ImportException("Cargá los dos archivos.");
         Result=ReconciliationRunner.Run(Profile!,External,System,Provider?.Cuit,From,To);
     }
+    // Fecha: 16/11/2026 - TAREA: 00192 - Linea: 3 - El Excel recibe las directivas del perfil para pintar con su color los comprobantes que cada una concilió.
     public async Task<byte[]> Export(){await access.Require("ArcaOffline");await CheckVersions();if(Result==null)throw new ImportException("Volvé a conciliar antes de exportar.");return ResultExporter.Export(Result,Profile?.Profile.DirectivasConciliacion);}
 }
