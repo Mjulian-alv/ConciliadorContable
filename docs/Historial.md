@@ -1586,3 +1586,14 @@ Se hizo en la rama `hotfix/00181-baja-movimientos-solo-pares` (worktree aparte, 
 
 `Tools/Homologador.Tests` con `CONCILIACION_SEGURA_ONLY=1`: 15 pruebas correctas. `Tools/AgrupadorWeb.Tests`: 90 correctas, 0 con error. `Conciliador.Web` compila.
 **No probado:** las pantallas a mano, ni contra una base de producción. El escritorio no se compiló por separado (no se tocó su código).
+
+## TAREA 00191 — 16/11/2026 — Cambios a mano en la consulta de movimientos (anotación)
+
+**Pedido:** cambios hechos a mano por el usuario, sin pasar por Claude, que estaban sin commitear en `main`. Se anotan acá y en el registro global para que el correlativo no mienta.
+
+**Ejecutado:**
+- `AgrupadorConceptos/Services/TablaExcelExporter.cs`: las columnas cuyo encabezado contiene «débito» se exportan en negativo (línea 1). Se le agregó el comentario de versionado.
+- `AgrupadorConceptos/ConceptosListado.cs`, `.Designer.cs` y `.resx`: reformateo del diseñador y de las columnas de la grilla (un asignación por línea), sin cambio de comportamiento que se haya podido ver en el código.
+- Verificado: `AgrupadorConceptos` compila (0 errores).
+
+**No probado:** la pantalla de consulta de movimientos ni la exportación a Excel a mano.

@@ -86,6 +86,10 @@ namespace AgrupadorConceptos.Services
                     if (valor is decimal importe)
                     {
                         celda.Value = importe;
+                        // Fecha: 16/11/2026 - TAREA: 00191 - Linea: 1 - Cambio hecho a mano: las columnas cuyo encabezado contiene «débito» se exportan en negativo, para que debitos y créditos se resten al sumar en Excel.
+                        if (  encabezados[c].ToLower().Contains("débito") )
+                            celda.Value = importe * (-1);
+                        
                         celda.Style.NumberFormat.Format = FormatoImporte;
                     }
                     // Fecha: 07/10/2026 - TAREA: 00073 - Linea: 3 - Una fecha debe poder ordenarse y filtrarse en Excel sin depender de la cultura del equipo.

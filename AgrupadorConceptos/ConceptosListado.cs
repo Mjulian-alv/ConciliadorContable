@@ -39,16 +39,22 @@ namespace AgrupadorConceptos
             dgvMovimientos.AutoGenerateColumns = false;
             dgvMovimientos.Columns.Add(new GridViewDateTimeColumn(nameof(MovimientoConsulta.Fecha))
             {
-                HeaderText = "Fecha", FieldName = nameof(MovimientoConsulta.Fecha), Width = 105,
-                FormatString = "{0:dd/MM/yyyy}", FormatInfo = Cultura
+                HeaderText = "Fecha",
+                FieldName = nameof(MovimientoConsulta.Fecha),
+                Width = 105,
+                FormatString = "{0:dd/MM/yyyy}",
+                FormatInfo = Cultura
             });
             AgregarTexto(nameof(MovimientoConsulta.ConceptoOriginal), "Concepto original", 170);
             AgregarTexto(nameof(MovimientoConsulta.DescripcionOriginal), "Descripción original", 240);
             foreach (var campo in new[] { nameof(MovimientoConsulta.Debitos), nameof(MovimientoConsulta.Creditos) })
                 dgvMovimientos.Columns.Add(new GridViewDecimalColumn(campo)
                 {
-                    FieldName = campo, HeaderText = campo == nameof(MovimientoConsulta.Debitos) ? "Débitos" : "Créditos",
-                    Width = 125, FormatString = "{0:N2}", FormatInfo = Cultura,
+                    FieldName = campo,
+                    HeaderText = campo == nameof(MovimientoConsulta.Debitos) ? "Débitos" : "Créditos",
+                    Width = 125,
+                    FormatString = "{0:N2}",
+                    FormatInfo = Cultura,
                     TextAlignment = System.Drawing.ContentAlignment.MiddleRight
                 });
             AgregarTexto(nameof(MovimientoConsulta.ConceptoEstandar), "Concepto estándar", 180);
@@ -147,7 +153,9 @@ namespace AgrupadorConceptos
             if (movimientos.Count == 0) return;
             using var dialogo = new SaveFileDialog
             {
-                Filter = "Libro de Excel (*.xlsx)|*.xlsx", DefaultExt = "xlsx", AddExtension = true,
+                Filter = "Libro de Excel (*.xlsx)|*.xlsx",
+                DefaultExt = "xlsx",
+                AddExtension = true,
                 FileName = $"Movimientos_{dtpDesde.Value:yyyyMMdd}_{dtpHasta.Value:yyyyMMdd}.xlsx"
             };
             if (dialogo.ShowDialog(this) != DialogResult.OK) return;
@@ -174,5 +182,6 @@ namespace AgrupadorConceptos
 
         private void MostrarError(Exception ex) => MessageBox.Show(this, ex.Message, "Consulta de movimientos",
             MessageBoxButtons.OK, MessageBoxIcon.Error);
+
     }
 }
