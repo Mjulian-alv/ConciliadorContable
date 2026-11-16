@@ -1,0 +1,108 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Historial</title>
+<link rel="stylesheet" href="web.css"><style>
+body{background:#f3f5f7}
+.sidebar nav a{padding:10px 14px;font-size:13px}
+.sidebar nav span{font-size:16px;width:20px;text-align:center}
+.nav-caption{padding:18px 14px 8px}
+.sidebar{overflow:hidden}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:26px}
+.card{background:#fff;border:1px solid var(--line);border-radius:9px;padding:18px 20px;display:flex;gap:14px;min-height:104px}
+.card .ico{width:40px;height:40px;border-radius:9px;background:#e6f2f0;color:#157a70;display:grid;place-items:center;font-size:19px;flex-shrink:0}
+.card h3{margin:0 0 4px;font-size:15px} .card p{margin:0;font-size:12px;color:var(--muted);line-height:1.5}
+.card.off{opacity:.55;background:#f7f9fa} .card.off .ico{background:#eceff1;color:#8a9aa3}
+.lock{display:inline-block;margin-top:7px;font-size:10px;font-weight:700;color:#8a6a2a;background:#fff1d7;border-radius:4px;padding:3px 7px}
+.grp{font-size:10px;letter-spacing:1.6px;font-weight:700;color:#647d87;margin:6px 0 12px}
+.cero{color:#a9b6bd}
+th.numeric{text-align:right}
+.stats{display:flex;gap:26px;flex-wrap:wrap;margin:0 0 12px}
+.stats div{font-size:12px;color:var(--muted)} .stats strong{display:block;font-size:19px;color:#183d4e;font-variant-numeric:tabular-nums;margin-top:2px}
+.badge.bad{background:#fde7e3;color:#a2392a}
+tr.sel td{background:#dff0ee} tr.pend td{background:#fff8e6}
+.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.split{display:grid;grid-template-columns:1fr 1.5fr;gap:18px}
+.bar{height:12px;background:#e4ecee;border-radius:7px;overflow:hidden;margin:12px 0}
+.bar i{display:block;height:100%;background:var(--teal)}
+.stepper{display:flex;gap:26px;font-size:12px;color:#83939c;margin:6px 0 8px}
+.stepper .done{color:#24764f;font-weight:600} .stepper .now{color:#157a70;font-weight:700}
+.backdrop{position:fixed;inset:0;background:rgba(18,46,62,.45);display:grid;place-items:center;z-index:9}
+.modal{background:#fff;border-radius:10px;box-shadow:0 18px 60px rgba(0,0,0,.35);padding:24px 26px;max-width:880px;width:calc(100% - 340px);max-height:80vh;overflow:hidden}
+.modal h2{margin:0 0 4px} .modal .sub{color:var(--muted);font-size:12px;margin-bottom:14px}
+.modal .foot{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+.err{border-color:#d9776a!important;background:#fff8f6!important} .ferr{color:#a2392a;font-size:11px;margin-top:2px;font-weight:400}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.cols{columns:3;column-gap:20px;font-size:12px} .cols label{font-weight:400;flex-direction:row;align-items:center;gap:8px;margin-bottom:7px}
+.pager{font-size:11px;color:var(--muted);padding:10px 4px}
+.kbd{font-size:11px;background:#eef3f5;border:1px solid #d6e0e5;border-radius:4px;padding:1px 6px}
+h1{font-size:26px}
+.note{font-size:11px;color:var(--muted);margin-top:8px}
+.sum{display:flex;justify-content:space-between;align-items:center;gap:16px;background:#f2f8f7;border:1px solid #cfe0de;border-radius:7px;padding:12px 16px;margin-top:14px;font-size:12px}
+.sum strong{font-variant-numeric:tabular-nums;font-size:14px}
+.ok{color:#24764f;font-weight:700} .no{color:#a2392a;font-weight:700}
+</style>
+<style>
+.drop{border:2px dashed #9fc3c0;border-radius:12px;background:#f7fbfb;padding:46px 20px;text-align:center}
+.drop .big{font-size:38px;color:#65918e;line-height:1} .drop h2{margin:10px 0 4px} .drop p{color:var(--muted);margin:0 0 14px}
+.drop.err{border-color:#d9776a;background:#fff8f6}
+.file{display:flex;align-items:center;gap:14px;justify-content:space-between;border:1px solid #cfe0de;border-left:4px solid var(--teal);border-radius:7px;background:#fff;padding:14px 18px}
+.file b{font-size:15px} .file small{margin:2px 0 0}
+.mono{font-family:Consolas,"Courier New",monospace;font-size:12px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chip{border:1px solid #cbd6dc;border-radius:16px;background:#fff;padding:5px 12px;font-size:12px;font-weight:600;color:#3d5563}
+.chip.on{background:#153445;border-color:#153445;color:#fff}
+.chip i{font-style:normal;font-weight:400;opacity:.8;margin-left:4px}
+.cards3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.tipo{border:1px solid var(--line);border-radius:8px;padding:14px 16px;background:#fff}
+.tipo.on{border:2px solid var(--teal);background:#ecf7f4;padding:13px 15px}
+.tipo b{display:block;font-size:14px;margin-bottom:3px} .tipo span{font-size:12px;color:var(--muted);line-height:1.5}
+.tipo em{font-style:normal;font-size:10px;font-weight:700;color:#157a70;letter-spacing:.8px}
+.meses{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.mes{border:1px solid var(--line);border-radius:8px;padding:13px 15px;background:#fff;display:block}
+.mes label{flex-direction:row;align-items:center;gap:9px;font-size:14px}
+.mes small{margin:6px 0 0 25px;line-height:1.55}
+.mes.warn{background:#fff8e6;border-color:#e3c27a}
+.mes.off{opacity:.6;background:#f7f9fa}
+.tree{font-size:13px} .tree .m{font-weight:700;padding:8px 6px;color:#153445;display:flex;justify-content:space-between}
+.tree .h{padding:6px 6px 6px 22px;display:flex;justify-content:space-between;border-radius:5px;color:#3d5563}
+.tree .h.sel{background:#dff0ee;font-weight:700;color:#0e4f4a} .tree .h .c{color:var(--muted);font-variant-numeric:tabular-nums}
+.tree .m span.dot,.tree .h span.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-left:7px}
+.dot.ok{background:#4aa87a}.dot.w{background:#e0a23a}.dot.e{background:#d9604f}
+.vp{display:grid;grid-template-columns:270px minmax(0,1fr);gap:18px;align-items:start}
+.crumbs{font-size:12px;color:var(--muted);margin:0 0 6px}.crumbs b{color:#153445}
+.sev{display:inline-block;border-radius:4px;padding:4px 8px;font-size:10px;font-weight:700;letter-spacing:.4px;white-space:nowrap}
+.sev.b{background:#fde7e3;color:#a2392a}.sev.a{background:#fff1d7;color:#9c6920}.sev.i{background:#e6eef5;color:#3b5f7c}
+.est{font-size:11px;font-weight:600}.est.ok{color:#24764f}.est.a{color:#9c6920}.est.o{color:#6c7b84}
+tr.adv td{background:#fffaf0} tr.bloq td{background:#fff6f4} tr.inf td{background:#f8fafc}
+.banner{display:flex;align-items:center;justify-content:space-between;gap:18px;border-radius:8px;padding:14px 18px;margin:0 0 18px;font-size:13px}
+.banner.ok{background:#eaf6ef;border:1px solid #b9dcc8;color:#1f5e3f}
+.banner.bad{background:#fff1ed;border:1px solid #efc4b8;color:#923d2b}
+.banner.warn{background:#fff8e6;border:1px solid #e3c27a;color:#6f5013}
+.notice.warn{background:#fff8e6;border-color:#e3c27a;color:#6f5013}
+.banner b{font-size:14px}
+.checks{list-style:none;margin:0;padding:0;display:grid;gap:9px;font-size:13px}
+.checks li::before{content:"✓";color:#24764f;font-weight:700;margin-right:9px}
+.checks li.no::before{content:"✕";color:#a2392a}
+.checks li.w::before{content:"⚠";color:#9c6920}
+.kv{display:grid;grid-template-columns:200px 1fr;gap:9px 14px;font-size:13px;align-items:baseline}
+.kv dt{color:var(--muted)} .kv dd{margin:0;font-weight:600}
+.txt{background:#16222a;color:#d6e4ea;border-radius:7px;padding:14px 16px;font-family:Consolas,"Courier New",monospace;font-size:12px;line-height:1.75;white-space:pre;overflow:hidden}
+.txt i{font-style:normal;color:#e8b04a}
+.adj{background:#fff1d7;border-radius:3px;padding:1px 5px;font-weight:700;color:#8a5a14}
+.opt{border:1px solid var(--line);border-radius:8px;padding:13px 15px;margin-bottom:10px;display:block}
+.opt.on{border:2px solid var(--teal);background:#f2f9f8;padding:12px 14px}
+.opt label{flex-direction:row;align-items:flex-start;gap:10px;font-size:13px}
+.opt small{margin-left:26px;line-height:1.55}
+.sugg{border:1px solid #9fc3c0;border-radius:6px;background:#fff;box-shadow:0 6px 18px rgba(0,0,0,.12);font-size:12px;margin-top:4px}
+.sugg div{padding:7px 11px;border-bottom:1px solid #edf1f3;display:flex;justify-content:space-between;gap:12px}
+.sugg div:last-child{border:0}.sugg .hi{background:#dff0ee}
+.sugg b{font-family:Consolas,monospace;font-weight:600}
+.tick{color:#24764f;font-weight:700}
+.vacio{text-align:center;padding:54px 20px;color:var(--muted)}.vacio .big{font-size:42px;color:#a9c4c2}.vacio h2{color:#2c4857}
+.mini{font-size:11px;color:var(--muted)}
+.right{text-align:right}
+.hash{font-family:Consolas,monospace;font-size:12px;background:#f0f4f6;border-radius:4px;padding:3px 7px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.sticky-foot{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-top:6px}
+</style></head><body>
+<div class="app-shell"><aside class="sidebar"><a href="#" class="brand"><span class="brand-mark">C</span><span>Conciliador<small>CONTABLE</small></span></a><div class="nav-caption">INICIO</div><nav><a href="#"><span>⌂</span> Inicio</a></nav><div class="nav-caption">ARCA CLIENTE</div><nav><a href="#"><span>⇄</span> Comprobantes</a><a href="#"><span>▤</span> Perfiles de comprobantes</a><a href="#"><span>⇄</span> Percepciones y retenciones</a><a href="#"><span>▤</span> Perfiles PyR</a></nav><div class="nav-caption">AGRUPADOR DE CONCEPTOS</div><nav><a href="#"><span>▦</span> Procesador</a><a href="#"><span>≡</span> Homologaciones</a><a href="#"><span>⌕</span> Consulta de movimientos</a><a href="#"><span>⇄</span> Conciliación externa</a><a href="#"><span>↔</span> Conciliación interna</a><a href="#"><span>#</span> Cuentas contables</a><a href="#"><span>◇</span> Conceptos estándar</a></nav><div class="nav-caption">ASIENTOS PARA EL ESTUDIO</div><nav><a href="#"><span>⇪</span> Generar asientos</a><a href="#" class="active"><span>☰</span> Historial</a><a href="#"><span>⚙</span> Configuración</a></nav><div class="sidebar-foot"><span class="status-dot"></span> M. Julián<small>Alvear Supermercados</small><a href="#">Cerrar sesión ↗</a></div></aside><div class="main-shell">
+<header class="topbar"><span>Conciliador Contable <span class="muted"> / Asientos para el estudio / Historial</span></span><span class="pill">ENTORNO CONFIGURADO</span></header>
+<main class="content"><div class="page-heading"><div><p class="eyebrow">ASIENTOS PARA EL ESTUDIO CONTABLE</p><h1>Historial de generaciones</h1><p>Cada generación queda registrada: quién, cuándo, de qué archivo, con qué parámetros y qué alertas tuvo.</p></div></div><div class="toolbar"><div class="chips"><span class="chip on">Todas<i>4</i></span><span class="chip">BANCOS<i>1</i></span><span class="chip">DEVENGAMIENTOS<i>1</i></span><span class="chip">VARIOS<i>2</i></span><span class="chip">Con líneas sin cuenta<i>1</i></span></div><span class="actions"><input placeholder="Buscar por archivo o usuario" style="width:260px"></span></div><section class="panel"><div class="table-wrap"><table><thead><tr><th>Fecha y hora</th><th>Usuario</th><th>Origen</th><th class="numeric">Asientos</th><th class="numeric">Líneas</th><th class="numeric">Debe / Haber</th><th>Alertas</th><th>TXT (SHA-256)</th><th></th></tr></thead><tbody><tr class="adv"><td>12/11/2026 08:14</td><td>M. Julián</td><td>BANCOS FCE 2027.xlsx<br><span class='mini'>BANCOS · 05–08/2026</span></td><td class="numeric">140</td><td class="numeric">965</td><td class="numeric">44.074.058.175,96<br>44.074.058.175,97</td><td>0 aceptadas<br><span class='mini'>15 sin cuenta · 3 con 0,01 · 1 ignorada</span></td><td><span class='hash'>7a41c9…3f52</span></td><td><a href='#'>Descargar</a> · <a href='#'>Alertas</a></td></tr><tr><td>10/11/2026 16:02</td><td>M. Julián</td><td>ASIENTOS VARIOS 05-2026 a 08-2026.xlsx<br><span class='mini'>VARIOS · 05–09/2026 (09 incluido a mano)</span></td><td class="numeric">98</td><td class="numeric">600</td><td class="numeric">74.568.487.094,92<br>74.568.487.094,93</td><td>0 aceptadas<br><span class='mini'>1 con 0,01 · A9 incluido</span></td><td><span class='hash'>b20e6d…81c4</span></td><td><a href='#'>Descargar</a> · <a href='#'>Alertas</a></td></tr><tr><td>10/11/2026 15:40</td><td>M. Julián</td><td>ASIENTOS VARIOS 05-2026 a 08-2026.xlsx<br><span class='mini'>VARIOS · 05–08/2026</span></td><td class="numeric">93</td><td class="numeric">581</td><td class="numeric">71.914.422.835,04<br>71.914.422.835,05</td><td>0 aceptadas<br><span class='mini'>1 con 0,01</span></td><td><span class='hash'>d97f03…5a2b</span></td><td><a href='#'>Descargar</a> · <a href='#'>Alertas</a></td></tr><tr><td>06/11/2026 11:25</td><td>M. Julián</td><td>ASIENTO DEVENGAMIENTOS.xlsx<br><span class='mini'>DEVENGAMIENTOS · 05–08/2026</span></td><td class="numeric">44</td><td class="numeric">156</td><td class="numeric">6.936.847.173,80<br>6.936.847.173,78</td><td>0 aceptadas<br><span class='mini'>4 con 0,01 (A6)</span></td><td><span class='hash'>13aa58…e07d</span></td><td><a href='#'>Descargar</a> · <a href='#'>Alertas</a></td></tr></tbody></table></div><div class="crumbs" style="margin-top:18px"><b>Líneas sin cuenta · 12/11/2026 08:14 · BANCOS FCE 2027.xlsx</b></div><div class="table-wrap"><table><thead><tr><th>Hoja</th><th>Mes</th><th>Nombre de la cuenta en el Excel</th><th class="numeric">Líneas sin cuenta</th></tr></thead><tbody><tr><td>COMAFI</td><td>05–08/2026</td><td>COMAFI BURSATIL</td><td class="numeric">3</td></tr><tr><td>MACRO 663 · MACRO 664</td><td>05–08/2026</td><td>MACRO SECURITIES</td><td class="numeric">2</td></tr><tr><td>SANTANDER</td><td>05–08/2026</td><td>SANTANDER VALORES</td><td class="numeric">3</td></tr><tr><td>NBSF</td><td>05–08/2026</td><td>PRESTAMO NBSF · A PRÉSTAMO NBSF</td><td class="numeric">5</td></tr><tr><td>BNA CA · GALICIA</td><td>05–08/2026</td><td>MULTAS</td><td class="numeric">2</td></tr></tbody></table></div><p class="note">Las 15 líneas salieron con la cuenta vacía en el TXT. Queda registrado para saber qué se le mandó al estudio.</p></section></main></div></div><script>document.documentElement.setAttribute('data-h',Math.max(document.documentElement.scrollHeight,document.body.scrollHeight))</script></body></html>
