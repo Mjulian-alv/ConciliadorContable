@@ -59,7 +59,7 @@ public sealed class Workspace(IWebConfigurationStore store,AccessGuard access,Ar
         if(Provider!=null&&files.Count!=1)throw new ImportException("El proveedor se importa desde un archivo por conciliación.");
         ExternalFiles=files;
         // Fecha: 30/10/2026 - TAREA: 00150 - Linea: 1 - Un listado SAP precarga el formato del proveedor y lo guarda: no se pisa si ya está aplicado, para respetar ajustes posteriores.
-        if(Provider!=null&&SapListReader.IsSapList(files[0].Name)&&!(Provider.Format.NumberOrder==NumberOrder.PointLetterNumber&&Provider.Format.NumberMode==NumberMode.Fixed&&Provider.Format.Number=="Referencia")){
+        if(Provider!=null&&SapListReader.IsSapList(files[0].Name)&&!(Provider.Format.NumberMode==NumberMode.Mask&&Provider.Format.Number=="Referencia")){
             SapListReader.Apply(files[0],Provider.Format);await SaveProviderFormat();Saved="Se aplicó el formato del listado SAP";
         } else Refresh();
     }
@@ -102,5 +102,5 @@ public sealed class Workspace(IWebConfigurationStore store,AccessGuard access,Ar
         if(External==null||System==null)throw new ImportException("Cargá los dos archivos.");
         Result=ReconciliationRunner.Run(Profile!,External,System,Provider?.Cuit,From,To);
     }
-    public async Task<byte[]> Export(){await access.Require("ArcaOffline");await CheckVersions();if(Result==null)throw new ImportException("Volvé a conciliar antes de exportar.");return ResultExporter.Export(Result);}
+    public async Task<byte[]> Export(){await access.Require("ArcaOffline");await CheckVersions();if(Result==null)throw new ImportException("Volvé a conciliar antes de exportar.");return ResultExporter.Export(Result,Profile?.Profile.DirectivasConciliacion);}
 }

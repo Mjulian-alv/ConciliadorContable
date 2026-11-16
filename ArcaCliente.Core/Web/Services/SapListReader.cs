@@ -69,6 +69,7 @@ public static class SapListReader
         f.Number=Find(h=>h.Equals("Referencia",StringComparison.OrdinalIgnoreCase),"referencia");
         f.Date=Find(h=>h.StartsWith("Fecha doc",StringComparison.OrdinalIgnoreCase),"fecha de documento");
         f.Amount=Find(h=>h.StartsWith("Importe",StringComparison.OrdinalIgnoreCase),"importe");
-        f.Letter="";f.Point="";f.NumberMode=NumberMode.Fixed;f.NumberOrder=NumberOrder.PointLetterNumber;f.PointLength=4;
+        // Fecha: 16/11/2026 - TAREA: 00192 - Linea: 1 - La referencia de SAP («0219A00060055») se declara con la máscara en vez de modo por posiciones y orden.
+        f.Letter="";f.Point="";f.NumberMode=NumberMode.Mask;f.NumberMask="pppplnnnnnnnn";
     }
 }

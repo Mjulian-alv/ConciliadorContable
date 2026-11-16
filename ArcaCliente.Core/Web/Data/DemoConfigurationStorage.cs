@@ -42,5 +42,10 @@ public static class ConfigurationValidator
         var first=ArcaCliente.Models.DirectivaConciliacion.CrearPrimaria();
         if(directives.Count==0||!directives[0].Campos.SequenceEqual(first.Campos))throw new ImportException("La directiva principal no puede modificarse.");
         if(directives.Any(d=>d.Campos.Count==0||d.Campos.Distinct().Count()!=d.Campos.Count||d.Campos.Any(c=>!Enum.IsDefined(c))))throw new ImportException("Revisá los campos de las directivas.");
+        // Fecha: 16/11/2026 - TAREA: 00192 - Linea: 3 - El color es opcional: vacío se guarda sin color y cualquier otro valor debe ser «#RRGGBB».
+        foreach(var d in directives){
+            if(!string.IsNullOrEmpty(d.Color)&&DirectiveColors.Valid(d.Color)==null)throw new ImportException("Color de directiva inválido.");
+            d.Color=DirectiveColors.Valid(d.Color);
+        }
     }
 }

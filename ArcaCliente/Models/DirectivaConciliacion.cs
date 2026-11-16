@@ -21,6 +21,9 @@ namespace ArcaCliente.Models
         public string Descripcion { get; set; }
         public List<CampoConciliacion> Campos { get; set; } = new();
 
+        // Fecha: 16/11/2026 - TAREA: 00192 - Linea: 3 - Color opcional («#RRGGBB») con que se muestran en pantalla y en el Excel los comprobantes conciliados por esta directiva; vacío = el color del estado.
+        public string Color { get; set; }
+
         /// <summary>Resumen legible de los campos incluidos. No se serializa.</summary>
         [JsonIgnore]
         public string ResumenCampos => Campos.Count == 0

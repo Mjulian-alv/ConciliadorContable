@@ -82,6 +82,7 @@ public static class ProviderImporter
     // Con NumberLetter no hay punto de venta en el campo: se conserva el de su propia columna.
     static (string Point,string Number,string Letter,string? Error) SplitNumber(FileFormat f,string pv,string num,string letter)
     {
+        if(f.NumberMode==NumberMode.Mask) return SplitMask(f.NumberMask,pv,num,letter);
         var order=f.NumberOrder;string[] parts;int n=f.PointLength;
         if(f.NumberMode==NumberMode.Separated) {
             parts=num.Split(f.NumberSeparator,StringSplitOptions.None);
@@ -107,6 +108,32 @@ public static class ProviderImporter
         }
         letter=letter.Trim().ToUpperInvariant();
         return Regex.IsMatch(letter,"^[A-Z]$")?(pv,num,letter,null):(pv,num,"","Letra inválida: tiene que ser una sola letra de la A a la Z.");
+    }
+    // Fecha: 16/11/2026 - TAREA: 00192 - Linea: 1 - Parte el comprobante con una máscara escrita a mano: p = dígito del punto de venta, l = letra, n = dígito del número y el resto son literales.
+    // El largo del valor tiene que ser el de la máscara. Sin «p» en la máscara se conserva el punto de venta de su columna, y sin «l» la letra de su columna.
+    static (string Point,string Number,string Letter,string? Error) SplitMask(string mask,string pv,string num,string letter)
+    {
+        (string,string,string,string?) Bad()=>(pv,num,letter,$"El comprobante no respeta la máscara «{mask}».");
+        if(num.Length!=mask.Length) return Bad();
+        var point=new System.Text.StringBuilder();var number=new System.Text.StringBuilder();
+        for(int i=0;i<mask.Length;i++) {
+            char m=char.ToLowerInvariant(mask[i]),c=num[i];
+            switch(m) {
+                case 'p': if(!char.IsAsciiDigit(c)) return Bad(); point.Append(c);break;
+                case 'n': if(!char.IsAsciiDigit(c)) return Bad(); number.Append(c);break;
+                case 'l': if(!char.IsAsciiLetter(c)) return Bad(); letter=char.ToUpperInvariant(c).ToString();break;
+                default: if(c!=mask[i]) return Bad();break;
+            }
+        }
+        return (point.Length>0?point.ToString():pv,number.ToString(),letter,null);
+    }
+    public static void ValidateMask(string? mask)
+    {
+        if(string.IsNullOrWhiteSpace(mask)||mask.Length>40) throw new ImportException("Escribí la máscara del comprobante (hasta 40 caracteres), por ejemplo pppp-l-nnnnnnnn.");
+        int p=mask.Count(c=>char.ToLowerInvariant(c)=='p'),n=mask.Count(c=>char.ToLowerInvariant(c)=='n'),l=mask.Count(c=>char.ToLowerInvariant(c)=='l');
+        if(n<1||n>8) throw new ImportException("La máscara necesita entre 1 y 8 «n» para el número.");
+        if(p>5) throw new ImportException("La máscara admite hasta 5 «p» para el punto de venta.");
+        if(l>1) throw new ImportException("La máscara admite una sola «l» para la letra.");
     }
     // Fecha: 30/10/2026 - TAREA: 00151 - Linea: 1 - Mismas formas de negativo que acepta ParseAmount (signo adelante y paréntesis); el signo se pierde recién al tomar el valor absoluto.
     static bool IsNegative(string value){var s=value.Trim();return s.StartsWith('-')||(s.StartsWith('(')&&s.EndsWith(')'));}

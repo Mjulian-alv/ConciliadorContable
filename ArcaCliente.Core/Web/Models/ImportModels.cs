@@ -3,7 +3,8 @@ using ArcaCliente.Models;
 namespace ArcaCliente.Web.Models;
 public record UploadedDocument(string Name, byte[] Content);
 public enum ReconciliationSource { Arca, Provider }
-public enum NumberMode { Columns, Separated, Fixed }
+// Fecha: 16/11/2026 - TAREA: 00192 - Linea: 1 - Mask se agrega al final para no cambiar el valor guardado de los modos anteriores.
+public enum NumberMode { Columns, Separated, Fixed, Mask }
 // Fecha: 30/10/2026 - TAREA: 00150 - Linea: 2 - Orden de las partes cuando el comprobante viene en un solo campo (PointNumber es el comportamiento anterior).
 public enum NumberOrder { PointNumber, PointLetterNumber, LetterPointNumber, NumberLetter }
 public sealed class FileFormat
@@ -28,6 +29,8 @@ public sealed class FileFormat
     public NumberMode NumberMode { get; set; }
     // Fecha: 30/10/2026 - TAREA: 00150 - Linea: 2 - Sólo se usa con los modos combinados; NumberLetter toma el punto de venta de su propia columna.
     public NumberOrder NumberOrder { get; set; }
+    // Fecha: 16/11/2026 - TAREA: 00192 - Linea: 1 - Máscara del comprobante combinado: p = dígito del punto de venta, l = letra, n = dígito del número, cualquier otro carácter es literal (ej. «pppp-l-nnnnnnnn»).
+    public string NumberMask { get; set; } = "";
     public string NumberSeparator { get; set; } = "-";
     public int PointLength { get; set; } = 5;
     public static FileFormat From(PerfilOffline p) => new() {

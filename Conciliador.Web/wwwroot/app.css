@@ -8,8 +8,8 @@
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
 h1:focus{outline:none}
 /* Fecha: 05/10/2026 - TAREA: 00066 - Linea: 1 - El fondo distingue los cuatro estados y el texto oscuro conserva la legibilidad sobre la paleta del escritorio. */
-.results .result-state,.results .result-state:hover{background:var(--state-color);color:#111}
-.results .result-state small,.results .result-state summary,.results .stat.result-state span,.results .stat.result-state strong{color:#24313b}
+.results .result-state,.results .result-state:hover{background:var(--state-color);color:var(--state-text,#111)}
+.results .result-state small,.results .result-state summary,.results .stat.result-state span,.results .stat.result-state strong{color:var(--state-text,#24313b)}
 .results .stat.result-state.selected{outline:2px solid #153445;outline-offset:2px;border-color:#153445}
 .results .state-label{color:#111;background:#ffffff70;border:1px solid #00000012}
 
@@ -67,3 +67,5 @@ input.celda.corta{min-width:92px;width:100px}
 tr.match-full td{background:#d9f2e3}tr.match-imp td{background:#fff6d6}tr.sel.match-full td,tr.sel.match-imp td{background:#bfe3df}
 /* Fecha: 14/10/2026 - TAREA: 00097 - Linea: 4 - Las dos columnas de las conciliaciones no se estiran por el ancho de sus tablas: cada tabla se desplaza dentro de su panel. */
 .grid2>*{min-width:0}.grid2.conc{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}@media(max-width:760px){.grid2.conc{grid-template-columns:1fr}}
+/* Fecha: 16/11/2026 - TAREA: 00192 - Linea: 4 - Filtro por directiva y selector de color. */
+.directive-filter{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:12px 0}.directive-filter .chip{min-height:30px;padding:5px 11px;font-size:12px;border-left:6px solid var(--dir-color,#b9c6cd)}.directive-filter .chip.selected{background:#e1eeee;border-color:#145952;border-left-color:var(--dir-color,#145952);outline:2px solid #145952}.directive-color{display:flex;align-items:center;gap:14px;margin:6px 0 10px}.directive-color input[type=color]{width:42px;height:30px;padding:0;border:1px solid #c9d4da;border-radius:4px}
