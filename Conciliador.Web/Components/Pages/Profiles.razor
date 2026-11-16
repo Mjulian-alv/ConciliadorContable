@@ -23,6 +23,8 @@
 <details><summary>Formato del archivo del sistema</summary><FormatEditor Format="editing.SystemFormat" OnChanged="Changed" /></details>
 <div class="section-heading"><div><h2>Directivas de conciliación</h2><p>Se aplican en orden sobre los comprobantes que quedaron sin coincidencia.</p></div></div>
 @for(int index=0;index<editing.Profile.DirectivasConciliacion.Count;index++){var i=index;var d=editing.Profile.DirectivasConciliacion[i];<div class="directive"><div class="toolbar"><strong>@(i+1). @(i==0?"Directiva principal":d.Descripcion)</strong>@if(i>0){<div><button disabled="@(i==1)" @onclick="()=>Move(i,-1)">↑</button><button disabled="@(i==editing.Profile.DirectivasConciliacion.Count-1)" @onclick="()=>Move(i,1)">↓</button><button @onclick="()=>Remove(i)">Quitar</button></div>}</div>
+@* Fecha: 16/11/2026 - TAREA: 00192 - Linea: 3 - Color opcional de la directiva: pinta sus comprobantes en la pantalla de resultados y en el Excel. *@
+<div class="directive-color"><label class="check">Color de la directiva <input type="color" value="@(d.Color??"#FFFFFF")" @onchange="e=>SetColor(d,e.Value?.ToString())" /> <span class="muted">@(d.Color??"sin color: se usa el del estado")</span></label>@if(d.Color!=null){<button @onclick="()=>SetColor(d,null)">Quitar color</button>}</div>
 @if(i==0){<p>CUIT + Tipo de comprobante + Punto de venta + Número</p>}else{<label>Descripción<input @bind="d.Descripcion" @bind:after="Changed" /></label><div class="field-options">@foreach(var field in Enum.GetValues<CampoConciliacion>()){var f=field;<label class="check"><input type="checkbox" checked="@d.Campos.Contains(f)" @onchange="e=>FieldChanged(d,f,(bool)e.Value!)" /> @FieldName(f)</label>}</div>}</div>}
 @* Fecha: 06/10/2026 - TAREA: 00069 - Linea: 1 - Entrega el perfil editado para evitar otra selección al salir de configuración. *@
 @* Fecha: 24/10/2026 - TAREA: 00125 - Linea: 4 - Enlace relativo al <base href> para que la app funcione bajo una subruta (PathBase) detrás del Concentrador. "./" es la raíz de la app (el <base>); "?perfil=" solo se quedaría en la página actual. *@
@@ -42,6 +44,8 @@
     async Task ReadCuits(InputFileChangeEventArgs e)=>await Act(async()=>{candidate=null;using var ms=new MemoryStream();await e.File.OpenReadStream(TabularReader.MaxBytes).CopyToAsync(ms);candidate=CuitListImporter.Parse(new(e.File.Name,ms.ToArray()));});
     async Task ReplaceCuits(){if(candidate==null)return;editing!.Cuits=candidate;await Save();candidate=null;}
     Task AddDirective(){editing!.Profile.DirectivasConciliacion.Add(DirectivaConciliacion.CrearUltima());return Changed();}
+    // Fecha: 16/11/2026 - TAREA: 00192 - Linea: 3 - El navegador siempre entrega un color: «Quitar color» es lo que devuelve la directiva al color de su estado.
+    Task SetColor(DirectivaConciliacion d,string? value){d.Color=string.IsNullOrEmpty(value)?null:value;return Changed();}
     Task Remove(int i){editing!.Profile.DirectivasConciliacion.RemoveAt(i);return Changed();}
     Task Move(int i,int direction){var list=editing!.Profile.DirectivasConciliacion;(list[i],list[i+direction])=(list[i+direction],list[i]);return Changed();}
     Task FieldChanged(DirectivaConciliacion d,CampoConciliacion f,bool selected){if(selected)d.Campos.Add(f);else d.Campos.Remove(f);return Changed();}

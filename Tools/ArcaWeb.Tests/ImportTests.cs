@@ -1,4 +1,6 @@
 // Fecha: 05/10/2026 - TAREA: 00064 - Linea: 3 - Casos que impiden conciliar un lote incompleto o alterar importes originales.
+using ArcaCliente.Models;
+using ArcaCliente.Web.Data;
 using ArcaCliente.Web.Models;
 using ArcaCliente.Web.Services;
 using ClosedXML.Excel;
@@ -128,6 +130,69 @@ static class ImportTests
             Check(p.Ready && p.Included.Select(x=>x.TipoComprobante).SequenceEqual(new[]{"001","003","008","003"}) && p.Included[1].Total==50.00m);
             Check(p.Rows.Select(r=>r.RawType).SequenceEqual(new[]{"FC A","NC A","NC B","NC A"}));
             f.Type="Tipo"; Check(!ProviderImporter.Preview(doc,cfg).Ready);
+        });
+        // Fecha: 16/11/2026 - TAREA: 00192 - Linea: 1 - Máscara del comprobante: p punto de venta, l letra, n número, el resto literal.
+        ImportPreview Masked(string mask,string value,string? point=null) {
+            var f=new FileFormat{Date="Fecha",Type="Tipo",Number="Documento",Amount="Importe",NumberMode=NumberMode.Mask,NumberMask=mask,Point="PuntoVenta"};
+            var doc=new UploadedDocument("m.csv",Encoding.UTF8.GetBytes("Tipo;Fecha;Documento;Importe;PuntoVenta\nFC;05/09/2026;"+value+";10,00;"+(point??"")));
+            return ProviderImporter.Preview(doc,new ProviderConfiguration{Cuit="30123456781",Format=f,Types=new(){["FC A"]="001"}});
+        }
+        test("Máscara: combinaciones válidas", () => {
+            foreach(var (mask,value,point) in new[]{("pppplnnnnnnnn","0219A00060055",""),("pppp-l-nnnnnnnn","0219-A-00060055",""),("l-pppp-nnnnnnnn","A-0219-00060055",""),("PPPP L NNNNNNNN","0219 a 00060055",""),("nnnnnnnn/l","00060055/A","0219")}) {
+                var p=Masked(mask,value,point);
+                Check(p.Ready && p.Rows[0].RawType=="FC A" && p.Included[0].PuntoVenta=="00219" && p.Included[0].Numero=="00060055");
+            }
+        });
+        test("Máscara: valores que no la respetan quedan con error", () => {
+            Check(!Masked("pppp-l-nnnnnnnn","0219A00060055").Ready);
+            Check(!Masked("pppplnnnnnnnn","0219A0006005").Ready);
+            Check(!Masked("pppplnnnnnnnn","0219500060055").Ready);
+            Check(!Masked("pppplnnnnnnnn","02X9A00060055").Ready);
+            Check(Masked("pppp-l-nnnnnnnn","0219-A-00060055").Ready);
+        });
+        test("Máscara: se valida al guardar el formato", () => {
+            foreach(var bad in new[]{"","pppp","nnnnnnnnn","ppppppnn","pplln"}) {
+                try { ConfigurationValidator.Provider(new ProviderConfiguration{Cuit="30123456781",Format=new FileFormat{NumberMode=NumberMode.Mask,NumberMask=bad}});throw new Exception("Aceptó la máscara «"+bad+"»"); } catch(ImportException) {}
+            }
+            ConfigurationValidator.Provider(new ProviderConfiguration{Cuit="30123456781",Format=new FileFormat{NumberMode=NumberMode.Mask,NumberMask="pppp-l-nnnnnnnn"}});
+        });
+        // Fecha: 16/11/2026 - TAREA: 00192 - Linea: 3 - Color de directiva: sólo «#RRGGBB», en el perfil, en el Excel y sin cambiar nada cuando no hay color.
+        test("Color de directiva: validación y normalización", () => {
+            Check(DirectiveColors.Valid("#12ab9f")=="#12AB9F" && DirectiveColors.Valid("red")==null && DirectiveColors.Valid("#12345")==null && DirectiveColors.Valid("#12345g")==null && DirectiveColors.Valid("url(x)")==null && DirectiveColors.Valid(null)==null);
+            var perfil=new WebProfile(); perfil.Profile.DirectivasConciliacion.Add(DirectivaConciliacion.CrearUltima());
+            perfil.Profile.DirectivasConciliacion[1].Color="#12ab9f"; ConfigurationValidator.Profile(perfil); Check(perfil.Profile.DirectivasConciliacion[1].Color=="#12AB9F");
+            perfil.Profile.DirectivasConciliacion[1].Color=""; ConfigurationValidator.Profile(perfil); Check(perfil.Profile.DirectivasConciliacion[1].Color==null);
+            perfil.Profile.DirectivasConciliacion[1].Color="expression(alert(1))";
+            try { ConfigurationValidator.Profile(perfil);throw new Exception("Aceptó un color inválido"); } catch(ImportException) {}
+        });
+        test("Excel: las filas de una directiva con color salen de ese color", () => {
+            var directivas=new List<DirectivaConciliacion>{DirectivaConciliacion.CrearPrimaria(),DirectivaConciliacion.CrearUltima()}; directivas[1].Color="#FFCC00";
+            var items=new List<ItemConciliacion>{new(){Estado=EstadoConciliacion.Conciliado,DirectivaAplicada=2},new(){Estado=EstadoConciliacion.Conciliado,DirectivaAplicada=1},new(){Estado=EstadoConciliacion.SoloSistema,DirectivaAplicada=0}};
+            foreach(var fuente in new[]{"Proveedor","ARCA"}) {
+                var bytes=ResultExporter.Export(new ReconciliationResult(items,new(),0,0,fuente),directivas);
+                using var book=new XLWorkbook(new MemoryStream(bytes)); var hoja=book.Worksheet(1);
+                Check(hoja.Cell(3,1).Style.Fill.BackgroundColor.Color.ToArgb()==System.Drawing.Color.FromArgb(255,204,0).ToArgb());
+                Check(hoja.Cell(3,14).Style.Fill.BackgroundColor.Color.ToArgb()==System.Drawing.Color.FromArgb(255,204,0).ToArgb());
+                Check(hoja.Cell(4,1).Style.Fill.BackgroundColor.Color.ToArgb()!=System.Drawing.Color.FromArgb(255,204,0).ToArgb());
+                Check(hoja.Cell(5,1).Style.Fill.BackgroundColor.Color.ToArgb()!=System.Drawing.Color.FromArgb(255,204,0).ToArgb());
+            }
+            var sinColor=ResultExporter.Export(new ReconciliationResult(items,new(),0,0,"Proveedor"));
+            using var libro=new XLWorkbook(new MemoryStream(sinColor));
+            Check(libro.Worksheet(1).Cell(3,1).Style.Fill.BackgroundColor.Color.ToArgb()==libro.Worksheet(1).Cell(4,1).Style.Fill.BackgroundColor.Color.ToArgb());
+        });
+        // Fecha: 16/11/2026 - TAREA: 00192 - Linea: 4 - Filtro por directiva en la pantalla de resultados.
+        test("Resultados: filtro por directiva sólo aplica a conciliados y con diferencia", () => {
+            var items=new List<ItemConciliacion>{
+                new(){Estado=EstadoConciliacion.Conciliado,DirectivaAplicada=1,Numero="1"},new(){Estado=EstadoConciliacion.Conciliado,DirectivaAplicada=2,Numero="2"},new(){Estado=EstadoConciliacion.Conciliado,DirectivaAplicada=2,Numero="3"},
+                new(){Estado=EstadoConciliacion.DiferenciaImporte,DirectivaAplicada=2,Numero="4"},new(){Estado=EstadoConciliacion.SoloSistema,DirectivaAplicada=0,Numero="5"}};
+            var d2=new HashSet<int>{2}; var ninguna=new HashSet<int>();
+            Check(ResultFilter.Apply(items,"Conciliado","",d2).Select(x=>x.Numero).SequenceEqual(new[]{"2","3"}));
+            Check(ResultFilter.Apply(items,"Conciliado","",ninguna).Count()==3);
+            Check(ResultFilter.Apply(items,"Conciliado","",new HashSet<int>{1,2}).Count()==3);
+            Check(ResultFilter.Apply(items,"SoloSistema","",d2).Count()==1);
+            Check(ResultFilter.Apply(items,"","3",ninguna).Single().Numero=="3");
+            var cuenta=ResultFilter.CountByDirective(items,"Conciliado"); Check(cuenta[1]==1 && cuenta[2]==2 && cuenta.Count==2);
+            Check(ResultFilter.HasDirectives("Conciliado") && ResultFilter.HasDirectives("DiferenciaImporte") && !ResultFilter.HasDirectives("SoloSistema") && !ResultFilter.HasDirectives(""));
         });
         test("HTML con celdas sin cierre no cuelga la lectura", () => {
             var bomba=Encoding.UTF8.GetBytes("<html>"+string.Concat(Enumerable.Repeat("<nobr id=l0001001>x",150000)));

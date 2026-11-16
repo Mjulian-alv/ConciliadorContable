@@ -106,5 +106,7 @@ public static class TabularReader
         if(f.DatePattern is not ("dd/MM/yyyy" or "d/M/yyyy" or "yyyy-MM-dd" or "dd-MM-yyyy" or "yyyyMMdd")) throw new ImportException("Seleccioná un formato de fecha admitido.");
         if(f.NumberMode==NumberMode.Fixed && (f.PointLength<1||f.PointLength>5)) throw new ImportException("El punto de venta ocupa entre 1 y 5 posiciones.");
         if(f.NumberMode==NumberMode.Separated && string.IsNullOrEmpty(f.NumberSeparator)) throw new ImportException("Indicá el separador de punto y número.");
+        // Fecha: 16/11/2026 - TAREA: 00192 - Linea: 1 - La máscara se valida al guardar el formato, no recién al leer el archivo.
+        if(f.NumberMode==NumberMode.Mask) ProviderImporter.ValidateMask(f.NumberMask);
     }
 }

@@ -18,5 +18,6 @@
     int page;bool onlyErrors;ImportPreview? previous;
     IEnumerable<PreviewRow> Visible=>(Preview?.Rows??new()).Where(x=>!onlyErrors||x.Errors.Count>0);
     void Reset()=>page=0;
-    protected override void OnParametersSet(){if(!ReferenceEquals(previous,Preview)){page=0;previous=Preview;}}
+    // Fecha: 16/11/2026 - TAREA: 00192 - Linea: 2 - Con un archivo nuevo la lista viene filtrada a los errores para no ser interminable; si no hay errores se muestra todo, así no queda vacía.
+    protected override void OnParametersSet(){if(!ReferenceEquals(previous,Preview)){page=0;previous=Preview;onlyErrors=Preview?.Rows.Any(x=>x.Errors.Count>0)==true;}}
 }
